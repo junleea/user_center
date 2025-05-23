@@ -37,6 +37,11 @@ func SetUpUserGroup(router *gin.Engine) {
 	//前端用户ui配置
 	userGroup.GET("/get_user_ui_config", GetUserUIConfig)  //获取用户ui配置
 	userGroup.POST("/set_user_ui_config", SetUserUIConfig) //设置用户ui配置
+	userGroup.POST("/refresh_token", refreshTokenHandler)  //刷新token
+}
+
+type RefreshTokenReq struct {
+	RefreshToken string `json:"refresh_token" form:"refresh_token"`
 }
 
 type RLReq struct {
@@ -386,7 +391,6 @@ func SearchHandler(c *gin.Context) {
 
 func loginHandler(c *gin.Context) {
 	var req_data RLReq
-	tokenString := ""
 	if err := c.ShouldBind(&req_data); err == nil {
 		if len(req_data.Password) != 32 {
 			hasher := md5.New()
@@ -395,44 +399,26 @@ func loginHandler(c *gin.Context) {
 		}
 		user := service.GetUser(req_data.User, req_data.Password, req_data.Password)
 		if user.ID != 0 {
-			key := "user_" + user.Name
-			redis_token := worker.GetRedis(string(key))
-			if redis_token == "" {
-				// 生成 JWT 令牌
-				token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-					"username": user.Name,
-					"id":       user.ID,
-					"exp":      time.Now().Add(time.Hour * 24).Unix(), // 令牌过期时间, 24小时后过期
-				})
-				tokenString, err = token.SignedString(proto.SigningKey)
-				if err != nil {
-					c.JSON(200, gin.H{"error": err.Error(), "code": proto.TokenGenerationError, "message": "error"})
-					return
-				}
-
-				worker.SetRedisWithExpire("user_"+user.Name, tokenString, time.Hour*24) // 将用户信息存入
-				worker.SetRedisWithExpire(tokenString, tokenString, time.Hour*24)       // 设置过期时间为24h
-				data := make(map[string]interface{})
-				data["id"] = user.ID
-				data["username"] = user.Name
-				data["email"] = user.Email
-				worker.SetHash(tokenString, data) // 将用户信息存入
-			} else {
-				tokenString = redis_token
+			accessToken, refreshToken, err := service.GenerateAuthTokens(user)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"code": proto.TokenGenerationError, "message": "Failed to generate tokens", "data": err.Error()})
+				return
 			}
-			// 返回令牌
-			data := make(map[string]interface{})
-			data["id"] = user.ID
-			data["username"] = user.Name
-			data["email"] = user.Email
-			data["token"] = tokenString
-			c.JSON(200, gin.H{"code": proto.SuccessCode, "message": "success", "data": data})
+			authResponse := proto.AuthResponse{
+				AccessToken:  accessToken,
+				RefreshToken: refreshToken,
+				UserID:       user.ID,
+				Username:     user.Name,
+				Email:        user.Email,
+			}
+			c.JSON(http.StatusOK, gin.H{"code": proto.SuccessCode, "message": "success", "data": authResponse})
 		} else {
 			//用户名或密码错误
-			c.JSON(200, gin.H{"error": "用户名或密码错误", "code": proto.UsernameOrPasswordError, "message": "error"})
+			c.JSON(http.StatusOK, gin.H{"code": proto.UsernameOrPasswordError, "message": "用户名或密码错误", "data": nil})
+			c.JSON(http.StatusOK, gin.H{"code": proto.UsernameOrPasswordError, "message": "用户名或密码错误", "data": nil})
 		}
 	} else {
-		c.JSON(200, gin.H{"error": err.Error(), "code": proto.DeviceRestartFailed, "message": "error"})
+		c.JSON(http.StatusBadRequest, gin.H{"code": proto.ParameterError, "message": err.Error(), "data": nil})
 	}
 }
 
@@ -514,26 +500,27 @@ func registerHandlerV2(c *gin.Context) {
 						resp.Code = proto.OperationFailed
 						resp.Message = "创建用户失败"
 					} else {
-						// 生成 JWT 令牌
-						token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-							"username": reqData.User,
-							"id":       id,
-							"exp":      time.Now().Add(time.Hour * 24).Unix(), // 令牌过期时间, 24小时后过期
-						})
-						tokenString, err2 := token.SignedString(proto.SigningKey)
-						if err2 != nil {
-							resp.Code = proto.TokenGenerationError
-							resp.Message = "生成token失败"
+						createdUser := service.GetUserByIDWithCache(int(id))
+						if createdUser.ID == 0 {
+							resp.Code = proto.OperationFailed
+							resp.Message = "Failed to retrieve created user"
 						} else {
-							// 返回令牌
-							data := make(map[string]interface{})
-							data["id"] = id
-							data["username"] = reqData.User
-							data["email"] = reqData.Email
-							data["token"] = tokenString
-							resp.Code = proto.SuccessCode
-							resp.Message = "success"
-							resp.Data = data
+							accessToken, refreshToken, errGenTokens := service.GenerateAuthTokens(createdUser)
+							if errGenTokens != nil {
+								resp.Code = proto.TokenGenerationError
+								resp.Message = "Failed to generate tokens: " + errGenTokens.Error()
+							} else {
+								authResponse := proto.AuthResponse{
+									AccessToken:  accessToken,
+									RefreshToken: refreshToken,
+									UserID:       createdUser.ID,
+									Username:     createdUser.Name,
+									Email:        createdUser.Email,
+								}
+								resp.Code = proto.SuccessCode
+								resp.Message = "success"
+								resp.Data = authResponse
+							}
 						}
 					}
 				}
@@ -544,6 +531,27 @@ func registerHandlerV2(c *gin.Context) {
 		resp.Message = "解析参数失败"
 	}
 	c.JSON(http.StatusOK, resp)
+}
+
+func refreshTokenHandler(c *gin.Context) {
+	var req RefreshTokenReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": proto.ParameterError, "message": "Invalid request body: " + err.Error(), "data": nil})
+		return
+	}
+
+	if req.RefreshToken == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"code": proto.ParameterError, "message": "Refresh token is required", "data": nil})
+		return
+	}
+
+	newAccessToken, err := service.ValidateRefreshTokenAndCreateNewAccessToken(req.RefreshToken)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": proto.TokenInvalid, "message": "Invalid or expired refresh token: " + err.Error(), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": proto.SuccessCode, "message": "Access token refreshed successfully", "data": gin.H{"access_token": newAccessToken}})
 }
 
 func LoginOAuth(c *gin.Context) {

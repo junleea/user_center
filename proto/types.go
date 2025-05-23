@@ -5,6 +5,12 @@ import (
 	"time"
 )
 
+// Token expiration durations
+const (
+	AccessTokenDuration  = time.Hour
+	RefreshTokenDuration = 7 * 24 * time.Hour
+)
+
 type GenerateResp struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -16,6 +22,14 @@ type ResponseOAuth struct {
 	Name  string `json:"name" form:"name"`
 	Email string `json:"email" form:"email"`
 	Token string `json:"token" form:"token"`
+}
+
+type AuthResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	UserID       uint   `json:"user_id"`
+	Username     string `json:"username"`
+	Email        string `json:"email"`
 }
 
 type UpdateUserInfoReq struct {

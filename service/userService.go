@@ -282,6 +282,38 @@ func CalculateUserTokenAndSetCache(user dao.User) (string, error) {
 	return tokenString, err
 }
 
+// GenerateAuthTokens creates new access and refresh tokens for a user
+func GenerateAuthTokens(user dao.User) (accessTokenString string, refreshTokenString string, err error) {
+	// Generate Access Token
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"username": user.Name,
+		"id":       user.ID,
+		"exp":      time.Now().Add(proto.AccessTokenDuration).Unix(),
+	})
+	accessTokenString, err = accessToken.SignedString(proto.SigningKey)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to sign access token: %w", err)
+	}
+
+	// Generate Refresh Token
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"id":  user.ID,
+		"exp": time.Now().Add(proto.RefreshTokenDuration).Unix(),
+	})
+	refreshTokenString, err = refreshToken.SignedString(proto.SigningKey)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to sign refresh token: %w", err)
+	}
+
+	// Store Refresh Token in Redis
+	redisKey := fmt.Sprintf("refresh_token:%d:%s", user.ID, refreshTokenString)
+	if !worker.SetRedisWithExpire(redisKey, "active", proto.RefreshTokenDuration) { // Value can be simple, e.g., "active" or user.ID
+		return "", "", fmt.Errorf("failed to store refresh token in Redis")
+	}
+
+	return accessTokenString, refreshTokenString, nil
+}
+
 func GetUserInfoByToken(token string) (dao.User, error) {
 	//解析token
 	claims := jwt.MapClaims{}
@@ -300,7 +332,60 @@ func GetUserInfoByToken(token string) (dao.User, error) {
 	if user.ID == 0 {
 		return user, errors.New("user not found")
 	}
+	user.Password = "" // Ensure password is not returned
 	return user, nil
+}
+
+// ValidateRefreshTokenAndCreateNewAccessToken validates a refresh token and generates a new access token.
+func ValidateRefreshTokenAndCreateNewAccessToken(refreshTokenString string) (newAccessTokenString string, err error) {
+	claims := jwt.MapClaims{}
+	token, err := jwt.ParseWithClaims(refreshTokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		// Make sure that the token's signing method is what you expect.
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return proto.SigningKey, nil
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("failed to parse refresh token: %w", err)
+	}
+
+	if !token.Valid {
+		return "", errors.New("refresh token is invalid")
+	}
+
+	userIDFloat, ok := claims["id"].(float64)
+	if !ok {
+		return "", errors.New("invalid user ID in refresh token claims")
+	}
+	userID := uint(userIDFloat) // Assuming user ID in token is of type uint
+
+	// Check if the refresh token exists in Redis
+	redisKey := fmt.Sprintf("refresh_token:%d:%s", userID, refreshTokenString)
+	if !worker.IsContainKey(redisKey) {
+		return "", errors.New("refresh token not found in Redis or has expired")
+	}
+
+	// Fetch user details
+	user := dao.FindUserByID2(int(userID)) // Assuming FindUserByID2 takes int
+	if user.ID == 0 {
+		return "", errors.New("user not found")
+	}
+
+	// Generate a new access token
+	newAccessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"username": user.Name,
+		"id":       user.ID,
+		"exp":      time.Now().Add(proto.AccessTokenDuration).Unix(),
+	})
+
+	newAccessTokenString, err = newAccessToken.SignedString(proto.SigningKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to sign new access token: %w", err)
+	}
+
+	return newAccessTokenString, nil
 }
 
 // 获取用户前端配置信息
