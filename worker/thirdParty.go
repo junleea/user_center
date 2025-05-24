@@ -320,8 +320,10 @@ func GetFaceBookUserInfo(accessToken string) (proto.FaceBookUserInfoResp, error)
 }
 
 const (
-	StackOverflowClientID = "32093"
-	StackOverflowKey      = "rl_s6vbPNPhbFbMcyWp7YbaTeg18"
+	//StackOverflowClientID = "32093"
+	//StackOverflowKey      = "rl_s6vbPNPhbFbMcyWp7YbaTeg18" //原始
+	StackOverflowClientID = "33284" //新
+	StackOverflowKey      = "rl_5g6fVohz3WfVYjsYY1sXqi4Us"
 )
 
 func GetStackoverflowAccessTokenByCode(code string, redirectURI string, clientID string, clientSecret string) (proto.StackoverflowOAuthResponse, error) {
