@@ -288,6 +288,7 @@ func GenerateAuthTokens(user dao.User) (accessTokenString string, refreshTokenSt
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"username": user.Name,
 		"id":       user.ID,
+		"type":     "access",
 		"exp":      time.Now().Add(proto.AccessTokenDuration).Unix(),
 	})
 	accessTokenString, err = accessToken.SignedString(proto.SigningKey)
@@ -297,8 +298,9 @@ func GenerateAuthTokens(user dao.User) (accessTokenString string, refreshTokenSt
 
 	// Generate Refresh Token
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":  user.ID,
-		"exp": time.Now().Add(proto.RefreshTokenDuration).Unix(),
+		"id":   user.ID,
+		"type": "refresh",
+		"exp":  time.Now().Add(proto.RefreshTokenDuration).Unix(),
 	})
 	refreshTokenString, err = refreshToken.SignedString(proto.SigningKey)
 	if err != nil {
