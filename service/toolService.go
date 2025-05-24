@@ -239,7 +239,7 @@ func HandleThirdPartyLoginStatus(state *proto.ThirdPartyLoginState, thirdPartyLo
 				thirdPartyLoginStatus.UserInfo.UserID = user.ID
 				thirdPartyLoginStatus.UserInfo.Username = user.Name
 				thirdPartyLoginStatus.UserInfo.Email = user.Email
-				thirdPartyLoginStatus.UserInfo.AccessToken, thirdPartyLoginStatus.UserInfo.AccessToken, _ = GenerateAuthTokens(user)
+				thirdPartyLoginStatus.UserInfo.AccessToken, thirdPartyLoginStatus.UserInfo.RefreshToken, _ = GenerateAuthTokens(user)
 			}
 		}
 	} else if state.Type == "add" {
@@ -273,7 +273,7 @@ func HandleThirdPartyLoginStatus(state *proto.ThirdPartyLoginState, thirdPartyLo
 						thirdPartyLoginStatus.UserInfo.UserID = user.ID
 						thirdPartyLoginStatus.UserInfo.Username = user.Name
 						thirdPartyLoginStatus.UserInfo.Email = user.Email
-						thirdPartyLoginStatus.UserInfo.AccessToken, thirdPartyLoginStatus.UserInfo.AccessToken, _ = GenerateAuthTokens(user)
+						thirdPartyLoginStatus.UserInfo.AccessToken, thirdPartyLoginStatus.UserInfo.RefreshToken, _ = GenerateAuthTokens(user)
 					}
 				}
 			}
@@ -308,7 +308,7 @@ func HandleThirdPartyLoginStatusV2(state *proto.ThirdPartyLoginState, thirdParty
 				thirdPartyLoginStatus.UserInfo.UserID = user.ID
 				thirdPartyLoginStatus.UserInfo.Username = user.Name
 				thirdPartyLoginStatus.UserInfo.Email = user.Email
-				thirdPartyLoginStatus.UserInfo.AccessToken, thirdPartyLoginStatus.UserInfo.AccessToken, _ = GenerateAuthTokens(user)
+				thirdPartyLoginStatus.UserInfo.AccessToken, thirdPartyLoginStatus.UserInfo.RefreshToken, _ = GenerateAuthTokens(user)
 			}
 		}
 	} else if state.Type == "add" {
@@ -342,7 +342,7 @@ func HandleThirdPartyLoginStatusV2(state *proto.ThirdPartyLoginState, thirdParty
 						thirdPartyLoginStatus.UserInfo.UserID = user.ID
 						thirdPartyLoginStatus.UserInfo.Username = user.Name
 						thirdPartyLoginStatus.UserInfo.Email = user.Email
-						thirdPartyLoginStatus.UserInfo.AccessToken, thirdPartyLoginStatus.UserInfo.AccessToken, _ = GenerateAuthTokens(user)
+						thirdPartyLoginStatus.UserInfo.AccessToken, thirdPartyLoginStatus.UserInfo.RefreshToken, _ = GenerateAuthTokens(user)
 					}
 				}
 			}
