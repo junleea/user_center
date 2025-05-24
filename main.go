@@ -83,17 +83,17 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 		if tokenString == "" {
 			tokenString = c.Query("token")
 		}
-		for k, _ := range proto.Url_map {
-			if strings.Contains(c.Request.URL.Path, k) {
-				log.Println("need not check token:", c.Request.URL.Path)
-				c.Next()
-				return
-			}
-		}
-		//if proto.Url_map[c.Request.URL.Path] == true { //查看是否在不需要token的url中
-		//	c.Next()
-		//	return
+		//for k, _ := range proto.Url_map {
+		//	if strings.Contains(c.Request.URL.Path, k) {
+		//		log.Println("need not check token:", c.Request.URL.Path)
+		//		c.Next()
+		//		return
+		//	}
 		//}
+		if proto.Url_map[c.Request.URL.Path] == true { //查看是否在不需要token的url中
+			c.Next()
+			return
+		}
 		if tokenString == "" {
 			c.AbortWithStatusJSON(http.StatusOK, gin.H{"message": "unauthorized", "error": "token is empty", "code": proto.TokenIsNull})
 			return
