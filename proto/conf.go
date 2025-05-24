@@ -10,7 +10,7 @@ import (
 
 var Config ConfigStruct
 var SigningKey = []byte{}
-var Url_map = map[string]bool{"/login": true, "/register": true, "/uuid": true, "/gqr": true, "/cid/callback": true, "/tool/monitor": true, "/user/sync": true, "/tool/file/": true, "/user/reset": true, "/tool/qq_auth": true, "/tool/qq_callback": true, "/tool/github_auth": true, "/tool/github_callback": true, "/user/oAuth": true, "/user/oAuth_uuid": true, "/tool/loginRedirect": true, "/tool/get_auth_url": true, "/tool/gitee_callback": true, "/tool/third_party_callback": true, "/user/refresh_token": true} // 不需要token验证的url
+var Url_map = map[string]bool{"/user/login": true, "/user/register": true, "/user/uuid": true, "/user/gqr": true, "/user/sync": true, "/tool/file/": true, "/user/reset": true, "/tool/qq_auth": true, "/tool/qq_callback": true, "/tool/github_auth": true, "/tool/github_callback": true, "/user/oAuth": true, "/user/oAuth_uuid": true, "/tool/loginRedirect": true, "/tool/get_auth_url": true, "/tool/gitee_callback": true, "/tool/third_party_callback": true, "/user/refresh_token": true} // 不需要token验证的url
 var Per_menu_map = map[string]int{"/video/": 1, "/device/": 2, "/cid/": 3}
 var File_Type = map[string]int{"im": 1, "avatar": 2, "file": 3, "config": 4} // 文件类型
 const (
