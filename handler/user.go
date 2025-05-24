@@ -181,13 +181,13 @@ func GetUserInfo(c *gin.Context) {
 	if err := c.ShouldBind(&req_data); err == nil {
 		var user dao.User
 		if req_data.ID == user_id {
-			user = dao.FindUserByID2(user_id)
+			user = service.GetUserByIDWithCache(req_data.ID)
 			user.Password = "" //不返回密码
 		} else {
 			//判断当前用户是否有权限查看
-			cur_user := dao.FindUserByID2(user_id)
+			cur_user := service.GetUserByIDWithCache(user_id)
 			if cur_user.Role == "admin" {
-				user = dao.FindUserByID2(req_data.ID)
+				user = service.GetUserByIDWithCache(req_data.ID)
 				user.Password = "" //不返回密码
 			} else {
 				c.JSON(200, gin.H{"code": proto.PermissionDenied, "message": "无权查看", "data": "2"})
