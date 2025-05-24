@@ -399,9 +399,9 @@ func loginHandler(c *gin.Context) {
 		}
 		user := service.GetUser(req_data.User, req_data.Password, req_data.Password)
 		if user.ID != 0 {
-			accessToken, refreshToken, err := service.GenerateAuthTokens(user)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"code": proto.TokenGenerationError, "message": "Failed to generate tokens", "data": err.Error()})
+			accessToken, refreshToken, err2 := service.GenerateAuthTokens(user)
+			if err2 != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"code": proto.TokenGenerationError, "message": "Failed to generate tokens", "data": err2.Error()})
 				return
 			}
 			authResponse := proto.AuthResponse{
@@ -412,9 +412,10 @@ func loginHandler(c *gin.Context) {
 				Email:        user.Email,
 			}
 			c.JSON(http.StatusOK, gin.H{"code": proto.SuccessCode, "message": "success", "data": authResponse})
+			authBytes, _ := json.Marshal(authResponse)
+			c.SetCookie("user_token", string(authBytes), 3600*24, "/", ".ljsea.top", true, false) //设置cookie
 		} else {
 			//用户名或密码错误
-			c.JSON(http.StatusOK, gin.H{"code": proto.UsernameOrPasswordError, "message": "用户名或密码错误", "data": nil})
 			c.JSON(http.StatusOK, gin.H{"code": proto.UsernameOrPasswordError, "message": "用户名或密码错误", "data": nil})
 		}
 	} else {
@@ -520,6 +521,8 @@ func registerHandlerV2(c *gin.Context) {
 								resp.Code = proto.SuccessCode
 								resp.Message = "success"
 								resp.Data = authResponse
+								authBytes, _ := json.Marshal(authResponse)
+								c.SetCookie("user_token", string(authBytes), 3600*24, "/", ".ljsea.top", true, false) //设置cookie
 							}
 						}
 					}
@@ -546,6 +549,23 @@ func refreshTokenHandler(c *gin.Context) {
 	}
 
 	newAccessToken, err := service.ValidateRefreshTokenAndCreateNewAccessToken(req.RefreshToken)
+	//获取cookie
+	cookie, err := c.Cookie("user_token")
+	var authResponse proto.AuthResponse
+	if err == nil {
+		err = json.Unmarshal([]byte(cookie), &authResponse)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": proto.TokenInvalid, "message": "Failed to parse cookie: " + err.Error(), "data": nil})
+			return
+		}
+	} else {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": proto.TokenInvalid, "message": "Failed to get cookie: " + err.Error(), "data": nil})
+		return
+	}
+	authResponse.AccessToken = newAccessToken
+	authBytes, _ := json.Marshal(authResponse)
+	c.SetCookie("user_token", string(authBytes), 3600*24, "/", ".ljsea.top", true, false) //设置cookie
+
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"code": proto.TokenInvalid, "message": "Invalid or expired refresh token: " + err.Error(), "data": nil})
 		return
