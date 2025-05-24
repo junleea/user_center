@@ -76,9 +76,9 @@ type UserDelID struct {
 
 // 第三方登录,登录状态
 type ThirdPartyLoginStatus struct {
-	Status   int           `json:"status"`    // 登录状态,0:登录成功,1:登录失败
-	Type     string        `json:"type"`      // 登录类型,qq,github
-	UserInfo UserLoginInfo `json:"user_info"` // 用户信息
+	Status   int          `json:"status"`    // 登录状态,0:登录成功,1:登录失败
+	Type     string       `json:"type"`      // 登录类型,qq,github
+	UserInfo AuthResponse `json:"user_info"` // 用户信息
 }
 
 type UserLoginInfo struct {
