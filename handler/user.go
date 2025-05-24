@@ -411,9 +411,9 @@ func loginHandler(c *gin.Context) {
 				Username:     user.Name,
 				Email:        user.Email,
 			}
-			c.JSON(http.StatusOK, gin.H{"code": proto.SuccessCode, "message": "success", "data": authResponse})
 			authBytes, _ := json.Marshal(authResponse)
 			c.SetCookie("user_token", string(authBytes), 3600*24, "/", ".ljsea.top", true, false) //设置cookie
+			c.JSON(http.StatusOK, gin.H{"code": proto.SuccessCode, "message": "success", "data": authResponse})
 		} else {
 			//用户名或密码错误
 			c.JSON(http.StatusOK, gin.H{"code": proto.UsernameOrPasswordError, "message": "用户名或密码错误", "data": nil})
