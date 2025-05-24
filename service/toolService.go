@@ -236,10 +236,10 @@ func HandleThirdPartyLoginStatus(state *proto.ThirdPartyLoginState, thirdPartyLo
 			} else {
 				//成功
 				thirdPartyLoginStatus.Status = proto.SuccessCode
-				thirdPartyLoginStatus.UserInfo.UserID = int(user.ID)
+				thirdPartyLoginStatus.UserInfo.UserID = user.ID
 				thirdPartyLoginStatus.UserInfo.Username = user.Name
 				thirdPartyLoginStatus.UserInfo.Email = user.Email
-				thirdPartyLoginStatus.UserInfo.Token, _ = GenerateJWTToken(int(user.ID), user.Name)
+				thirdPartyLoginStatus.UserInfo.AccessToken, thirdPartyLoginStatus.UserInfo.AccessToken, _ = GenerateAuthTokens(user)
 			}
 		}
 	} else if state.Type == "add" {
@@ -270,10 +270,10 @@ func HandleThirdPartyLoginStatus(state *proto.ThirdPartyLoginState, thirdPartyLo
 					} else {
 						//成功
 						thirdPartyLoginStatus.Status = proto.SuccessCode
-						thirdPartyLoginStatus.UserInfo.UserID = int(user.ID)
+						thirdPartyLoginStatus.UserInfo.UserID = user.ID
 						thirdPartyLoginStatus.UserInfo.Username = user.Name
 						thirdPartyLoginStatus.UserInfo.Email = user.Email
-						thirdPartyLoginStatus.UserInfo.Token, _ = GenerateJWTToken(int(user.ID), user.Name)
+						thirdPartyLoginStatus.UserInfo.AccessToken, thirdPartyLoginStatus.UserInfo.AccessToken, _ = GenerateAuthTokens(user)
 					}
 				}
 			}
