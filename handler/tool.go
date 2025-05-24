@@ -404,16 +404,16 @@ func GetThirdPartyAuthUrl(c *gin.Context) {
 		//response_type=code
 		params.Add("response_type", "code")
 		params.Add("state", stateBase64Str)
-		params.Add("redirect_uri", "https://pm.ljsea.top/tool/third_party_callback")
+		params.Add("redirect_uri", "https://uc.ljsea.top/tool/third_party_callback")
 		baseUri := proto.GiteeAuthorizeBaseUrl
 		respUrl = fmt.Sprintf("%s?%s", baseUri, params.Encode())
 	case "google":
 		params := url.Values{}
 		params.Add("client_id", worker.GoogleClientID)
 		params.Add("response_type", "code") //直接返回token
-		redirectURL := "https://pm.ljsea.top/tool/third_party_callback"
+		redirectURL := "https://uc.ljsea.top/tool/third_party_callback"
 		scope := "https://www.googleapis.com/auth/userinfo.email+https://www.googleapis.com/auth/userinfo.profile"
-		//params.Add("redirect_uri", "https://pm.ljsea.top/tool/third_party_callback")
+		//params.Add("redirect_uri", "https://uc.ljsea.top/tool/third_party_callback")
 		//params.Add("scope", "https://www.googleapis.com/auth/userinfo.email+https://www.googleapis.com/auth/userinfo.profile")
 		params.Add("state", stateBase64Str)
 		baseUri := proto.GoogleAuthorizeBaseUrl
@@ -422,14 +422,14 @@ func GetThirdPartyAuthUrl(c *gin.Context) {
 	case "facebook":
 		params := url.Values{}
 		params.Add("client_id", worker.FacebookClientID)
-		params.Add("redirect_uri", "https://pm.ljsea.top/tool/third_party_callback")
+		params.Add("redirect_uri", "https://uc.ljsea.top/tool/third_party_callback")
 		params.Add("response_type", "code") //直接返回token
 		params.Add("state", stateBase64Str)
 		respUrl = fmt.Sprintf("%s?%s", proto.FacebookAuthorizeBaseUrl, params.Encode())
 	case "stackoverflow":
 		params := url.Values{}
 		params.Add("client_id", worker.StackOverflowClientID)
-		params.Add("redirect_uri", "https://pm.ljsea.top/tool/third_party_callback")
+		params.Add("redirect_uri", "https://uc.ljsea.top/tool/third_party_callback")
 		//params.Add("scope", "")
 		params.Add("state", stateBase64Str)
 		respUrl = fmt.Sprintf("%s?%s", proto.StackOverflowAuthorizeBaseUrl, params.Encode())
@@ -445,7 +445,7 @@ func GetThirdPartyAuthUrl(c *gin.Context) {
 			baseUrl = proto.GiteaAuthorizeBaseUrl
 		}
 		params.Add("client_id", client_id)
-		params.Add("redirect_uri", "https://pm.ljsea.top/tool/third_party_callback")
+		params.Add("redirect_uri", "https://uc.ljsea.top/tool/third_party_callback")
 		params.Add("response_type", "code") //返回code
 		params.Add("state", stateID)
 		params.Add("scope", "user")
@@ -453,7 +453,7 @@ func GetThirdPartyAuthUrl(c *gin.Context) {
 	case "microsoft":
 		params := url.Values{}
 		params.Add("client_id", worker.MicroSoftClientID)
-		params.Add("redirect_uri", "https://pm.ljsea.top/tool/third_party_callback")
+		params.Add("redirect_uri", "https://uc.ljsea.top/tool/third_party_callback")
 		params.Add("response_type", "code") //返回code
 		params.Add("state", stateID)
 		params.Add("scope", "User.Read Mail.Read")

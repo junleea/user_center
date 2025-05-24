@@ -163,7 +163,7 @@ func GenerateJWTToken(userID int, userName string) (string, error) {
 
 func DoGiteeCallBack(state *proto.ThirdPartyLoginState, code string) {
 	//获取Access Token
-	resp, err := worker.GetGiteeAccessTokenByCode(code, "https://pm.ljsea.top/tool/third_party_callback", proto.Config.GITEE_CLIENT_ID, proto.Config.GITEE_CLIENT_SECRET)
+	resp, err := worker.GetGiteeAccessTokenByCode(code, "https://uc.ljsea.top/tool/third_party_callback", proto.Config.GITEE_CLIENT_ID, proto.Config.GITEE_CLIENT_SECRET)
 	if err != nil {
 		log.Println("get gitee access token error:", err)
 		return
@@ -415,7 +415,7 @@ func DoGithubCallBack(state *proto.ThirdPartyLoginState, code string) {
 
 func DoGoogleCallBack(state *proto.ThirdPartyLoginState, code string) {
 	//根据code获取Access Token
-	tokenResp, err := worker.GetGoogleAccessTokenByCode(code, "https://pm.ljsea.top/tool/third_party_callback", worker.GoogleClientID, proto.Config.GoogleClientSecret)
+	tokenResp, err := worker.GetGoogleAccessTokenByCode(code, "https://uc.ljsea.top/tool/third_party_callback", worker.GoogleClientID, proto.Config.GoogleClientSecret)
 
 	if tokenResp.AccessToken == "" {
 		log.Println("get google access token is empty")
@@ -441,7 +441,7 @@ func DoGoogleCallBack(state *proto.ThirdPartyLoginState, code string) {
 
 func DoFaceBookCallBack(state *proto.ThirdPartyLoginState, code string) {
 	//根据code获取Access Token
-	tokenResp, err := worker.GetFacebookAccessTokenByCode(code, "https://pm.ljsea.top/tool/third_party_callback", worker.FacebookClientID, proto.Config.FacebookClientSecret)
+	tokenResp, err := worker.GetFacebookAccessTokenByCode(code, "https://uc.ljsea.top/tool/third_party_callback", worker.FacebookClientID, proto.Config.FacebookClientSecret)
 
 	if tokenResp.AccessToken == "" {
 		log.Println("get facebook access token is empty")
@@ -470,7 +470,7 @@ func DoStackoverflowCallBack(state *proto.ThirdPartyLoginState, code string) {
 	var userInfo proto.StackoverflowUserInfo
 	thirdPartyLoginStatus.Type = state.Platform
 	//根据code获取Access Token
-	tokenResp, err := worker.GetStackoverflowAccessTokenByCode(code, "https://pm.ljsea.top/tool/third_party_callback", worker.StackOverflowClientID, proto.Config.StackOverflowClientSecret)
+	tokenResp, err := worker.GetStackoverflowAccessTokenByCode(code, "https://uc.ljsea.top/tool/third_party_callback", worker.StackOverflowClientID, proto.Config.StackOverflowClientSecret)
 	if tokenResp.AccessToken == "" {
 		log.Println("get Stackoverflow access token is empty")
 		thirdPartyLoginStatus.Status = proto.ParameterError
@@ -593,7 +593,7 @@ func DoGiteaCallBack(state *proto.ThirdPartyLoginState, code string) {
 		baseDomain = "https://gitea.com"
 		clientID, clientSecret = worker.GiteaClientID, proto.Config.GITEA_CLIENT_SECRET
 	}
-	tokenResp, _ := worker.GetGiteaAccessTokenByCode(baseDomain, code, "https://pm.ljsea.top/tool/third_party_callback", clientID, clientSecret)
+	tokenResp, _ := worker.GetGiteaAccessTokenByCode(baseDomain, code, "https://uc.ljsea.top/tool/third_party_callback", clientID, clientSecret)
 	//if err != nil {
 	//	log.Printf("get %s access token error:%v\n", state.Platform, err)
 	//	thirdPartyLoginStatus.Status = proto.ParameterError
@@ -626,7 +626,7 @@ func DoMicroSoftCallBack(state *proto.ThirdPartyLoginState, code string) {
 	var thirdPartyLoginStatus proto.ThirdPartyLoginStatus
 	thirdPartyLoginStatus.Type = state.Platform
 	//根据code获取Access Token
-	tokenResp, _ := worker.GetMicroSoftAccessTokenByCode(code, "https://pm.ljsea.top/tool/third_party_callback", worker.MicroSoftClientID, proto.Config.MICROSOFT_CLIENT_SECRET)
+	tokenResp, _ := worker.GetMicroSoftAccessTokenByCode(code, "https://uc.ljsea.top/tool/third_party_callback", worker.MicroSoftClientID, proto.Config.MICROSOFT_CLIENT_SECRET)
 	//if err != nil {
 	//	log.Printf("get %s access token error:%v\n", state.Platform, err)
 	//	thirdPartyLoginStatus.Status = proto.ParameterError
