@@ -27,6 +27,7 @@ func SetUpUserGroup(router *gin.Engine) {
 	userGroup.POST("/confirm", ConfirmQRLogin)
 	userGroup.POST("/search", SearchHandler)
 	userGroup.POST("/info", GetUserInfo)
+	userGroup.POST("/base_user_list", GetUserBaseInfoList)
 	userGroup.POST("/update", UpdateUserInfo)
 	userGroup.POST("/delete", DeleteUser)
 	userGroup.POST("/reset", ResetPassword)
@@ -65,6 +66,10 @@ type SearchReq struct {
 }
 type GetUserInfoReq struct {
 	ID int `json:"id" form:"id"`
+}
+
+type GetUserBaseInfoListRequest struct {
+	IDList []GetUserInfoReq `json:"id_list" form:"id_list"`
 }
 
 type ResetPasswordReq struct {
@@ -199,6 +204,35 @@ func GetUserInfo(c *gin.Context) {
 		c.JSON(200, gin.H{"code": proto.ParameterError, "message": err, "data": "2"})
 		return
 	}
+}
+
+func GetUserBaseInfoList(c gin.Context) {
+	var req_data GetUserBaseInfoListRequest
+	id, _ := c.Get("id")
+	user_id := int(id.(float64))
+	var resp proto.GenerateResp
+	if err := c.ShouldBind(&req_data); err == nil {
+		user := service.GetUserByIDWithCache(user_id)
+		if user.Role == "admin" {
+			ids := make([]int, len(req_data.IDList))
+			for i, v := range req_data.IDList {
+				ids[i] = v.ID
+			}
+			users := service.FindBaseUserInfoList(ids)
+			resp.Code = proto.SuccessCode
+			resp.Message = "success"
+			resp.Data = users
+		} else {
+			resp.Code = proto.PermissionDenied
+			resp.Message = "无权查看"
+			resp.Data = nil
+		}
+	} else {
+		resp.Code = proto.ParameterError
+		resp.Message = err.Error()
+	}
+	c.JSON(http.StatusOK, resp)
+
 }
 
 func DeleteUser(c *gin.Context) {

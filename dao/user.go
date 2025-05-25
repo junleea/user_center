@@ -6,6 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"gorm.io/gorm"
+	"log"
 	"user_center/proto"
 )
 
@@ -330,4 +331,21 @@ func DeleteUserUIConfigInfo(userID int) error {
 		return err
 	}
 	return nil
+}
+
+// 根据用户id数组获取用户基础信息
+func FindBaseUserInfoByIDs(ids []int) []proto.BaseUserInfo {
+	var res []proto.BaseUserInfo
+	var db *gorm.DB
+	if proto.Config.SERVER_SQL_LOG {
+		db = DB.Debug()
+	} else {
+		db = DB
+	}
+	err := db.Find(&res, "id in ?", ids).Limit(1000)
+	if err.Error != nil {
+		log.Println("FindBaseUserInfoByIDs error:", err.Error, "ids:", ids)
+		return res
+	}
+	return res
 }

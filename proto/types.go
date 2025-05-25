@@ -48,6 +48,16 @@ type UpdateUserInfoReq struct {
 	Avatar     string `json:"avatar" form:"avatar"`           //头像
 }
 
+// 用户基础信息
+type BaseUserInfo struct {
+	ID     uint   `gorm:"column:id" json:"ID" form:"ID"`       //用户id
+	Name   string `gorm:"column:name" json:"name" form:"name"` //用户名
+	Age    int    `gorm:"column:age" json:"age" form:"age"`    //年龄
+	Email  string `gorm:"column:email" json:"email" form:"email"`
+	Role   string `gorm:"column:role" json:"role" form:"role"`       //角色
+	Avatar string `gorm:"column:avatar" json:"avatar" form:"avatar"` //头像
+}
+
 type UserAddOrUpdate struct {
 	ID         uint      `json:"ID" form:"ID"`               //用户id
 	CreatedAt  time.Time `json:"CreatedAt" form:"CreatedAt"` //创建时间

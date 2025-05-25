@@ -213,6 +213,10 @@ func GetUserSyncData(device string) dao.UserSyncResp {
 	return dao.UserSyncResp{Add: add_users, Update: update_users, Delete: delete_users}
 }
 
+func FindBaseUserInfoList(ids []int) []proto.BaseUserInfo {
+	return dao.FindBaseUserInfoByIDs(ids)
+}
+
 func setSyncUserDataSet(t string, id int) error {
 	devices := worker.GetRedisSetMembers("sync_devices_ids") //主服务器查看从服务器的设备列表
 	fmt.Println("set sync user data set devices:", devices, "t:", t, "id:", id)
