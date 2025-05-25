@@ -206,7 +206,7 @@ func GetUserInfo(c *gin.Context) {
 	}
 }
 
-func GetUserBaseInfoList(c gin.Context) {
+func GetUserBaseInfoList(c *gin.Context) {
 	var req_data GetUserBaseInfoListRequest
 	id, _ := c.Get("id")
 	user_id := int(id.(float64))
