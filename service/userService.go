@@ -382,6 +382,7 @@ func ValidateRefreshTokenAndCreateNewAccessToken(refreshTokenString string) (new
 	newAccessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"username": user.Name,
 		"id":       user.ID,
+		"type":     "access",
 		"exp":      time.Now().Add(proto.AccessTokenDuration).Unix(),
 	})
 
