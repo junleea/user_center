@@ -71,7 +71,6 @@ func GetUserByIDWithCache(id int) dao.User {
 		err := json.Unmarshal([]byte(user_str), &user)
 		if err != nil {
 			fmt.Println("get user info , json unmarshal error:", err, "\tuser_str:", user_str)
-			return dao.User{}
 		}
 	} else {
 		user = dao.FindUserByID2(id)

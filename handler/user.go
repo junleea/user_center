@@ -182,15 +182,15 @@ func ResetPassword(c *gin.Context) {
 func GetUserInfo(c *gin.Context) {
 	var req_data GetUserInfoReq
 	id, _ := c.Get("id")
-	user_id := int(id.(float64))
+	userId := int(id.(float64))
 	if err := c.ShouldBind(&req_data); err == nil {
 		var user dao.User
-		if req_data.ID == user_id {
+		if req_data.ID == userId {
 			user = service.GetUserByIDWithCache(req_data.ID)
 			user.Password = "" //不返回密码
 		} else {
 			//判断当前用户是否有权限查看
-			cur_user := service.GetUserByIDWithCache(user_id)
+			cur_user := service.GetUserByIDWithCache(userId)
 			if cur_user.Role == "admin" {
 				user = service.GetUserByIDWithCache(req_data.ID)
 				user.Password = "" //不返回密码
