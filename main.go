@@ -78,7 +78,15 @@ func init() {
 func JWTAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 从请求头中获取 JWT 令牌
-		tokenString := c.Request.Header.Get("token")
+		tokenString := c.Request.Header.Get("Authorization")
+		if tokenString != "" {
+			// 如果 tokenString 以 Bearer 开头，则去掉前缀
+			if strings.HasPrefix(tokenString, "Bearer ") {
+				tokenString = strings.TrimPrefix(tokenString, "Bearer ")
+			}
+		} else {
+			tokenString = c.Query("token") // 从查询参数中获取 token
+		}
 		//请求方式为get时，从url中获取token
 		if tokenString == "" {
 			tokenString = c.Query("token")
