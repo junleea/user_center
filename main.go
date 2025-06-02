@@ -85,7 +85,10 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 				tokenString = strings.TrimPrefix(tokenString, "Bearer ")
 			}
 		} else {
-			tokenString = c.Query("token") // 从查询参数中获取 token
+			tokenString = c.Request.Header.Get("token")
+			if tokenString == "" {
+				tokenString = c.Query("token") // 从查询参数中获取 token
+			}
 		}
 		//请求方式为get时，从url中获取token
 		if tokenString == "" {
