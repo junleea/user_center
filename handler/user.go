@@ -584,18 +584,7 @@ func refreshTokenHandler(c *gin.Context) {
 
 	newAccessToken, err := service.ValidateRefreshTokenAndCreateNewAccessToken(req.RefreshToken)
 	//获取cookie
-	cookie, err := c.Cookie("user_token")
 	var authResponse proto.AuthResponse
-	if err == nil {
-		err = json.Unmarshal([]byte(cookie), &authResponse)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"code": proto.TokenInvalid, "message": "Failed to parse cookie: " + err.Error(), "data": nil})
-			return
-		}
-	} else {
-		c.JSON(http.StatusUnauthorized, gin.H{"code": proto.TokenInvalid, "message": "Failed to get cookie: " + err.Error(), "data": nil})
-		return
-	}
 	authResponse.AccessToken = newAccessToken
 	authBytes, _ := json.Marshal(authResponse)
 	c.SetCookie("user_token", string(authBytes), 3600*24, "/", ".ljsea.top", true, false) //设置cookie

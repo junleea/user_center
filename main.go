@@ -166,8 +166,10 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 
 		// 将用户信息添加到上下文中
 		id := token.Claims.(jwt.MapClaims)["id"]
+		tokenType := token.Claims.(jwt.MapClaims)["type"]
 		c.Set("id", id)
 		c.Set("user_id", int(id.(float64)))
+		c.Set("tokenType", tokenType.(string)) // 添加 token 类型到上下文中
 
 		if UserFuncIntercept(int(id.(float64)), c.Request.URL.Path) {
 			c.AbortWithStatusJSON(http.StatusOK, gin.H{"message": "unauthorized", "error": "no function permission", "code": proto.NoPermission})
