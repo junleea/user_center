@@ -9,6 +9,7 @@ import (
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"net/http"
+	"strconv"
 	"time"
 	"user_center/dao"
 	"user_center/proto"
@@ -39,6 +40,8 @@ func SetUpUserGroup(router *gin.Engine) {
 	userGroup.GET("/get_user_ui_config", GetUserUIConfig)  //获取用户ui配置
 	userGroup.POST("/set_user_ui_config", SetUserUIConfig) //设置用户ui配置
 	userGroup.POST("/refresh_token", refreshTokenHandler)  //刷新token
+	userGroup.GET("/get_token_code", GetTokenCode)         //获取token的code
+	userGroup.GET("/get_token_by_code", GetTokenByCode)    //通过code获取token
 }
 
 type RefreshTokenReq struct {
@@ -442,6 +445,7 @@ func loginHandler(c *gin.Context) {
 				AccessToken:  accessToken,
 				RefreshToken: refreshToken,
 				UserID:       user.ID,
+				ExpireIn:     time.Now().Add(proto.AccessTokenDuration).Unix(), // 令牌过期时间
 				Username:     user.Name,
 				Email:        user.Email,
 			}
@@ -549,6 +553,7 @@ func registerHandlerV2(c *gin.Context) {
 									AccessToken:  accessToken,
 									RefreshToken: refreshToken,
 									UserID:       createdUser.ID,
+									ExpireIn:     time.Now().Add(proto.AccessTokenDuration).Unix(), // 令牌过期时间
 									Username:     createdUser.Name,
 									Email:        createdUser.Email,
 								}
@@ -744,6 +749,75 @@ func SetUserUIConfig(c *gin.Context) {
 	} else {
 		resp.Code = proto.ParameterError
 		resp.Message = "error:" + err.Error()
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+type GetTokenCodeResp struct {
+	Code     string `json:"code"`
+	ExpireIn int64  `json:"expire_in"` //过期时间
+}
+
+func GetTokenCode(c *gin.Context) {
+	id, _ := c.Get("user_id")
+	userId := id.(int)
+	var resp proto.GenerateResp
+	//生成code
+	code := uuid.New().String()
+	//设置code到redis
+	success := worker.SetRedisWithExpire("token_code_"+code, fmt.Sprintf("%d", userId), time.Minute*5) //5分钟过期
+	if success {
+		resp.Code = proto.SuccessCode
+		resp.Message = "success"
+		var getTokenCodeResp GetTokenCodeResp
+		getTokenCodeResp.Code = code
+		getTokenCodeResp.ExpireIn = time.Now().Add(time.Minute * 5).Unix() //设置过期时间
+	} else {
+		resp.Code = proto.RedisSetError
+		resp.Message = "设置code失败"
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// 根据code获取token
+func GetTokenByCode(c *gin.Context) {
+	code := c.Query("code")
+	var resp proto.GenerateResp
+	if code == "" {
+		resp.Code = proto.ParameterError
+		resp.Message = "code is empty"
+	} else {
+		//获取code对应的user_id
+		userIdStr := worker.GetRedis("token_code_" + code)
+		if userIdStr == "" {
+			resp.Code = proto.OperationFailed
+			resp.Message = "code已失效"
+		} else {
+			userId, err := strconv.Atoi(userIdStr)
+			if err != nil {
+				resp.Code = proto.OperationFailed
+				resp.Message = "code解析失败"
+			} else {
+				user := service.GetUserByIDWithCache(userId)
+				accessToken, refreshToken, err2 := service.GenerateAuthTokens(user)
+				if err2 != nil {
+					c.JSON(http.StatusOK, gin.H{"code": proto.TokenGenerationError, "message": "Failed to generate tokens", "data": err2.Error()})
+					return
+				}
+				authResponse := proto.AuthResponse{
+					AccessToken:  accessToken,
+					RefreshToken: refreshToken,
+					UserID:       user.ID,
+					ExpireIn:     time.Now().Add(proto.AccessTokenDuration).Unix(), // 令牌过期时间
+					Username:     user.Name,
+					Email:        user.Email,
+				}
+				resp.Code = proto.SuccessCode
+				resp.Message = "success"
+				resp.Data = authResponse
+				worker.DelRedis("token_code_" + code) //删除code,只能查一次
+			}
+		}
 	}
 	c.JSON(http.StatusOK, resp)
 }
