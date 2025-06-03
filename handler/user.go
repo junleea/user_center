@@ -772,6 +772,7 @@ func GetTokenCode(c *gin.Context) {
 		var getTokenCodeResp GetTokenCodeResp
 		getTokenCodeResp.Code = code
 		getTokenCodeResp.ExpireIn = time.Now().Add(time.Minute * 5).Unix() //设置过期时间
+		resp.Data = getTokenCodeResp
 	} else {
 		resp.Code = proto.RedisSetError
 		resp.Message = "设置code失败"
