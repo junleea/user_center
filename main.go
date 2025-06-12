@@ -152,13 +152,13 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 			if errors.As(err, &ve) {
 				switch {
 				case ve.Errors&jwt.ValidationErrorMalformed != 0:
-					c.AbortWithStatusJSON(http.StatusOK, gin.H{"error": "Malformed token:" + err.Error(), "code": proto.TokenInvalid})
+					c.AbortWithStatusJSON(http.StatusOK, gin.H{"error": "Malformed token:" + err.Error() + ",token is: " + tokenString, "code": proto.TokenInvalid})
 				case ve.Errors&jwt.ValidationErrorExpired != 0:
-					c.AbortWithStatusJSON(http.StatusOK, gin.H{"error": "Token expired:" + err.Error(), "code": proto.TokenExpired})
+					c.AbortWithStatusJSON(http.StatusOK, gin.H{"error": "Token expired:" + err.Error() + ",token is: " + tokenString, "code": proto.TokenExpired})
 				case ve.Errors&jwt.ValidationErrorNotValidYet != 0:
-					c.AbortWithStatusJSON(http.StatusOK, gin.H{"error": "Token not active yet:" + err.Error(), "code": proto.TokenInvalid})
+					c.AbortWithStatusJSON(http.StatusOK, gin.H{"error": "Token not active yet:" + err.Error() + ",token is: " + tokenString, "code": proto.TokenInvalid})
 				default:
-					c.AbortWithStatusJSON(http.StatusOK, gin.H{"error": "Invalid token:" + err.Error(), "code": proto.TokenInvalid})
+					c.AbortWithStatusJSON(http.StatusOK, gin.H{"error": "Invalid token:" + err.Error() + ",token is: " + tokenString, "code": proto.TokenInvalid})
 				}
 				return
 			}
