@@ -525,6 +525,7 @@ func registerHandlerV2(c *gin.Context) {
 				resp.Code = proto.OperationFailed
 				resp.Message = "验证码错误"
 			} else {
+				worker.DelRedis("register_code_" + reqData.Email)
 				if len(reqData.Password) != 32 {
 					hasher := md5.New()
 					hasher.Write([]byte(reqData.Password))                 // 生成密码的 MD5 散列值
