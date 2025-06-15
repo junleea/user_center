@@ -34,22 +34,26 @@ func Init() error {
 		db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
 			Logger: logger,
 		})
+		log.Println("Using MySQL database with DSN:", dsn)
 	} else if proto.Config.DB == 1 {
 		dsn = proto.Config.PG_DSN
 		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
 			Logger: logger,
 		})
+		log.Println("Using PostgreSQL database with DSN:", dsn)
 	}
 
 	if err != nil {
 		panic("failed to connect database")
 		return err
 	}
-	err = db.AutoMigrate(&User{})
+	err = db.AutoMigrate(&User{}) // 自动迁移，创建表，如果表已经存在，会自动更新表结构，不会删除表,只会创建不存在的表
 	if err != nil {
 		fmt.Println("user table:", err)
 		return err
-	} // 自动迁移，创建表，如果表已经存在，会自动更新表结构，不会删除表,只会创建不存在的表
+	} else {
+		log.Println("User table migrated successfully")
+	}
 
 	DB = db
 	return err
@@ -58,7 +62,7 @@ func Init() error {
 func Close() {
 	sqlDB, err := DB.DB()
 	if err != nil {
-		panic("failed to connect database")
+		panic("close database failed: " + err.Error())
 	}
 	sqlDB.Close()
 }
