@@ -26,10 +26,10 @@ func main() {
 	if err != nil {
 		panic("failed to connect database:" + err.Error())
 	}
-	err = dao.InitMongoDB()
-	if err != nil {
-		panic("failed to connect mongodb:" + err.Error())
-	}
+	//err = dao.InitMongoDB()
+	//if err != nil {
+	//	panic("failed to connect mongodb:" + err.Error())
+	//}
 	err = worker.InitRedis()
 	if err != nil {
 		panic("failed to connect redis:" + err.Error())
@@ -40,7 +40,7 @@ func main() {
 	handler.SetUpToolGroup(r)  // Tool
 	defer dao.Close()
 	defer worker.CloseRedis()
-	defer dao.CloseMongoDB()
+	//defer dao.CloseMongoDB()
 	//定时任务
 	c := cron.New(cron.WithSeconds())
 	// 添加每 10 秒执行一次的任务
