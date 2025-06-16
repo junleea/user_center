@@ -55,6 +55,14 @@ func Init() error {
 		log.Println("User table migrated successfully")
 	}
 
+	err = db.AutoMigrate(&ThirdPartyUserInfo{})
+	if err != nil {
+		log.Println("third party user info table:", err)
+		return err
+	} else {
+		log.Println("ThirdPartyUserInfo table migrated successfully")
+	}
+
 	DB = db
 	return err
 }

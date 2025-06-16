@@ -209,14 +209,20 @@ func FindUserNum() int64 {
 // 根据用户id获取第三方平台信息
 func FindThirdPartyUserInfoByUserID(userID int) []ThirdPartyUserInfo {
 	var thirdPartyUserInfos []ThirdPartyUserInfo
-	DB.Where("user_id = ?", userID).Find(&thirdPartyUserInfos)
+	res := DB.Where("user_id = ?", userID).Find(&thirdPartyUserInfos)
+	if res.Error != nil {
+		log.Println("FindThirdPartyUserInfoByUserID error:", res.Error, "\tuserID:", userID)
+	}
 	return thirdPartyUserInfos
 }
 
 // 根据平台用户id获取信息
 func FindThirdPartyUserInfoByThirdPartyID(thirdPartyID string) []ThirdPartyUserInfo {
 	var thirdPartyUserInfo []ThirdPartyUserInfo
-	DB.Where("third_party_id = ?", thirdPartyID).First(&thirdPartyUserInfo)
+	res := DB.Where("third_party_id = ?", thirdPartyID).First(&thirdPartyUserInfo)
+	if res.Error != nil {
+		log.Println("FindThirdPartyUserInfoByThirdPartyID error:", res.Error, "\tthirdPartyID:", thirdPartyID)
+	}
 	return thirdPartyUserInfo
 }
 
