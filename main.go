@@ -58,6 +58,10 @@ func init() {
 	os.MkdirAll(proto.CID_BASE_DIR, os.ModePerm)
 	os.MkdirAll(proto.CID_BASE_DIR+"script", os.ModePerm)
 	os.MkdirAll(proto.CID_BASE_DIR+"workspace", os.ModePerm)
+	readConfig()
+}
+
+func readConfig() {
 	//系统是linux、macos还是windows
 	var configPath string
 	if os.Getenv("OS") == "Windows_NT" {
@@ -72,6 +76,34 @@ func init() {
 	err := proto.ReadConfig(configPath)
 	if err != nil {
 		panic("failed to read config file:" + err.Error())
+	} else {
+		log.Println("Config file loaded successfully")
+	}
+}
+
+func SecretInfoSetting() {
+	//读写锁
+	proto.SigningKeyRWLock.RLock()
+	defer proto.SigningKeyRWLock.RUnlock()
+	var secret_sync_settings proto.SecretSyncSettings
+	redisKey := "secret_sync_settings"
+	if worker.IsContainKey(redisKey) == false {
+		secret_sync_settings.Curr = proto.Config.TOKEN_SECRET
+		//当前时间戳
+		secret_sync_settings.CurrStartTimestamp = worker.GetCurrentTimestamp()
+	} else {
+		settingsStr := worker.GetRedis(redisKey)
+		err := json.Unmarshal([]byte(settingsStr), &secret_sync_settings)
+		if err != nil {
+			log.Println("Error decoding secret sync settings:", err)
+		} else {
+			if secret_sync_settings.Curr != proto.Config.TOKEN_SECRET {
+				//如果当前的secret和配置文件中的不一致，则更新
+				secret_sync_settings.Curr = proto.Config.TOKEN_SECRET
+				//当前时间戳
+				secret_sync_settings.CurrStartTimestamp = worker.GetCurrentTimestamp()
+			}
+		}
 	}
 }
 
@@ -190,6 +222,9 @@ func myTask() {
 	}
 	//其它定时任务-通用
 	RunGeneralCron()
+	//读取配置文件
+	readConfig()
+
 }
 
 func ReadConfigToSetSystem() {

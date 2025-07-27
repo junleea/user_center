@@ -63,6 +63,14 @@ func Init() error {
 		log.Println("ThirdPartyUserInfo table migrated successfully")
 	}
 
+	err = db.AutoMigrate(&proto.Secret{})
+	if err != nil {
+		log.Println("secret table:", err)
+		return err
+	} else {
+		log.Println("Secret table migrated successfully")
+	}
+
 	DB = db
 	return err
 }

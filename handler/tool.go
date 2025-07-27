@@ -57,6 +57,7 @@ func SetUpToolGroup(router *gin.Engine) {
 	toolGroup.POST("/send_mail", SendMailTool)
 	//国外服务器处理请求
 	toolGroup.POST("/online_server_request", HandleOnlineServerRequest)
+	toolGroup.POST("/sync_system_config", HandleSyncSystemConfig) //同步系统配置
 }
 
 type QQCallbackReq struct {
@@ -85,6 +86,25 @@ func GetQQAuthUrl(c *gin.Context) {
 	resp.Message = "success"
 	resp.Code = proto.SuccessCode
 	resp.Data = loginURL
+	c.JSON(http.StatusOK, resp)
+}
+
+func HandleSyncSystemConfig(c *gin.Context) {
+	var req proto.SyncSystemConfigReq
+	var resp proto.GenerateResp
+	if err := c.ShouldBind(&req); err == nil {
+		log.Println("handle sync system config request:", req)
+		err2, resp_ := service.SyncSystemConfig(&req)
+		if err2 != nil {
+			resp.Code = proto.OperationFailed
+			resp.Message = err2.Error()
+		} else {
+			resp = *resp_
+		}
+	} else {
+		resp.Code = proto.ParameterError
+		resp.Message = "参数错误"
+	}
 	c.JSON(http.StatusOK, resp)
 }
 

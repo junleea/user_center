@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"os"
+	"sync"
 )
 
 var Config ConfigStruct
@@ -13,6 +14,11 @@ var SigningKey = []byte{}
 var Url_map = map[string]bool{"/user/login": true, "/user/register": true, "/user/uuid": true, "/user/gqr": true, "/user/sync": true, "/tool/file/": true, "/user/reset": true, "/tool/qq_auth": true, "/tool/qq_callback": true, "/tool/github_auth": true, "/tool/github_callback": true, "/user/oAuth": true, "/user/oAuth_uuid": true, "/tool/loginRedirect": true, "/tool/get_auth_url": true, "/tool/gitee_callback": true, "/tool/third_party_callback": true, "/user/refresh_token": true, "/user/get_token_by_code": true, "/user/register_code": true} // 不需要token验证的url
 var Per_menu_map = map[string]int{"/video/": 1, "/device/": 2, "/cid/": 3}
 var File_Type = map[string]int{"im": 1, "avatar": 2, "file": 3, "config": 4} // 文件类型
+
+// 配置读写锁
+var ConfigRWLock = &sync.RWMutex{}
+var SigningKeyRWLock = &sync.RWMutex{}
+
 const (
 	MYSQL_USER     = "video_t2"
 	MYSQL_DB       = "video_t2"
@@ -110,6 +116,9 @@ type KBaseServer struct {
 
 // 读取配置文件
 func ReadConfig(path string) error {
+	//写锁
+	ConfigRWLock.Lock()
+	defer ConfigRWLock.Unlock()
 	//查看配置文件是否存在,不存在则创建
 	_, err := os.Stat(path)
 	if err != nil {
@@ -147,7 +156,9 @@ func ReadConfig(path string) error {
 			Config.SERVER_PORT = "8083" // 默认端口
 		}
 	}
+	SigningKeyRWLock.Lock()
 	SigningKey = []byte(Config.TOKEN_SECRET)
+	SigningKeyRWLock.Unlock()
 	//将当前配置文件的信息写入redis,用于程序运行时排查
 	configJson, cErr := json.Marshal(Config)
 	if cErr != nil {
