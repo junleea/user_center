@@ -119,6 +119,14 @@ func SetNextSecretToCurrent(secret_copy proto.SecretSyncSettings) {
 		if secret_copy.Next != secret_sync_settings.Next {
 			return
 		}
+		//获取需要等待时间
+		waitTime := secret_sync_settings.NextStartTimestamp - worker.GetCurrentTimestamp()
+		if waitTime > 0 {
+			log.Printf("Waiting for %d seconds before setting the next secret as current secret\n", waitTime)
+			time.Sleep(time.Duration(waitTime) * time.Second) //等待时间
+		} else {
+			log.Println("No need to wait, setting the next secret as current secret immediately")
+		}
 		//设置下一个密钥为当前密钥
 		secret_sync_settings.Prev = secret_sync_settings.Curr
 		secret_sync_settings.PrevEndTimestamp = worker.GetCurrentTimestamp()
