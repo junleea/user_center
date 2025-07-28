@@ -91,6 +91,12 @@ func SecretInfoSetting() {
 		secret_sync_settings.Curr = proto.Config.TOKEN_SECRET
 		//当前时间戳
 		secret_sync_settings.CurrStartTimestamp = worker.GetCurrentTimestamp()
+		settinsStr, err2 := json.Marshal(secret_sync_settings)
+		if err2 != nil {
+			log.Println("Error encoding secret sync settings:", err2)
+			return
+		}
+		worker.SetRedis(redisKey, string(settinsStr)) //将当前的密钥信息存入redis
 	} else {
 		settingsStr := worker.GetRedis(redisKey)
 		err := json.Unmarshal([]byte(settingsStr), &secret_sync_settings)

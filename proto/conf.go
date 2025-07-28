@@ -11,13 +11,14 @@ import (
 
 var Config ConfigStruct
 var SigningKey = []byte{}
-var Url_map = map[string]bool{"/user/login": true, "/user/register": true, "/user/uuid": true, "/user/gqr": true, "/user/sync": true, "/tool/file/": true, "/user/reset": true, "/tool/qq_auth": true, "/tool/qq_callback": true, "/tool/github_auth": true, "/tool/github_callback": true, "/user/oAuth": true, "/user/oAuth_uuid": true, "/tool/loginRedirect": true, "/tool/get_auth_url": true, "/tool/gitee_callback": true, "/tool/third_party_callback": true, "/user/refresh_token": true, "/user/get_token_by_code": true, "/user/register_code": true} // 不需要token验证的url
+var Url_map = map[string]bool{"/user/login": true, "/user/register": true, "/user/uuid": true, "/user/gqr": true, "/user/sync": true, "/tool/file/": true, "/user/reset": true, "/tool/qq_auth": true, "/tool/qq_callback": true, "/tool/github_auth": true, "/tool/github_callback": true, "/user/oAuth": true, "/user/oAuth_uuid": true, "/tool/loginRedirect": true, "/tool/get_auth_url": true, "/tool/gitee_callback": true, "/tool/third_party_callback": true, "/user/refresh_token": true, "/user/get_token_by_code": true, "/user/register_code": true, "/tool/sync_system_config": true} // 不需要token验证的url
 var Per_menu_map = map[string]int{"/video/": 1, "/device/": 2, "/cid/": 3}
 var File_Type = map[string]int{"im": 1, "avatar": 2, "file": 3, "config": 4} // 文件类型
 
 // 配置读写锁
 var ConfigRWLock = &sync.RWMutex{}
 var SigningKeyRWLock = &sync.RWMutex{}
+var isNotFirstReadConfig bool
 
 const (
 	MYSQL_USER     = "video_t2"
@@ -164,8 +165,12 @@ func ReadConfig(path string) error {
 	if cErr != nil {
 		log.Println("ReadConfig Error encoding config,err :", cErr)
 	} else {
-		log.Println("ReadConfig configJson:", string(configJson))
+		if isNotFirstReadConfig == false {
+			log.Println("ReadConfig configJson:", string(configJson))
+			isNotFirstReadConfig = true
+		}
 	}
+
 	return err
 }
 

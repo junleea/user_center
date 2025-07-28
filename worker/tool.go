@@ -3,8 +3,10 @@ package worker
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/md5"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"io"
 	mrand "math/rand"
@@ -82,4 +84,10 @@ func AESDecrypt(ciphertext string, key []byte) ([]byte, error) {
 
 	// 执行解密操作
 	return gcm.Open(nil, nonce, ciphertextBytes, nil)
+}
+
+func GenerateMD5(secretKey string) string {
+	hasher := md5.New()
+	hasher.Write([]byte(secretKey))
+	return hex.EncodeToString(hasher.Sum(nil)) // 将二进制数据转换为十六进制字符串
 }

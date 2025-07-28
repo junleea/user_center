@@ -464,9 +464,9 @@ type SecretSyncSettings struct {
 
 type Secret struct {
 	gorm.Model
-	SecretKey       string    `gorm:"column:secret_key;uniqueIndex;not null"` // 密钥
-	SecretMd5       string    `gorm:"column:secret_md5;uniqueIndex;not null"` // 密钥的MD5值
-	Description     string    `gorm:"column:description"`                     // 描述
-	PrevSecretKeyID uint      `gorm:"column:prev_secret_key_id"`              // 上一个密钥的ID，用于回滚
-	SecretStart     time.Time `gorm:"column:secret_start;not null"`           // 密钥开始时间
+	SecretKey       string    `gorm:"column:secret_key;type:varchar(255);uniqueIndex:idx_secret_key,255;not null"`     // 密钥
+	SecretMd5       string    `gorm:"column:secret_md5;type:varchar(255);uniqueIndex:idx_secret_key_md5,255;not null"` // 密钥的MD5值
+	Description     string    `gorm:"column:description"`                                                              // 描述
+	PrevSecretKeyID uint      `gorm:"column:prev_secret_key_id"`                                                       // 上一个密钥的ID，用于回滚
+	SecretStart     time.Time `gorm:"column:secret_start;not null"`                                                    // 密钥开始时间
 }

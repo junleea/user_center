@@ -1,7 +1,6 @@
 package service
 
 import (
-	"crypto/md5"
 	"encoding/json"
 	"errors"
 	"log"
@@ -32,13 +31,14 @@ func SyncSystemConfig(req *proto.SyncSystemConfigReq) (error, *proto.GenerateRes
 	//获取密钥信息
 	redisKey := "secret_sync_settings"
 	settingsStr := worker.GetRedis(redisKey)
+	log.Println("settingsStr:", settingsStr)
 	var secret_sync_settings proto.SecretSyncSettings
 	err = json.Unmarshal([]byte(settingsStr), &secret_sync_settings)
 	if err != nil {
 		log.Println("SyncSystemConfig Error unmarshalling secret sync settings, err:", err)
 		resp.Code = proto.OperationFailed
 		resp.Message = "Error unmarshalling secret sync settings"
-		return err, &resp
+		return nil, &resp
 	}
 	////对称加密
 	//next_secret_key_ase, err2 := worker.AESEncrypt([]byte(secret_sync_settings.Next), []byte(secret.SecretKey))
@@ -57,15 +57,17 @@ func SyncSystemConfig(req *proto.SyncSystemConfigReq) (error, *proto.GenerateRes
 		log.Println("SyncSystemConfig Error marshalling response data, err:", err3)
 		resp.Code = proto.OperationFailed
 		resp.Message = "Error marshalling response data"
-		return err3, &resp
+		return nil, &resp
 	}
+	//对称加密密钥。通过密钥加 secret_key 取md5
+	secretKeyMd5 := worker.GenerateMD5(secret.SecretKey + "_sync_secret")
 	//对称加密
-	next_secret_key_ase, err2 := worker.AESEncrypt(respDataStr, []byte(secret.SecretKey))
+	next_secret_key_ase, err2 := worker.AESEncrypt(respDataStr, []byte(secretKeyMd5))
 	if err2 != nil {
 		log.Println("SyncSystemConfig Error encrypting response data, err:", err2)
 		resp.Code = proto.OperationFailed
 		resp.Message = "Error encrypting response data"
-		return err2, &resp
+		return nil, &resp
 	}
 	resp.Data = next_secret_key_ase
 	return nil, &resp
@@ -92,10 +94,9 @@ func SetSecretToDB(secretKey, prevSecretKey string, startTime int64) error {
 			}
 		}
 
-		hasher := md5.New()
-		hasher.Write([]byte(secretKey))
-		secret.SecretMd5 = string(hasher.Sum(nil))
+		secret.SecretMd5 = worker.GenerateMD5(secretKey)
 		secret.SecretStart = time.Unix(startTime, 0)
+		log.Println("SetSecretToDB: Creating new secret with key:", secret.SecretKey, "and md5:", secret.SecretMd5)
 		err4 := dao.CreateSecret(secret)
 		if err4 != nil {
 			return err4
