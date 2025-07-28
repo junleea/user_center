@@ -97,14 +97,28 @@ func SecretInfoSetting() {
 		if err != nil {
 			log.Println("Error decoding secret sync settings:", err)
 		} else {
-			if secret_sync_settings.Curr != proto.Config.TOKEN_SECRET {
-				//如果当前的secret和配置文件中的不一致，则更新
-				secret_sync_settings.Curr = proto.Config.TOKEN_SECRET
+			if secret_sync_settings.Curr != proto.Config.TOKEN_SECRET && secret_sync_settings.Next != proto.Config.TOKEN_SECRET {
+				//如果当前的secret和配置文件中的不一致，则设置下一个
+				secret_sync_settings.Next = proto.Config.TOKEN_SECRET
 				//当前时间戳
-				secret_sync_settings.CurrStartTimestamp = worker.GetCurrentTimestamp()
+				secret_sync_settings.CurrStartTimestamp = worker.GetCurrentTimestamp() + 20 //设置当前密钥的开始生效时间
+				settinsStr, err2 := json.Marshal(secret_sync_settings)
+				if err2 != nil {
+					log.Println("Error encoding secret sync settings:", err2)
+					return
+				}
+				worker.SetRedis(redisKey, string(settinsStr)) //将当前的密钥信息存入redis
+				//设置新协程
+				go service.SetNextSecretToCurrent(secret_sync_settings) //设置生效协程处理
 			}
 		}
 	}
+	err3 := service.SetSecretToDB(secret_sync_settings.Curr, secret_sync_settings.Prev, secret_sync_settings.CurrStartTimestamp)
+	if err3 != nil {
+		log.Println("set secret key to db err:", err3)
+		return
+	} //设置当前密钥到数据库
+
 }
 
 func JWTAuthMiddleware() gin.HandlerFunc {
@@ -224,7 +238,8 @@ func myTask() {
 	RunGeneralCron()
 	//读取配置文件
 	readConfig()
-
+	//设置密钥信息
+	SecretInfoSetting()
 }
 
 func ReadConfigToSetSystem() {

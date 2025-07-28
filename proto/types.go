@@ -443,12 +443,14 @@ type SyncSystemConfigReq struct {
 	//设备标识
 	DeviceApp string `json:"device_app" form:"device_app"` // 设备标识
 	//加密信息
-	Sign string `json:"sign" form:"sign"` // 加密信息,app的secret加密后的值
+	Sign         string `json:"sign" form:"sign"`                     // 加密信息,app的secret加密后的值
+	SecretKeyMd5 string `json:"secret_key_md5" form:"secret_key_md5"` // 密钥的MD5值,用于验证
 }
 
 type SyncSystemConfigResponse struct {
-	NewSecret    string `json:"new_secret"`    // 新的secret,使用前一个secret加密后的值
-	NewTimestamp int64  `json:"new_timestamp"` // 新的时间戳，主服务器会返回新的时间戳
+	NewSecret          string `json:"new_secret"`            // 新的secret,使用前一个secret加密后的值
+	NewTimestamp       int64  `json:"new_timestamp"`         // 新的时间戳，主服务器会返回新的时间戳
+	NewSecretStartTime int64  `json:"new_secret_start_time"` // 新的密钥开始时间戳
 }
 
 type SecretSyncSettings struct {
@@ -465,6 +467,6 @@ type Secret struct {
 	SecretKey       string    `gorm:"column:secret_key;uniqueIndex;not null"` // 密钥
 	SecretMd5       string    `gorm:"column:secret_md5;uniqueIndex;not null"` // 密钥的MD5值
 	Description     string    `gorm:"column:description"`                     // 描述
-	PrevSecretKeyID *uint     `gorm:"column:prev_secret_key_id"`              // 上一个密钥的ID，用于回滚
+	PrevSecretKeyID uint      `gorm:"column:prev_secret_key_id"`              // 上一个密钥的ID，用于回滚
 	SecretStart     time.Time `gorm:"column:secret_start;not null"`           // 密钥开始时间
 }

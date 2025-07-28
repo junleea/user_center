@@ -654,8 +654,3 @@ func DoMicroSoftCallBack(state *proto.ThirdPartyLoginState, code string) {
 	log.Printf("do handle %s callback success, third party login status: %v\n", state.Platform, thirdPartyLoginStatus)
 	worker.SetRedisWithExpire(state.UUID, string(thirdPartyLoginStatusStr), time.Minute*10)
 }
-
-func SyncSystemConfig(req *proto.SyncSystemConfigReq) (error, *proto.GenerateResp) {
-
-	return nil, nil
-}

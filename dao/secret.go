@@ -38,3 +38,15 @@ func GetSecretByMd5(md5 string) (proto.Secret, error) {
 	err := db2.Where("secret_md5 = ?", md5).First(&secret).Error
 	return secret, err
 }
+
+func GetSecretKeyBySecret(secret_ string) (proto.Secret, error) {
+	var secret proto.Secret
+	var db2 *gorm.DB
+	if proto.Config.SERVER_SQL_LOG {
+		db2 = DB.Debug()
+	} else {
+		db2 = DB
+	}
+	err := db2.Where("secret_key = ?", secret_).First(&secret).Error
+	return secret, err
+}
