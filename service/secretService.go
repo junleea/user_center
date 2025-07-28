@@ -52,7 +52,7 @@ func SyncSystemConfig(req *proto.SyncSystemConfigReq) (error, *proto.GenerateRes
 	resp.Code = 0
 	resp.Message = "Sync system config success"
 	//将respData转为string,加密后返回
-	respDataStr, err3 := json.Marshal(respData)
+	respDataStr, err3 := json.Marshal(secret_sync_settings)
 	if err3 != nil {
 		log.Println("SyncSystemConfig Error marshalling response data, err:", err3)
 		resp.Code = proto.OperationFailed
