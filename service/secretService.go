@@ -40,18 +40,34 @@ func SyncSystemConfig(req *proto.SyncSystemConfigReq) (error, *proto.GenerateRes
 		resp.Message = "Error unmarshalling secret sync settings"
 		return err, &resp
 	}
-	//对称加密
-	next_secret_key_ase, err2 := worker.AESEncrypt([]byte(secret_sync_settings.Next), []byte(secret.SecretKey))
-	if err2 != nil {
-		log.Println("SyncSystemConfig Error encrypting secret key, err:", err2)
-		resp.Code = proto.OperationFailed
-		resp.Message = "Error encrypting secret key"
-		return err2, &resp
-	}
-	respData.NewSecret, respData.NewTimestamp, respData.NewTimestamp = next_secret_key_ase, secret_sync_settings.NextStartTimestamp, time.Now().Unix()
+	////对称加密
+	//next_secret_key_ase, err2 := worker.AESEncrypt([]byte(secret_sync_settings.Next), []byte(secret.SecretKey))
+	//if err2 != nil {
+	//	log.Println("SyncSystemConfig Error encrypting secret key, err:", err2)
+	//	resp.Code = proto.OperationFailed
+	//	resp.Message = "Error encrypting secret key"
+	//	return err2, &resp
+	//}
+	respData.NewSecret, respData.NewTimestamp, respData.NewTimestamp = secret_sync_settings.Next, secret_sync_settings.NextStartTimestamp, time.Now().Unix()
 	resp.Code = 0
 	resp.Message = "Sync system config success"
-	resp.Data = &respData
+	//将respData转为string,加密后返回
+	respDataStr, err3 := json.Marshal(respData)
+	if err3 != nil {
+		log.Println("SyncSystemConfig Error marshalling response data, err:", err3)
+		resp.Code = proto.OperationFailed
+		resp.Message = "Error marshalling response data"
+		return err3, &resp
+	}
+	//对称加密
+	next_secret_key_ase, err2 := worker.AESEncrypt(respDataStr, []byte(secret.SecretKey))
+	if err2 != nil {
+		log.Println("SyncSystemConfig Error encrypting response data, err:", err2)
+		resp.Code = proto.OperationFailed
+		resp.Message = "Error encrypting response data"
+		return err2, &resp
+	}
+	resp.Data = next_secret_key_ase
 	return nil, &resp
 }
 
@@ -98,6 +114,10 @@ func SetNextSecretToCurrent(secret_copy proto.SecretSyncSettings) {
 	if err != nil {
 		log.Println("Error decoding secret sync settings:", err)
 	} else {
+		//如果当前密钥的下一个密钥与传入的密钥不一致，则不进行设置
+		if secret_copy.Next != secret_sync_settings.Next {
+			return
+		}
 		//设置下一个密钥为当前密钥
 		secret_sync_settings.Prev = secret_sync_settings.Curr
 		secret_sync_settings.PrevEndTimestamp = worker.GetCurrentTimestamp()
