@@ -115,6 +115,30 @@ type KBaseServer struct {
 	ServerID string `json:"server_id"` // 服务器ID
 }
 
+func WriteConfigToFile() {
+	//系统是linux、macos还是windows
+	var configPath string
+	if os.Getenv("OS") == "Windows_NT" {
+		configPath = "E:/Code/saw-ai/saw-ai.conf"
+	} else if os.Getenv("OS") == "linux" {
+		//文件地址/home/saw-ai/saw-ai.conf
+		configPath = "/home/saw/saw-ai-go/saw-ai.conf"
+	} else {
+		configPath = "/home/saw/saw-ai-go/saw-ai.conf"
+	}
+	configData, err := json.MarshalIndent(Config, "", "  ")
+	if err != nil {
+		log.Println("WriteConfigToFile json marshal error:", err)
+		return
+	}
+	err = os.WriteFile(configPath, configData, 0644)
+	if err != nil {
+		log.Println("WriteConfigToFile write file error:", err)
+		return
+	}
+	log.Println("WriteConfigToFile write config to file success")
+}
+
 // 读取配置文件
 func ReadConfig(path string) error {
 	//写锁

@@ -191,6 +191,7 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 		//token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		//	return proto.SigningKey, nil
 		//})
+		proto.SigningKeyRWLock.RLock() //加读锁
 		token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
 			// 验证签名算法
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -198,6 +199,7 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 			}
 			return proto.SigningKey, nil
 		})
+		proto.SigningKeyRWLock.RUnlock()
 		// 错误处理
 		if err != nil {
 			var ve *jwt.ValidationError
