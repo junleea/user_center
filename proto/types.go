@@ -454,12 +454,13 @@ type SyncSystemConfigResponse struct {
 }
 
 type SecretSyncSettings struct {
-	Prev               string `json:"prev"`                 // 前一个secret
-	Curr               string `json:"curr"`                 // 当前的secret
-	Next               string `json:"next"`                 // 下一个secret
-	PrevEndTimestamp   int64  `json:"prev_end_timestamp"`   // 前一个secret的结束时间戳
-	CurrStartTimestamp int64  `json:"curr_start_timestamp"` // 当前secret的开始时间戳
-	NextStartTimestamp int64  `json:"next_start_timestamp"` // 下一个secret的开始时间戳
+	Prev                   string `json:"prev"`                     // 前一个secret
+	Curr                   string `json:"curr"`                     // 当前的secret
+	Next                   string `json:"next"`                     // 下一个secret
+	CurrExpectedExpiration int64  `json:"curr_expected_expiration"` // 当前密钥的预期过期时间戳
+	PrevEndTimestamp       int64  `json:"prev_end_timestamp"`       // 前一个secret的结束时间戳
+	CurrStartTimestamp     int64  `json:"curr_start_timestamp"`     // 当前secret的开始时间戳
+	NextStartTimestamp     int64  `json:"next_start_timestamp"`     // 下一个secret的开始时间戳
 }
 
 type Secret struct {

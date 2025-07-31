@@ -28,6 +28,23 @@ func SyncSystemConfig(req *proto.SyncSystemConfigReq) (error, *proto.GenerateRes
 		resp.Message = "Secret key md5 not found"
 		return errors.New("get secret by md5 error"), &resp
 	}
+	//如果请求的密钥版本太老则不允许同步
+	//获取当前的密钥信息
+	currentSecret, err := dao.GetSecretByMd5(proto.TOKEN_SECRET)
+	if err != nil || currentSecret.ID == 0 {
+		log.Println("SyncSystemConfig Error getting current secret, err:", err)
+		resp.Code = proto.OperationFailed
+		resp.Message = "Current secret not found"
+		return errors.New("get current secret error"), &resp
+	}
+	//比较版本
+	if currentSecret.ID-secret.ID > 3 {
+		log.Println("SyncSystemConfig Error: Secret version too old, current secret ID:", currentSecret.ID, "request secret ID:", secret.ID)
+		resp.Code = proto.OperationFailed
+		resp.Message = "Secret version too old"
+		return errors.New("secret version too old"), &resp
+	}
+
 	//获取密钥信息
 	redisKey := "secret_sync_settings"
 	settingsStr := worker.GetRedis(redisKey)
