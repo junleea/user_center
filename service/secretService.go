@@ -30,7 +30,7 @@ func SyncSystemConfig(req *proto.SyncSystemConfigReq) (error, *proto.GenerateRes
 	}
 	//如果请求的密钥版本太老则不允许同步
 	//获取当前的密钥信息
-	currentSecret, err := dao.GetSecretKeyBySecret(proto.TOKEN_SECRET)
+	currentSecret, err := dao.GetSecretKeyBySecret(proto.Config.TOKEN_SECRET)
 	if err != nil || currentSecret.ID == 0 {
 		log.Println("SyncSystemConfig Error getting current secret, err:", err)
 		resp.Code = proto.OperationFailed
