@@ -78,6 +78,7 @@ func SyncSystemConfig(req *proto.SyncSystemConfigReq) (error, *proto.GenerateRes
 	}
 	//对称加密密钥。通过密钥加 secret_key 取md5
 	secretKeyMd5 := worker.GenerateMD5(secret.SecretKey + "_sync_secret")
+	log.Println("SyncSystemConfig: Using secret key md5 for encryption:", secretKeyMd5)
 	//对称加密
 	next_secret_key_ase, err2 := worker.AESEncrypt(respDataStr, []byte(secretKeyMd5))
 	if err2 != nil {
