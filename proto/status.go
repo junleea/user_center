@@ -101,6 +101,7 @@ const (
 	//第三方用户未绑定
 	ThirdPartyUserNotBinded = 163 //第三方登录用户未绑定
 
+	SigningKeyVersionIsTooOld = 200 // 签名密钥版本过旧
 )
 
 const (

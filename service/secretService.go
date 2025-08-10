@@ -40,7 +40,7 @@ func SyncSystemConfig(req *proto.SyncSystemConfigReq) (error, *proto.GenerateRes
 	//比较版本
 	if currentSecret.ID-secret.ID > 3 {
 		log.Println("SyncSystemConfig Error: Secret version too old, current secret ID:", currentSecret.ID, "request secret ID:", secret.ID)
-		resp.Code = proto.OperationFailed
+		resp.Code = proto.SigningKeyVersionIsTooOld
 		resp.Message = "Secret version too old"
 		return errors.New("secret version too old"), &resp
 	}
