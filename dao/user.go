@@ -25,6 +25,7 @@ type User struct {
 	DeviceFunc bool   `gorm:"column:device_func"` //设备功能
 	CIDFunc    bool   `gorm:"column:cid_func"`    //持续集成功能
 	Avatar     string `gorm:"column:avatar"`
+	AuthPolicy int    `gorm:"column:auth_policy" json:"auth_policy"`
 	CreateTime string `gorm:"column:create_time"`
 	QQ         int64  `gorm:"column:qq"`
 	QQOpenID   string `gorm:"column:qq_openid"`

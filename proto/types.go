@@ -471,3 +471,10 @@ type Secret struct {
 	PrevSecretKeyID uint      `gorm:"column:prev_secret_key_id"`                                                       // 上一个密钥的ID，用于回滚
 	SecretStart     time.Time `gorm:"column:secret_start;not null"`                                                    // 密钥开始时间
 }
+
+type EmailPhoneCodeLoginReq struct {
+	Email     string `json:"email"`
+	Phone     string `json:"phone"`
+	Code      string `json:"code"`
+	LoginType int    `json:"login_type"` //1,2
+}

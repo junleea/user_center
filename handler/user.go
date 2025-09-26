@@ -21,6 +21,8 @@ func SetUpUserGroup(router *gin.Engine) {
 	userGroup := router.Group("/user")
 	userGroup.POST("/register", registerHandlerV2)
 	userGroup.POST("/register_code", handleRegisterCode) //注册验证码
+	userGroup.POST("/login_code", handleLoginCode)
+	userGroup.POST("/login_by_code", handleLoginByCode)
 	userGroup.POST("/login", loginHandler)
 	userGroup.POST("/uuid", GetScanUUID)
 	userGroup.POST("/gqr", GetQRStatus)
@@ -81,6 +83,68 @@ type ResetPasswordReq struct {
 	NewPassword string `json:"new_password" form:"new_password"`
 	Type        int    `json:"type" form:"type"` //0获取验证码,2为邮箱验证码重置密码，1为旧密码重置密码
 	Code        string `json:"code" form:"code"` //验证码
+}
+
+func handleLoginCode(c *gin.Context) {
+	var req proto.EmailPhoneCodeLoginReq
+	var resp proto.GenerateResp
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code, resp.Message = proto.ParameterError, "解析参数错误"
+	} else {
+		err2 := service.SendLoginCodeByEmailPhone(req)
+		if err2 != nil {
+			resp.Code = proto.OperationFailed
+			resp.Message = err2.Error()
+		} else {
+			resp.Code, resp.Message = proto.SuccessCode, "success"
+		}
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func handleLoginByCode(c *gin.Context) {
+	var req proto.EmailPhoneCodeLoginReq
+	var resp proto.GenerateResp
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code, resp.Message = proto.ParameterError, "解析参数错误"
+	} else {
+		if req.LoginType == 1 {
+			if req.Email == "" || req.Code == "" {
+				resp.Code, resp.Message = proto.ParameterError, "请求参数错误"
+			} else {
+				key := "login_code_" + req.Email
+				email_code := worker.GetRedis(key)
+				if email_code == "" {
+					resp.Code, resp.Message = proto.OperationFailed, "无效的邮箱,验证码已过期"
+				} else if email_code != req.Code {
+					resp.Code, resp.Message = proto.OperationFailed, "无效的验证码"
+				} else {
+					user := dao.FindUserByEmail(req.Email)
+					accessToken, refreshToken, err2 := service.GenerateAuthTokens(user)
+					if err2 != nil {
+						c.JSON(http.StatusInternalServerError, gin.H{"code": proto.TokenGenerationError, "message": "Failed to generate tokens", "data": err2.Error()})
+						return
+					}
+					authResponse := proto.AuthResponse{
+						AccessToken:  accessToken,
+						RefreshToken: refreshToken,
+						UserID:       user.ID,
+						ExpireIn:     time.Now().Add(proto.AccessTokenDuration).Unix(), // 令牌过期时间
+						Username:     user.Name,
+						Email:        user.Email,
+					}
+					authBytes, _ := json.Marshal(authResponse)
+					c.SetCookie("user_token", string(authBytes), 3600*24, "/", ".ljsea.top", true, false) //设置cookie
+					resp.Code, resp.Message, resp.Data = proto.SuccessCode, "success", authResponse
+				}
+			}
+		} else if req.LoginType == 2 {
+			resp.Code, resp.Message = proto.ParameterError, "不支持短信验证"
+		} else {
+			resp.Code, resp.Message = proto.ParameterError, "不支持的类型"
+		}
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func ResetPassword(c *gin.Context) {
@@ -707,13 +771,21 @@ func handleRegisterCode(c *gin.Context) {
 				resp.Code = proto.OperationFailed
 				resp.Message = "邮箱已存在，请更换邮箱"
 			} else {
-				//随机字符串验证码大写
-				code := worker.GetRandomString(6)
-				worker.SetRedisWithExpire("register_code_"+req.Email, code, time.Minute*5) //设置5分钟过期
-				//发送邮件
-				service.SendEmail(req.Email, "大学生学业作品AI生成工具开发注册邮件验证码", "验证码:"+code+" ,请在5分钟内使用!")
-				resp.Code = proto.SuccessCode
-				resp.Message = "success"
+				key := "register_code_" + req.Email
+				if worker.IsContainKey(key + "_") {
+					//存在说明发过验证码，返回错误
+					resp.Code = proto.OperationFailed
+					resp.Message = "发送过于频繁，请稍后再试！"
+				} else {
+					//随机字符串验证码大写
+					code := worker.GetRandomString(6)
+					worker.SetRedisWithExpire(key, code, time.Minute*5) //设置5分钟过期
+					//发送邮件
+					service.SendEmail(req.Email, "集成AI工具邮件验证码", "验证码:"+code+" ,请在5分钟内使用!")
+					resp.Code = proto.SuccessCode
+					resp.Message = "success"
+					worker.SetRedisWithExpire(key+"_", code, time.Minute*1) //每分钟只能发一次
+				}
 			}
 		}
 	} else {
