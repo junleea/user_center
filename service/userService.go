@@ -465,6 +465,9 @@ func SendLoginCodeByEmailPhone(req proto.EmailPhoneCodeLoginReq) error {
 		}
 	} else if req.LoginType == 2 {
 		//电话号码
+		res = errors.New("不支持短信验证，无法发送验证码")
+	} else {
+		res = errors.New("无效的验证码方式")
 	}
 	return res
 }
