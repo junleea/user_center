@@ -459,7 +459,7 @@ func SendLoginCodeByEmailPhone(req proto.EmailPhoneCodeLoginReq) error {
 				code := worker.GetRandomString(6)
 				worker.SetRedisWithExpire(key, code, time.Minute*5) //设置5分钟过期
 				//发送邮件
-				SendEmail(req.Email, "集成AI工具邮件验证码", "登录验证码:"+code+" ,请在5分钟内使用!")
+				go SendEmail(req.Email, "集成AI工具邮件验证码", "登录验证码:"+code+" ,请在5分钟内使用!")
 				worker.SetRedisWithExpire(key+"_", code, time.Minute*1) //每分钟只能发一次
 			}
 		}

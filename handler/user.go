@@ -136,6 +136,7 @@ func handleLoginByCode(c *gin.Context) {
 					authBytes, _ := json.Marshal(authResponse)
 					c.SetCookie("user_token", string(authBytes), 3600*24, "/", ".ljsea.top", true, false) //设置cookie
 					resp.Code, resp.Message, resp.Data = proto.SuccessCode, "success", authResponse
+					worker.DelRedis(key)
 				}
 			}
 		} else if req.LoginType == 2 {
