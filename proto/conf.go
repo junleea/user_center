@@ -19,6 +19,7 @@ var File_Type = map[string]int{"im": 1, "avatar": 2, "file": 3, "config": 4} // 
 var ConfigRWLock = &sync.RWMutex{}
 var SigningKeyRWLock = &sync.RWMutex{}
 var isNotFirstReadConfig bool
+var ReadConfigPath string
 
 const (
 	MYSQL_USER     = "video_t2"
@@ -75,9 +76,12 @@ type ConfigStruct struct {
 	DB                        int           `json:"db"` // 0: mysql, 1: pg
 	MYSQL_DSN                 string        `json:"mysql_dsn"`
 	PG_DSN                    string        `json:"pg_dsn"`
+	SQLITE_FILE               string        `json:"sqlite_file"`
 	MONGO_URI                 string        `json:"mongo_uri"`
 	MONGO_DATABASE            string        `json:"mongo_database"`
 	SlowQueryThreshold        int           `json:"slow_query_threshold"` // 慢查询阈值，单位ms
+	KV_TYPE                   int           `json:"kv_type"` //内存存储方式，1,redis, 2,badger
+	BADGER_DATA_PATH          string        `json:"badger_data_path"`
 	REDIS_ADDR                string        `json:"redis_addr"`
 	TOKEN_USE_REDIS           bool          `json:"token_use_redis"`
 	REDIS_User_PW             bool          `json:"redis_user_pw"` // 是否使用密码

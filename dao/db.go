@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"log"
@@ -41,6 +42,9 @@ func Init() error {
 			Logger: logger,
 		})
 		log.Println("Using PostgreSQL database with DSN:", dsn)
+	} else if proto.Config.DB == 2 { //sqlite
+		dsn = proto.Config.SQLITE_FILE
+		db, err = gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	}
 
 	if err != nil {

@@ -20,6 +20,15 @@ import (
 )
 
 func main() {
+	// 输入参数
+	if len(os.Args) > 1 {
+		initConfig(os.Args[1]) //第一个参数是配置文件路径
+		proto.ReadConfigPath = os.Args[1]
+	} else {
+		initConfig("") //没有输入参数，则使用默认配置文件路径
+		proto.ReadConfigPath = ""
+	}
+
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 	err := dao.Init()
@@ -58,26 +67,52 @@ func init() {
 	os.MkdirAll(proto.CID_BASE_DIR, os.ModePerm)
 	os.MkdirAll(proto.CID_BASE_DIR+"script", os.ModePerm)
 	os.MkdirAll(proto.CID_BASE_DIR+"workspace", os.ModePerm)
-	readConfig()
+	//readConfig()
 }
 
-func readConfig() {
+// func readConfig() {
+// 	//系统是linux、macos还是windows
+// 	var configPath string
+// 	if os.Getenv("OS") == "Windows_NT" {
+// 		configPath = "E:/Code/user_center.conf"
+// 	} else if os.Getenv("OS") == "linux" {
+// 		//文件地址/home/saw-ai/saw-ai.conf
+// 		configPath = "/home/saw/user_center.conf"
+// 	} else {
+// 		configPath = "/home/saw/user_center.conf"
+// 	}
+// 	//读取配置文件
+// 	err := proto.ReadConfig(configPath)
+// 	if err != nil {
+// 		panic("failed to read config file:" + err.Error())
+// 	} else {
+// 		log.Println("Config file loaded successfully")
+// 	}
+// }
+
+func initConfig(configPath string) {
+	//if proto.Config.TOKEN_SECRET != "" {
+	//	return
+	//}
+	// 创建cid的目录
+	os.MkdirAll(proto.CID_BASE_DIR, os.ModePerm)
+	os.MkdirAll(proto.CID_BASE_DIR+"script", os.ModePerm)
+	os.MkdirAll(proto.CID_BASE_DIR+"workspace", os.ModePerm)
 	//系统是linux、macos还是windows
-	var configPath string
-	if os.Getenv("OS") == "Windows_NT" {
-		configPath = "E:/Code/user_center.conf"
-	} else if os.Getenv("OS") == "linux" {
-		//文件地址/home/saw-ai/saw-ai.conf
-		configPath = "/home/saw/user_center.conf"
-	} else {
-		configPath = "/home/saw/user_center.conf"
+	if configPath == "" {
+		if os.Getenv("OS") == "Windows_NT" {
+			configPath = "C:/Users/Administrator/user_center.conf"
+		} else if os.Getenv("OS") == "linux" {
+			//文件地址/home/saw-ai/saw-ai.conf
+			configPath = "/etc/user_center.conf"
+		} else {
+			configPath = "/etc/user_center.conf"
+		}
 	}
 	//读取配置文件
 	err := proto.ReadConfig(configPath)
 	if err != nil {
 		panic("failed to read config file:" + err.Error())
-	} else {
-		log.Println("Config file loaded successfully")
 	}
 }
 
@@ -245,7 +280,8 @@ func myTask() {
 	//其它定时任务-通用
 	RunGeneralCron()
 	//读取配置文件
-	readConfig()
+	//readConfig()
+	initConfig(proto.ReadConfigPath)
 	//设置密钥信息
 	SecretInfoSetting()
 }
