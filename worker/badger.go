@@ -65,8 +65,8 @@ func GetBadgerValue(key string) (string, error) {
 	return string(value), err
 }
 
-func DelBadgerKey(key []byte) error {
+func DelBadgerKey(key string) error {
 	return badger_db.Update(func(tx *badger.Txn) error {
-		return tx.Delete(key)
+		return tx.Delete([]byte(key))
 	})
 }

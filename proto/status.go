@@ -216,3 +216,10 @@ const (
 	QianfanAssistant = "assistant"
 	QianfanSystem    = "system"
 )
+
+
+//kv type
+const (
+	KV_TYPE_REDIS = 1
+	KV_TYPE_BADGER = 2
+)
