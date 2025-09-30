@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 	"github.com/golang-jwt/jwt"
 	"log"
 	"regexp"
@@ -93,6 +95,27 @@ func SendEmail(email, subject, body string) {
 	if err != nil {
 		fmt.Println("send mail error:", err)
 	}
+}
+
+func readFileToString(filePath string) (string, error) {
+	// 读取文件内容，返回字节切片
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", err // 返回错误
+	}
+	// 将字节切片转换为字符串
+	return string(content), nil
+}
+
+func SendEmailCodeMail(email, code, option string) {
+	template, err :=readFileToString(proto.Config.EMAIL_CODE_TEMPLATE)
+	if err != nil || template == "" {
+		template = "您的$OPTION验证码：$VERCODE,请在5分钟内使用！"
+	}
+	template = strings.ReplaceAll(template, "$OPTION", option)
+	template = strings.ReplaceAll(template, "$VERCODE", code)
+
+	SendEmailV2(email, "集成AI工具统一验证码", template)
 }
 
 func SendEmailV2(email, subject, body string) {

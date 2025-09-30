@@ -167,7 +167,8 @@ func ResetPassword(c *gin.Context) {
 			code := worker.GetRandomString(6)
 			worker.SetRedisWithExpire("reset_password_"+req_data.Email, code, time.Minute*5) //设置5分钟过期`
 			//发送邮件
-			service.SendEmail(req_data.Email, "大学生学业作品AI生成工具开发重置密码", "验证码:"+code+" ,请在5分钟内使用!")
+			go service.SendEmailCodeMail(req_data.Email, code, "重置密码")
+			//service.SendEmail(req_data.Email, "大学生学业作品AI生成工具开发重置密码", "验证码:"+code+" ,请在5分钟内使用!")
 			c.JSON(200, gin.H{"code": proto.SuccessCode, "message": "success", "data": "2"})
 			return
 		} else if req_data.Type == 1 {
@@ -782,7 +783,8 @@ func handleRegisterCode(c *gin.Context) {
 					code := worker.GetRandomString(6)
 					worker.SetRedisWithExpire(key, code, time.Minute*5) //设置5分钟过期
 					//发送邮件
-					service.SendEmail(req.Email, "集成AI工具邮件验证码", "验证码:"+code+" ,请在5分钟内使用!")
+					//service.SendEmail(req.Email, "集成AI工具邮件验证码", "验证码:"+code+" ,请在5分钟内使用!")
+					go service.SendEmailCodeMail(req.Email, code, "注册")
 					resp.Code = proto.SuccessCode
 					resp.Message = "success"
 					worker.SetRedisWithExpire(key+"_", code, time.Minute*1) //每分钟只能发一次

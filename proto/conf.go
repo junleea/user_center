@@ -74,15 +74,15 @@ type User struct {
 
 type SMTPServerInfo struct{
 	Name string `json:"smtp_server_name"`
-	SmtpPort     int `json:"smtp_host"`
-	ImapPort     int  `json:"smtp_port"`
-	SmtpHost     string  `json:"imap_port"`
+	SmtpHost     string  `json:"smtp_host"`
 	SmtpUserName string `json:"smtp_user_name"`
 	SmtpPassword string `json:"smtp_password"`
+	SmtpPort     int `json:"smtp_port"`
+	ImapPort     int  `json:"imap_port"`
 }
 
 type ConfigStruct struct {
-	DB                        int           `json:"db"` // 0: mysql, 1: pg
+	DB                        int           `json:"db"` // 0: mysql, 1: pg, 2 sqlite
 	MYSQL_DSN                 string        `json:"mysql_dsn"`
 	PG_DSN                    string        `json:"pg_dsn"`
 	SQLITE_FILE               string        `json:"sqlite_file"`
@@ -96,6 +96,7 @@ type ConfigStruct struct {
 	REDIS_User_PW             bool          `json:"redis_user_pw"` // 是否使用密码
 	REDIS_PASSWORD            string        `json:"redis_password"`
 	REDIS_DB                  int           `json:"redis_db"`
+	EMAIL_CODE_TEMPLATE       string        `json:"email_code_template"`
 	TOKEN_SECRET              string        `json:"token_secret"`
 	CID_BASE_DIR              string        `json:"cid_base_dir"`
 	FILE_BASE_DIR             string        `json:"file_base_dir"`
@@ -213,7 +214,6 @@ func ReadConfig(path string) error {
 	SigningKeyRWLock.Lock()
 	SigningKey = []byte(Config.TOKEN_SECRET)
 	SigningKeyRWLock.Unlock()
-	//将当前配置文件的信息写入redis,用于程序运行时排查
 	configJson, cErr := json.Marshal(Config)
 	if cErr != nil {
 		log.Println("ReadConfig Error encoding config,err :", cErr)
