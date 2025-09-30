@@ -72,6 +72,15 @@ type User struct {
 	Role   string `gorm:"column:role"`
 }
 
+type SMTPServerInfo struct{
+	Name string `json:"smtp_server_name"`
+	SmtpPort     int `json:"smtp_host"`
+	ImapPort     int  `json:"smtp_port"`
+	SmtpHost     string  `json:"imap_port"`
+	SmtpUserName string `json:"smtp_user_name"`
+	SmtpPassword string `json:"smtp_password"`
+}
+
 type ConfigStruct struct {
 	DB                        int           `json:"db"` // 0: mysql, 1: pg
 	MYSQL_DSN                 string        `json:"mysql_dsn"`
@@ -113,10 +122,25 @@ type ConfigStruct struct {
 	StackOverflowClientSecret string        `json:"stackoverflow_client_secret"` // stack overflow client secret
 	FacebookClientSecret      string        `json:"facebook_client_secret"`      // facebook client secret
 	GoogleClientSecret        string        `json:"google_client_secret"`        // google client secret
+	SMTP_SERVER_LIST          []SMTPServerInfo  `json:"smtp_server_list"`        //smtp服务列表
 }
 
 type KBaseServer struct {
 	ServerID string `json:"server_id"` // 服务器ID
+}
+
+func WriteConfigToFileV2() {
+	configData, err := json.MarshalIndent(Config, "", "  ")
+	if err != nil {
+		log.Println("WriteConfigToFile json marshal error:", err)
+		return
+	}
+	err = os.WriteFile(ReadConfigPath, configData, 0644)
+	if err != nil {
+		log.Println("WriteConfigToFile write file error:", err)
+		return
+	}
+	log.Println("WriteConfigToFile write config to file success")
 }
 
 func WriteConfigToFile() {
@@ -145,6 +169,7 @@ func WriteConfigToFile() {
 
 // 读取配置文件
 func ReadConfig(path string) error {
+	ReadConfigPath = path
 	//写锁
 	ConfigRWLock.Lock()
 	defer ConfigRWLock.Unlock()

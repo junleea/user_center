@@ -158,7 +158,7 @@ func SetNextSecretToCurrent(secret_copy proto.SecretSyncSettings) {
 		defer proto.SigningKeyRWLock.Unlock()
 		proto.SigningKey = []byte(secret_sync_settings.Curr)
 		proto.Config.TOKEN_SECRET = secret_sync_settings.Curr
-		go proto.WriteConfigToFile()
+		go proto.WriteConfigToFileV2()
 	}
 	settinsStr, err2 := json.Marshal(secret_sync_settings)
 	if err2 != nil {
