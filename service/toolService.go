@@ -14,23 +14,6 @@ import (
 	"user_center/worker"
 )
 
-func SetToolRedisList(key string, value string, expire int) (code int, message string) {
-	if expire == 0 {
-		if worker.PushRedisList(key, value) {
-			return proto.SuccessCode, "success"
-		} else {
-			return proto.OperationFailed, "push redis list failed"
-		}
-	} else if expire > 0 {
-		if worker.PushRedisListWithExpire(key, value, time.Duration(expire)) {
-			return proto.SuccessCode, "success"
-		} else {
-			return proto.OperationFailed, "push redis list with expire failed"
-		}
-	} else {
-		return proto.ParameterError, "expire time can not be negative"
-	}
-}
 
 func SetToolRedisSet(key string, value string, expire int) (code int, message string) {
 	if expire == 0 {
@@ -106,6 +89,38 @@ func SendEmail(email, subject, body string) {
 	em.SmtpUserName = "354425203@qq.com"
 	em.SmtpPort = 587
 	em.ImapPort = 993
+	err := em.Send(subject, body, []string{email})
+	if err != nil {
+		fmt.Println("send mail error:", err)
+	}
+}
+
+func SendEmailV2(email, subject, body string) {
+	//捕获异常
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Errorf("tool send mail error: %s", err)
+		}
+	}()
+	// TODO
+	// 发送邮件
+	// 邮件内容
+	// 邮件标题
+	// 收件人
+	// 发送邮件
+	// 发送邮件通知
+	// 发送邮件通知
+	if len(proto.Config.SMTP_SERVER_LIST) == 0{
+		log.Println("smtp server list is nil, cant send")
+		return
+	}
+	smtp_server_info := proto.Config.SMTP_SERVER_LIST[0]
+	var em worker.MyEmail
+	em.SmtpPassword = smtp_server_info.SmtpPassword
+	em.SmtpHost = smtp_server_info.SmtpHost
+	em.SmtpUserName = smtp_server_info.SmtpUserName
+	em.SmtpPort = smtp_server_info.SmtpPort
+	em.ImapPort = smtp_server_info.ImapPort
 	err := em.Send(subject, body, []string{email})
 	if err != nil {
 		fmt.Println("send mail error:", err)

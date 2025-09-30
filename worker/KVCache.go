@@ -6,6 +6,31 @@ import (
 	"user_center/proto"
 )
 
+func InitKV(){
+	switch proto.Config.KV_TYPE {
+	case proto.KV_TYPE_REDIS:
+		err := InitRedis()
+		if err != nil {
+			panic("can't open redis")
+		}
+	case proto.KV_TYPE_BADGER:
+		InitBadger()
+	default:
+		log.Println("init don't surpport kv type")
+	}
+}
+
+func CloseKV(){
+	switch proto.Config.KV_TYPE {
+	case proto.KV_TYPE_REDIS:
+		CloseRedis()
+	case proto.KV_TYPE_BADGER:
+		CloseBadger()
+	default:
+		log.Println("init don't surpport kv type")
+	}
+}
+
 func SetKV(key, value string){
 	switch proto.Config.KV_TYPE {
 	case proto.KV_TYPE_REDIS:

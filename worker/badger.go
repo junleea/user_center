@@ -24,6 +24,10 @@ func InitBadger(){
 	badger_db = db
 }
 
+func CloseBadger() {
+	badger_db.Close()
+}
+
 func SetBadgerValue(key_ string, value_ string){
 	err := badger_db.Update(func(txn *badger.Txn) error {
 		key := []byte(key_)

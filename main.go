@@ -39,16 +39,13 @@ func main() {
 	//if err != nil {
 	//	panic("failed to connect mongodb:" + err.Error())
 	//}
-	err = worker.InitRedis()
-	if err != nil {
-		panic("failed to connect redis:" + err.Error())
-	}
+	worker.InitKV()
 	r.Use(handler.CrosHandler())
 	r.Use(JWTAuthMiddleware()) // 使用 JWT 认证中间件
 	handler.SetUpUserGroup(r)  // User
 	handler.SetUpToolGroup(r)  // Tool
 	defer dao.Close()
-	defer worker.CloseRedis()
+	defer worker.CloseKV()
 	//defer dao.CloseMongoDB()
 	//定时任务
 	c := cron.New(cron.WithSeconds())

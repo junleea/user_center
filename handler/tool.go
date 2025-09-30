@@ -42,8 +42,6 @@ type SendMailReq struct {
 
 func SetUpToolGroup(router *gin.Engine) {
 	toolGroup := router.Group("/tool")
-	toolGroup.POST("/set_redis", SetRedis)
-	toolGroup.POST("/get_redis", GetRedis)
 
 	toolGroup.POST("/qq_callback", handleQQCallback)
 	toolGroup.GET("/qq_auth", GetQQAuthUrl)
@@ -126,60 +124,6 @@ func handleQQCallback(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-func SetRedis(c *gin.Context) {
-	//先查看是否有权限
-	id, _ := c.Get("id")
-	id1 := int(id.(float64))
-	user := dao.FindUserByUserID(id1)
-	if user.Redis == false {
-		c.JSON(http.StatusOK, gin.H{"error": "no redis Permissions", "code": proto.NoRedisPermissions, "message": "failed"})
-		return
-	}
-	//解析请求参数
-	var req SetRedisReq
-	if err := c.ShouldBind(&req); err == nil {
-		var code int
-		var message string
-		if req.Option == "list" {
-			code, message = service.SetToolRedisList(req.Key, req.Value, req.Expire)
-		} else if req.Option == "set" {
-			code, message = service.SetToolRedisSet(req.Key, req.Value, req.Expire)
-		} else if req.Option == "kv" {
-			code, message = service.SetToolRedisKV(req.Key, req.Value, req.Expire)
-		}
-		c.JSON(http.StatusOK, gin.H{"code": code, "message": message})
-	} else {
-		c.JSON(http.StatusOK, gin.H{"error": "parameter error", "code": proto.ParameterError, "message": "failed"})
-		return
-	}
-}
-
-func GetRedis(c *gin.Context) {
-	//先查看是否有权限
-	id, _ := c.Get("id")
-	id1 := int(id.(float64))
-	user := dao.FindUserByUserID(id1)
-	if user.Redis == false {
-		c.JSON(http.StatusOK, gin.H{"error": "no redis Permissions", "code": proto.NoRedisPermissions, "message": "failed"})
-		return
-	}
-	//解析请求参数
-	var req SetRedisReq
-	if err := c.ShouldBind(&req); err == nil {
-		if req.Option == "one" {
-			code, message := service.GetToolRedis(req.Key)
-			req.Value = message
-			c.JSON(http.StatusOK, gin.H{"code": code, "message": message, "data": req})
-		} else if req.Option == "all" {
-			code, message, data := service.GetAllRedis()
-			c.JSON(http.StatusOK, gin.H{"code": code, "message": message, "data": data})
-		}
-	} else {
-		c.JSON(http.StatusOK, gin.H{"error": "parameter error", "code": proto.ParameterError, "message": "failed"})
-		return
-	}
-}
-
 // 服务器、设备状态扫描
 func ScanDeviceStatus() {
 	// TODO
@@ -252,7 +196,7 @@ func SendMailTool(c *gin.Context) {
 		}
 		//发送邮件
 		if user.Role == "admin" {
-			go service.SendEmail(req.To, req.Title, req.Content)
+			go service.SendEmailV2(req.To, req.Title, req.Content)
 			c.JSON(http.StatusOK, gin.H{"code": proto.SuccessCode, "message": "success", "data": "mail will be sent"})
 		} else {
 			c.JSON(http.StatusOK, gin.H{"error": "no send mail permission", "code": proto.PermissionDenied, "message": "failed"})
