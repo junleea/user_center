@@ -51,12 +51,13 @@ type RefreshTokenReq struct {
 }
 
 type RLReq struct {
-	User     string `json:"username" form:"username"`
-	Email    string `json:"email" form:"email"`
-	Password string `json:"password" form:"password"`
-	Age      int    `json:"age" form:"age"`
-	Code     string `json:"code" form:"code"` //验证码
-	Gender   string `json:"gender" form:"gender"`
+	User        string `json:"username" form:"username"`
+	Email       string `json:"email" form:"email"`
+	Password    string `json:"password" form:"password"`
+	Age         int    `json:"age" form:"age"`
+	Code        string `json:"code" form:"code"` //验证码
+	FingerPrint string `json:"fingerPrint" form:"fingerPrint"`
+	Gender      string `json:"gender" form:"gender"`
 }
 
 type QRReq struct {
@@ -494,7 +495,11 @@ func SearchHandler(c *gin.Context) {
 
 func loginHandler(c *gin.Context) {
 	var req_data RLReq
+	ip := c.ClientIP()
 	if err := c.ShouldBind(&req_data); err == nil {
+		if req_data.FingerPrint == "" || len(req_data.FingerPrint) != 32 {
+			c.JSON(http.StatusOK, gin.H{"code": proto.ParameterError, "message": "设备ID错误"})
+		}
 		if len(req_data.Password) != 32 {
 			hasher := md5.New()
 			hasher.Write([]byte(req_data.Password))                 // 生成密码的 MD5 散列值
@@ -502,6 +507,11 @@ func loginHandler(c *gin.Context) {
 		}
 		user := service.GetUser(req_data.User, req_data.Password, req_data.Password)
 		if user.ID != 0 {
+			can, reason := service.CheckUserCanUsePassword(&user, req_data.FingerPrint, ip)
+			if can == false {
+				c.JSON(http.StatusOK, gin.H{"code": proto.NeedEmailCodeLogin, "message": "由于:" + reason + ",不支持密码登录, 请使用验证码登录！"})
+				return
+			}
 			accessToken, refreshToken, err2 := service.GenerateAuthTokens(user)
 			if err2 != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"code": proto.TokenGenerationError, "message": "Failed to generate tokens", "data": err2.Error()})
@@ -581,7 +591,7 @@ func registerHandlerV2(c *gin.Context) {
 	var reqData RLReq
 	var resp proto.GenerateResp
 	if err := c.ShouldBind(&reqData); err == nil {
-		if reqData.User == "" || reqData.Email == "" || reqData.Password == "" {
+		if reqData.User == "" || reqData.Email == "" || reqData.Password == "" || reqData.FingerPrint == "" {
 			resp.Code = proto.ParameterError
 			resp.Message = "必要参数不能为空"
 		} else {

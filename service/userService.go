@@ -472,3 +472,119 @@ func SendLoginCodeByEmailPhone(req proto.EmailPhoneCodeLoginReq) error {
 	}
 	return res
 }
+
+// 查看用户是否能使用用户名密码,需使用验证码登录
+func CheckUserCanUsePassword(user *dao.User, hostId, ip string) (bool, string) {
+	var deviceInfo []proto.UserLoginDeviceInfo
+	var addressInfo []proto.UserLoginAddressInfo
+	err := json.Unmarshal([]byte(user.LoginDeviceInfo), &deviceInfo)
+	if err != nil {
+		log.Println("CheckUserCanUsePassword address info, error:", err)
+		return false, "服务器错误"
+	}
+	err = json.Unmarshal([]byte(user.LoginAddressInfo), &addressInfo)
+	if err != nil {
+		log.Println("CheckUserCanUsePassword address info, error:", err)
+		return false, "服务器错误"
+	}
+	address := GetIPRegionByAPI(ip)
+	var currentDeviceInfo proto.UserLoginDeviceInfo
+	var currentAddressInfo proto.UserLoginAddressInfo
+	var reason string
+	for _, v := range addressInfo {
+		if v.Address == address {
+			currentAddressInfo = v
+		}
+	}
+	for i, v := range deviceInfo {
+		if v.HostID == hostId {
+			currentDeviceInfo = deviceInfo[i]
+		}
+	}
+	//是否是首次登录设备
+	if currentDeviceInfo.HostID == "" {
+		reason = "首次登录设备"
+		return false, reason //首次登录设备，不能密码
+	}
+
+	//是否是首次登录地点
+	if currentAddressInfo.IPAddress == "" {
+		reason = "首次登录地点：" + address
+		return false, reason //首次登录地点，不能使用密码
+	}
+	now := time.Now().Unix()
+	var time_ int64
+	time_ = 14 * 24 * 60 * 60
+	//是否过长时间未登录设备14天
+	if (now - currentDeviceInfo.LastLogin) > time_ {
+		reason = "设备长时间未登录"
+		return false, reason
+	}
+
+	//是否过长时间未登录地点14天
+	if (now - currentAddressInfo.LastLogin) > time_ {
+		reason = "地点长时间未登录"
+		return false, reason
+	}
+	return true, ""
+}
+
+// 更新用户登录设备、地址信息
+func UpdateUserLoginAddressDeviceInfo(user *dao.User, hostID, ip string) {
+	var deviceInfo []proto.UserLoginDeviceInfo
+	var addressInfo []proto.UserLoginAddressInfo
+	err := json.Unmarshal([]byte(user.LoginDeviceInfo), &deviceInfo)
+	if err != nil {
+		log.Println("Update User Login Device Info, error:", err)
+	}
+	err = json.Unmarshal([]byte(user.LoginAddressInfo), &addressInfo)
+	if err != nil {
+		log.Println("Update User Login address info, error:", err)
+	}
+	//更新设备信息
+	index := -1
+	for i, v := range deviceInfo {
+		if v.HostID == hostID {
+			index = i
+		}
+	}
+	now := time.Now().Unix()
+	if index == -1 {
+		device := proto.UserLoginDeviceInfo{
+			HostID:     hostID,
+			FirstLogin: now,
+			LastLogin:  now,
+			LoginCount: 1,
+		}
+		deviceInfo = append(deviceInfo, device)
+	} else {
+		deviceInfo[index].LoginCount++
+		deviceInfo[index].LastLogin = now
+	}
+	deviceInfoStr, _ := json.Marshal(deviceInfo)
+	//更新地址信息
+	index = -1
+	for i, v := range deviceInfo {
+		if v.HostID == hostID {
+			index = i
+		}
+	}
+	address := GetIPRegionByAPI(ip)
+	if index == -1 {
+		address_ := proto.UserLoginAddressInfo{
+			Address:    address,
+			FirstLogin: now,
+			LastLogin:  now,
+			LoginCount: 1,
+		}
+		addressInfo = append(addressInfo, address_)
+	} else {
+		deviceInfo[index].LoginCount++
+		addressInfo[index].LastLogin = now
+	}
+	addressInfoStr, _ := json.Marshal(addressInfo)
+	err = dao.UpdateUserLoginAddressAndDeviceInfo(int(user.ID), string(deviceInfoStr), string(addressInfoStr))
+	if err != nil {
+		log.Println("update user login device and address info error:", err)
+	}
+}

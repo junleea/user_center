@@ -75,6 +75,14 @@ func Init() error {
 		log.Println("Secret table migrated successfully")
 	}
 
+	err = db.AutoMigrate(&proto.LocalIPDataBase{})
+	if err != nil {
+		log.Println("local ip db table:", err)
+		return err
+	} else {
+		log.Println("local ip db table migrated successfully")
+	}
+
 	DB = db
 	return err
 }

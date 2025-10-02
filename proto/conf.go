@@ -72,58 +72,59 @@ type User struct {
 	Role   string `gorm:"column:role"`
 }
 
-type SMTPServerInfo struct{
-	Name string `json:"smtp_server_name"`
-	SmtpHost     string  `json:"smtp_host"`
+type SMTPServerInfo struct {
+	Name         string `json:"smtp_server_name"`
+	SmtpHost     string `json:"smtp_host"`
 	SmtpUserName string `json:"smtp_user_name"`
 	SmtpPassword string `json:"smtp_password"`
-	SmtpPort     int `json:"smtp_port"`
-	ImapPort     int  `json:"imap_port"`
+	SmtpPort     int    `json:"smtp_port"`
+	ImapPort     int    `json:"imap_port"`
 }
 
 type ConfigStruct struct {
-	DB                        int           `json:"db"` // 0: mysql, 1: pg, 2 sqlite
-	MYSQL_DSN                 string        `json:"mysql_dsn"`
-	PG_DSN                    string        `json:"pg_dsn"`
-	SQLITE_FILE               string        `json:"sqlite_file"`
-	MONGO_URI                 string        `json:"mongo_uri"`
-	MONGO_DATABASE            string        `json:"mongo_database"`
-	SlowQueryThreshold        int           `json:"slow_query_threshold"` // 慢查询阈值，单位ms
-	KV_TYPE                   int           `json:"kv_type"` //内存存储方式，1,redis, 2,badger
-	BADGER_DATA_PATH          string        `json:"badger_data_path"`
-	REDIS_ADDR                string        `json:"redis_addr"`
-	TOKEN_USE_REDIS           bool          `json:"token_use_redis"`
-	REDIS_User_PW             bool          `json:"redis_user_pw"` // 是否使用密码
-	REDIS_PASSWORD            string        `json:"redis_password"`
-	REDIS_DB                  int           `json:"redis_db"`
-	EMAIL_CODE_TEMPLATE       string        `json:"email_code_template"`
-	TOKEN_SECRET              string        `json:"token_secret"`
-	CID_BASE_DIR              string        `json:"cid_base_dir"`
-	FILE_BASE_DIR             string        `json:"file_base_dir"`
-	LOG_OUTPUT                bool          `json:"log_output"`
-	AISessionNameModelID      int           `json:"ai_session_name_model_id"`    // 用于ai总结会话名称的模型id
-	MONITOR                   bool          `json:"monitor"`                     // 状态监控及邮件通知
-	SERVER_SQL_LOG            bool          `json:"server_sql_log"`              // 服务器sql日志
-	SERVER_PORT               string        `json:"server_port"`                 // 服务端口
-	LOG_SAVE_DAYS             int           `json:"log_save_days"`               // 日志保存天数,-1表示不保存，0表示永久保存
-	SERVER_USER_TYPE          string        `json:"user_type"`                   // 服务器用户类型，master: 主服务器，slave: 从服务器，从服务器会定时同步数据
-	MASTER_SERVER_DOMAIN      string        `json:"master_server_domain"`        // 主服务器域名
-	USER_SYNC_TIME            int           `json:"user_sync_time"`              // 用户数据同步时间，单位秒
-	SERVER_NAME               string        `json:"server_name"`                 // 服务器名称,用于区分不同服务器
-	SPARK_PPT_USAGE           bool          `json:"spark_ppt_usage"`             // 是否使用spark ppt功能
-	KBASE_SERVER              []KBaseServer `json:"kbase_server"`                // 知识库服务器列表
-	GITHUB_CLIENT_ID          string        `json:"github_client_id"`            // github client id
-	GITHUB_CLIENT_SECRET      string        `json:"github_client_secret"`        // github client secret
-	GITEE_CLIENT_ID           string        `json:"gitee_client_id"`             // gitee client id
-	GITEE_CLIENT_SECRET       string        `json:"gitee_client_secret"`         // gitee client secret
-	MICROSOFT_CLIENT_SECRET   string        `json:"microsoft_client_secret"`     // microsoft client secret
-	GITEA_CLIENT_SECRET       string        `json:"gitea_client_secret"`         // gitea client secret
-	MyGiteaClientSecret       string        `json:"my_gitea_client_secret"`      // my gitea client secret
-	QQClientSecret            string        `json:"qq_client_secret"`            // qq client secret
-	StackOverflowClientSecret string        `json:"stackoverflow_client_secret"` // stack overflow client secret
-	FacebookClientSecret      string        `json:"facebook_client_secret"`      // facebook client secret
-	GoogleClientSecret        string        `json:"google_client_secret"`        // google client secret
-	SMTP_SERVER_LIST          []SMTPServerInfo  `json:"smtp_server_list"`        //smtp服务列表
+	DB                        int              `json:"db"` // 0: mysql, 1: pg, 2 sqlite
+	MYSQL_DSN                 string           `json:"mysql_dsn"`
+	PG_DSN                    string           `json:"pg_dsn"`
+	SQLITE_FILE               string           `json:"sqlite_file"`
+	MONGO_URI                 string           `json:"mongo_uri"`
+	MONGO_DATABASE            string           `json:"mongo_database"`
+	SlowQueryThreshold        int              `json:"slow_query_threshold"` // 慢查询阈值，单位ms
+	KV_TYPE                   int              `json:"kv_type"`              //内存存储方式，1,redis, 2,badger
+	BADGER_DATA_PATH          string           `json:"badger_data_path"`
+	REDIS_ADDR                string           `json:"redis_addr"`
+	TOKEN_USE_REDIS           bool             `json:"token_use_redis"`
+	REDIS_User_PW             bool             `json:"redis_user_pw"` // 是否使用密码
+	REDIS_PASSWORD            string           `json:"redis_password"`
+	REDIS_DB                  int              `json:"redis_db"`
+	EMAIL_CODE_TEMPLATE       string           `json:"email_code_template"`
+	TOKEN_SECRET              string           `json:"token_secret"`
+	CID_BASE_DIR              string           `json:"cid_base_dir"`
+	FILE_BASE_DIR             string           `json:"file_base_dir"`
+	LOG_OUTPUT                bool             `json:"log_output"`
+	AISessionNameModelID      int              `json:"ai_session_name_model_id"`    // 用于ai总结会话名称的模型id
+	MONITOR                   bool             `json:"monitor"`                     // 状态监控及邮件通知
+	SERVER_SQL_LOG            bool             `json:"server_sql_log"`              // 服务器sql日志
+	SERVER_PORT               string           `json:"server_port"`                 // 服务端口
+	LOG_SAVE_DAYS             int              `json:"log_save_days"`               // 日志保存天数,-1表示不保存，0表示永久保存
+	SERVER_USER_TYPE          string           `json:"user_type"`                   // 服务器用户类型，master: 主服务器，slave: 从服务器，从服务器会定时同步数据
+	MASTER_SERVER_DOMAIN      string           `json:"master_server_domain"`        // 主服务器域名
+	USER_SYNC_TIME            int              `json:"user_sync_time"`              // 用户数据同步时间，单位秒
+	SERVER_NAME               string           `json:"server_name"`                 // 服务器名称,用于区分不同服务器
+	SPARK_PPT_USAGE           bool             `json:"spark_ppt_usage"`             // 是否使用spark ppt功能
+	KBASE_SERVER              []KBaseServer    `json:"kbase_server"`                // 知识库服务器列表
+	GITHUB_CLIENT_ID          string           `json:"github_client_id"`            // github client id
+	GITHUB_CLIENT_SECRET      string           `json:"github_client_secret"`        // github client secret
+	GITEE_CLIENT_ID           string           `json:"gitee_client_id"`             // gitee client id
+	GITEE_CLIENT_SECRET       string           `json:"gitee_client_secret"`         // gitee client secret
+	MICROSOFT_CLIENT_SECRET   string           `json:"microsoft_client_secret"`     // microsoft client secret
+	GITEA_CLIENT_SECRET       string           `json:"gitea_client_secret"`         // gitea client secret
+	MyGiteaClientSecret       string           `json:"my_gitea_client_secret"`      // my gitea client secret
+	QQClientSecret            string           `json:"qq_client_secret"`            // qq client secret
+	StackOverflowClientSecret string           `json:"stackoverflow_client_secret"` // stack overflow client secret
+	FacebookClientSecret      string           `json:"facebook_client_secret"`      // facebook client secret
+	GoogleClientSecret        string           `json:"google_client_secret"`        // google client secret
+	SMTP_SERVER_LIST          []SMTPServerInfo `json:"smtp_server_list"`            //smtp服务列表
+	TX_LOCATION_SERVER_KEY    string           `json:"tx_location_server_key"`      // 腾讯地址服务
 }
 
 type KBaseServer struct {

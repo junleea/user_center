@@ -4,18 +4,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"strings"
 	"github.com/golang-jwt/jwt"
 	"log"
+	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 	"user_center/dao"
 	"user_center/proto"
 	"user_center/worker"
 )
-
 
 func SetToolRedisSet(key string, value string, expire int) (code int, message string) {
 	if expire == 0 {
@@ -108,7 +107,7 @@ func readFileToString(filePath string) (string, error) {
 }
 
 func SendEmailCodeMail(email, code, option string) {
-	template, err :=readFileToString(proto.Config.EMAIL_CODE_TEMPLATE)
+	template, err := readFileToString(proto.Config.EMAIL_CODE_TEMPLATE)
 	if err != nil || template == "" {
 		template = "您的$OPTION验证码：$VERCODE,请在5分钟内使用！"
 	}
@@ -133,7 +132,7 @@ func SendEmailV2(email, subject, body string) {
 	// 发送邮件
 	// 发送邮件通知
 	// 发送邮件通知
-	if len(proto.Config.SMTP_SERVER_LIST) == 0{
+	if len(proto.Config.SMTP_SERVER_LIST) == 0 {
 		log.Println("smtp server list is nil, cant send")
 		return
 	}
@@ -691,4 +690,33 @@ func DoMicroSoftCallBack(state *proto.ThirdPartyLoginState, code string) {
 	thirdPartyLoginStatusStr, _ := json.Marshal(thirdPartyLoginStatus)
 	log.Printf("do handle %s callback success, third party login status: %v\n", state.Platform, thirdPartyLoginStatus)
 	worker.SetRedisWithExpire(state.UUID, string(thirdPartyLoginStatusStr), time.Minute*10)
+}
+
+func GetIPRegionByAPI(ip string) string {
+	//先从本地数据库获取
+	ip_info := dao.GetIPAddressInfo(ip)
+	var err error
+	var result []byte
+	if ip_info.IP == "" {
+		uri := proto.TX_LOCATION_URL + "?ip=" + ip + "&key=" + proto.Config.TX_LOCATION_SERVER_KEY
+		//get请求
+		err, result = worker.DoGetRequestV2(uri)
+		if err != nil {
+			log.Printf("do get request err:%v\n", err)
+		}
+		err = dao.AddIPAddressInfo(ip, string(result))
+		if err != nil {
+			log.Println("add ip info err:", err)
+		}
+	} else {
+		result = []byte(ip_info.Info)
+	}
+
+	var resp proto.IPInfoResponse
+	err = json.Unmarshal(result, &resp)
+	if err != nil {
+		log.Printf("json unmarshal err:%v\n", err)
+	}
+	address := resp.Result.AdInfo.Nation + resp.Result.AdInfo.Province + resp.Result.AdInfo.City //到市一级
+	return address
 }

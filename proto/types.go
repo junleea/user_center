@@ -105,6 +105,7 @@ type ThirdPartyLoginState struct {
 	UUID    string `json:"uuid"`    // uuid
 	Type    string `json:"type"`    // 操作类型add,login
 	Project string `json:"project"` // 项目名称,saw
+	HostID  string `json:"host_id"`
 	//第三方平台
 	Platform string `json:"platform"` // 平台名称,qq,github
 	UserID   int    `json:"user_id"`  // 用户ID,当为add时需要
@@ -478,3 +479,53 @@ type EmailPhoneCodeLoginReq struct {
 	Code      string `json:"code"`
 	LoginType int    `json:"login_type"` //1,2
 }
+
+type UserLoginAddressInfo struct {
+	IPAddress  string `json:"ip_address"`
+	Address    string `json:"address"`
+	FirstLogin int64  `json:"first_login"`
+	LastLogin  int64  `json:"last_login"`
+	LoginCount int64  `json:"login_count"`
+}
+
+type UserLoginDeviceInfo struct {
+	HostID     string `json:"host_id"`
+	FirstLogin int64  `json:"first_login"`
+	LastLogin  int64  `json:"last_login"`
+	LoginCount int64  `json:"login_count"`
+}
+
+// tx api location response type begin
+type IPLocation struct {
+	Lat float64 `json:"lat"`
+	Lng float64 `json:"lng"`
+}
+
+type IPAdInfo struct {
+	Nation     string `json:"nation"`
+	Province   string `json:"province"`
+	City       string `json:"city"`
+	District   string `json:"district"`
+	Adcode     int    `json:"adcode"`
+	NationCode int    `json:"nation_code"`
+}
+
+type IPResult struct {
+	Ip       string     `json:"ip"`
+	Location IPLocation `json:"location"`
+	AdInfo   IPAdInfo   `json:"ad_info"`
+}
+
+type IPInfoResponse struct {
+	Status    int      `json:"status"`
+	Message   string   `json:"message"`
+	RequestId string   `json:"request_id"`
+	Result    IPResult `json:"result"`
+}
+
+type LocalIPDataBase struct {
+	IP   string `gorm:"column:ip;primarykey" json:"ip"`
+	Info string `gorm:"column:info" json:"info"`
+}
+
+//tx api location response type end

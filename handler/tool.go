@@ -303,10 +303,11 @@ func GetThirdPartyAuthUrl(c *gin.Context) {
 	platform := c.Query("platform")
 	uuid_ := c.Query("uuid")
 	hType := c.Query("type") //操作类型add,login
+	fingerprint := c.Query("fingerprint")
 	var resp proto.GenerateResp
-	if platform == "" || uuid_ == "" || hType == "" {
+	if platform == "" || uuid_ == "" || hType == "" || fingerprint == "" {
 		resp.Code = proto.ParameterError
-		resp.Message = "platform or uuid is empty"
+		resp.Message = "platform uuid or hostid is empty"
 		c.JSON(http.StatusOK, resp)
 		return
 	}
@@ -315,6 +316,7 @@ func GetThirdPartyAuthUrl(c *gin.Context) {
 	state.Type = hType
 	state.Platform = platform
 	state.Project = "SAW"
+	state.HostID = fingerprint
 	if hType == "add" {
 		//查看是否已经绑定
 		token := c.Request.Header.Get("token")

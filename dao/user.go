@@ -12,24 +12,26 @@ import (
 
 type User struct {
 	gorm.Model
-	Name       string `gorm:"column:name"`
-	Age        int    `gorm:"column:age"`
-	Email      string `gorm:"column:email"`
-	Password   string `gorm:"column:password"`
-	Gender     string `gorm:"column:gender"`
-	Role       string `gorm:"column:role"`
-	Redis      bool   `gorm:"column:redis"`
-	Run        bool   `gorm:"column:run"`
-	Upload     bool   `gorm:"column:upload"`
-	VideoFunc  bool   `gorm:"column:video_func"`  //视频功能
-	DeviceFunc bool   `gorm:"column:device_func"` //设备功能
-	CIDFunc    bool   `gorm:"column:cid_func"`    //持续集成功能
-	Avatar     string `gorm:"column:avatar"`
-	AuthPolicy int    `gorm:"column:auth_policy" json:"auth_policy"`
-	CreateTime string `gorm:"column:create_time"`
-	QQ         int64  `gorm:"column:qq"`
-	QQOpenID   string `gorm:"column:qq_openid"`
-	UpdateTime string `gorm:"column:update_time"`
+	Name             string `gorm:"column:name"`
+	Age              int    `gorm:"column:age"`
+	Email            string `gorm:"column:email"`
+	Password         string `gorm:"column:password"`
+	Gender           string `gorm:"column:gender"`
+	Role             string `gorm:"column:role"`
+	Redis            bool   `gorm:"column:redis"`
+	Run              bool   `gorm:"column:run"`
+	Upload           bool   `gorm:"column:upload"`
+	VideoFunc        bool   `gorm:"column:video_func"`  //视频功能
+	DeviceFunc       bool   `gorm:"column:device_func"` //设备功能
+	CIDFunc          bool   `gorm:"column:cid_func"`    //持续集成功能
+	Avatar           string `gorm:"column:avatar"`
+	AuthPolicy       int    `gorm:"column:auth_policy" json:"auth_policy"`
+	CreateTime       string `gorm:"column:create_time"`
+	QQ               int64  `gorm:"column:qq"`
+	QQOpenID         string `gorm:"column:qq_openid"`
+	UpdateTime       string `gorm:"column:update_time"`
+	LoginAddressInfo string `gorm:"column:login_address_info" json:"login_address_info,omitempty"`
+	LoginDeviceInfo  string `gorm:"column:login_device_info" json:"login_device_info,omitempty"`
 }
 
 // 存储第三方统一信息
@@ -355,4 +357,39 @@ func FindBaseUserInfoByIDs(ids []int) []proto.BaseUserInfo {
 		return res
 	}
 	return res
+}
+
+// 更新用户的地址登录信息
+func UpdateUserLoginAddressInfo(id int, loginAddress string) error {
+	var db *gorm.DB
+	if proto.Config.SERVER_SQL_LOG {
+		db = DB.Debug()
+	} else {
+		db = DB
+	}
+	res := db.Exec("UPDATE users SET login_address_info = ? WHERE id = ?", loginAddress, id)
+	return res.Error
+}
+
+// 更新用户登录设备信息
+func UpdateUserLoginDeviceInfo(id int, loginDevice string) error {
+	var db *gorm.DB
+	if proto.Config.SERVER_SQL_LOG {
+		db = DB.Debug()
+	} else {
+		db = DB
+	}
+	res := db.Exec("UPDATE users SET login_device_info = ? WHERE id = ?", loginDevice, id)
+	return res.Error
+}
+
+func UpdateUserLoginAddressAndDeviceInfo(id int, loginDevice string, addressInfo string) error {
+	var db *gorm.DB
+	if proto.Config.SERVER_SQL_LOG {
+		db = DB.Debug()
+	} else {
+		db = DB
+	}
+	res := db.Exec("UPDATE users SET login_device_info = ?, login_address_info = ? WHERE id = ?", loginDevice, addressInfo, id)
+	return res.Error
 }

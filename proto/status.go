@@ -102,6 +102,8 @@ const (
 	ThirdPartyUserNotBinded = 163 //第三方登录用户未绑定
 
 	SigningKeyVersionIsTooOld = 200 // 签名密钥版本过旧
+
+	NeedEmailCodeLogin = 1101
 )
 
 const (
@@ -217,9 +219,13 @@ const (
 	QianfanSystem    = "system"
 )
 
-
-//kv type
+// kv type
 const (
-	KV_TYPE_REDIS = 1
+	KV_TYPE_REDIS  = 1
 	KV_TYPE_BADGER = 2
+)
+
+// tx 获取ip地址api
+const (
+	TX_LOCATION_URL = "https://apis.map.qq.com/ws/location/v1/ip"
 )
