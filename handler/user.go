@@ -56,7 +56,7 @@ type RLReq struct {
 	Password    string `json:"password" form:"password"`
 	Age         int    `json:"age" form:"age"`
 	Code        string `json:"code" form:"code"` //验证码
-	FingerPrint string `json:"fingerPrint" form:"fingerPrint"`
+	FingerPrint string `json:"fingerprint" form:"fingerprint"`
 	Gender      string `json:"gender" form:"gender"`
 }
 
