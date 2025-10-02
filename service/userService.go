@@ -565,12 +565,13 @@ func UpdateUserLoginAddressDeviceInfo(user *dao.User, hostID, ip string) {
 	deviceInfoStr, _ := json.Marshal(deviceInfo)
 	//更新地址信息
 	index = -1
-	for i, v := range deviceInfo {
-		if v.HostID == hostID {
+	address := GetIPRegionByAPI(ip)
+	for i, v := range addressInfo {
+		if v.Address == address {
 			index = i
 		}
 	}
-	address := GetIPRegionByAPI(ip)
+
 	if index == -1 {
 		address_ := proto.UserLoginAddressInfo{
 			Address:    address,
