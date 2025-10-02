@@ -91,8 +91,8 @@ func HandleSyncSystemConfig(c *gin.Context) {
 	var req proto.SyncSystemConfigReq
 	var resp proto.GenerateResp
 	if err := c.ShouldBind(&req); err == nil {
-		reqString, _ := json.Marshal(req)
-		log.Println("handle sync system config request:", string(reqString))
+		//reqString, _ := json.Marshal(req)
+		//log.Println("handle sync system config request:", string(reqString))
 		err2, resp_ := service.SyncSystemConfig(&req)
 		if err2 != nil {
 			resp.Code = proto.OperationFailed
