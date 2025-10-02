@@ -478,6 +478,7 @@ func CheckUserCanUsePassword(user *dao.User, hostId, ip string) (bool, string) {
 	var deviceInfo []proto.UserLoginDeviceInfo
 	var addressInfo []proto.UserLoginAddressInfo
 	err := json.Unmarshal([]byte(user.LoginDeviceInfo), &deviceInfo)
+	log.Println("check user id:", user.ID, "\t host_id:", hostId, "\t ip:", ip)
 	if err != nil {
 		log.Println("CheckUserCanUsePassword address info, error:", err)
 		return false, "服务器错误"
