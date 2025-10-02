@@ -541,6 +541,7 @@ func UpdateUserLoginAddressDeviceInfo(user *dao.User, hostID, ip string) {
 	if err != nil {
 		log.Println("Update User Login address info, error:", err)
 	}
+	log.Println("user id:", user.ID, "\t host_id:", hostID, "\t ip:", ip)
 	//更新设备信息
 	index := -1
 	for i, v := range deviceInfo {
@@ -579,7 +580,7 @@ func UpdateUserLoginAddressDeviceInfo(user *dao.User, hostID, ip string) {
 		}
 		addressInfo = append(addressInfo, address_)
 	} else {
-		deviceInfo[index].LoginCount++
+		addressInfo[index].LoginCount++
 		addressInfo[index].LastLogin = now
 	}
 	addressInfoStr, _ := json.Marshal(addressInfo)
