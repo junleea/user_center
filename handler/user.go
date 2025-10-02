@@ -106,6 +106,7 @@ func handleLoginCode(c *gin.Context) {
 func handleLoginByCode(c *gin.Context) {
 	var req proto.EmailPhoneCodeLoginReq
 	var resp proto.GenerateResp
+	ip := c.ClientIP()
 	if err := c.ShouldBind(&req); err != nil {
 		resp.Code, resp.Message = proto.ParameterError, "解析参数错误"
 	} else {
@@ -137,6 +138,7 @@ func handleLoginByCode(c *gin.Context) {
 					authBytes, _ := json.Marshal(authResponse)
 					c.SetCookie("user_token", string(authBytes), 3600*24, "/", ".ljsea.top", true, false) //设置cookie
 					resp.Code, resp.Message, resp.Data = proto.SuccessCode, "success", authResponse
+					service.UpdateUserLoginAddressDeviceInfo(&user, req.FingerPrint, ip)
 					worker.DelRedis(key)
 				}
 			}
@@ -499,6 +501,7 @@ func loginHandler(c *gin.Context) {
 	if err := c.ShouldBind(&req_data); err == nil {
 		if req_data.FingerPrint == "" || len(req_data.FingerPrint) != 32 {
 			c.JSON(http.StatusOK, gin.H{"code": proto.ParameterError, "message": "设备ID错误"})
+			return
 		}
 		if len(req_data.Password) != 32 {
 			hasher := md5.New()
@@ -525,6 +528,7 @@ func loginHandler(c *gin.Context) {
 				Username:     user.Name,
 				Email:        user.Email,
 			}
+			service.UpdateUserLoginAddressDeviceInfo(&user, req_data.FingerPrint, ip)
 			authBytes, _ := json.Marshal(authResponse)
 			c.SetCookie("user_token", string(authBytes), 3600*24, "/", ".ljsea.top", true, false) //设置cookie
 			c.JSON(http.StatusOK, gin.H{"code": proto.SuccessCode, "message": "success", "data": authResponse})
@@ -590,6 +594,7 @@ func registerHandler(c *gin.Context) {
 func registerHandlerV2(c *gin.Context) {
 	var reqData RLReq
 	var resp proto.GenerateResp
+	ip := c.ClientIP()
 	if err := c.ShouldBind(&reqData); err == nil {
 		if reqData.User == "" || reqData.Email == "" || reqData.Password == "" || reqData.FingerPrint == "" {
 			resp.Code = proto.ParameterError
@@ -638,6 +643,7 @@ func registerHandlerV2(c *gin.Context) {
 								resp.Message = "success"
 								resp.Data = authResponse
 								authBytes, _ := json.Marshal(authResponse)
+								service.UpdateUserLoginAddressDeviceInfo(&createdUser, reqData.FingerPrint, ip)
 								c.SetCookie("user_token", string(authBytes), 3600*24, "/", ".ljsea.top", true, false) //设置cookie
 							}
 						}

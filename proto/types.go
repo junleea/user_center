@@ -474,10 +474,11 @@ type Secret struct {
 }
 
 type EmailPhoneCodeLoginReq struct {
-	Email     string `json:"email"`
-	Phone     string `json:"phone"`
-	Code      string `json:"code"`
-	LoginType int    `json:"login_type"` //1,2
+	Email       string `json:"email"`
+	Phone       string `json:"phone"`
+	Code        string `json:"code" form:"code"`
+	LoginType   int    `json:"login_type" form:"login_type"` //1,2
+	FingerPrint string `json:"fingerprint" form:"fingerPrint"`
 }
 
 type UserLoginAddressInfo struct {
