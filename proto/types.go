@@ -530,3 +530,15 @@ type LocalIPDataBase struct {
 }
 
 //tx api location response type end
+
+// SQLResult 包含查询结果的列名顺序和对应数据
+type SQLResult struct {
+	Columns []SQLResultColumnsValue  // 列名顺序（与 SQL 查询的列顺序一致）
+	Rows    []map[string]interface{} // 每行数据（map 便于按列名访问）
+}
+
+type SQLResultColumnsValue struct {
+	Prop  string `json:"prop"`
+	Label string `json:"label"`
+	Attr  string `json:"attr"`
+}

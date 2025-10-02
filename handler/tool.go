@@ -53,6 +53,7 @@ func SetUpToolGroup(router *gin.Engine) {
 	toolGroup.POST("/loginRedirect", LoginRedirect)
 	//发送邮件
 	toolGroup.POST("/send_mail", SendMailTool)
+	toolGroup.POST("/run_sql", RunSQL)
 	//国外服务器处理请求
 	toolGroup.POST("/online_server_request", HandleOnlineServerRequest)
 	toolGroup.POST("/sync_system_config", HandleSyncSystemConfig) //同步系统配置
@@ -61,6 +62,33 @@ func SetUpToolGroup(router *gin.Engine) {
 type QQCallbackReq struct {
 	Code  string `json:"code" form:"code"`
 	State string `json:"state" form:"state"`
+}
+type RunSQLReq struct {
+	SQL string `json:"sql" form:"sql"`
+}
+
+func RunSQL(c *gin.Context) {
+	id, _ := c.Get("id")
+	id1 := int(id.(float64))
+	var req RunSQLReq
+	var resp proto.GenerateResp
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code, resp.Message = proto.ParameterError, "参数解析错误"
+	} else {
+		user := service.GetUserByIDWithCache(id1)
+		if user.Role != "admin" {
+			resp.Code, resp.Message = proto.PermissionDenied, "无权限"
+		} else {
+			res, err2 := dao.RunSQLWithOrder(req.SQL)
+			if err2 != nil {
+				resp.Code, resp.Message = proto.OperationFailed, err2.Error()
+			} else {
+				resp.Code, resp.Message = proto.SuccessCode, "success"
+				resp.Data = res
+			}
+		}
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func GetQQAuthUrl(c *gin.Context) {
