@@ -481,21 +481,21 @@ func CheckUserCanUsePassword(user *dao.User, hostId, ip string) (bool, string) {
 	log.Println("check user id:", user.ID, "\t host_id:", hostId, "\t ip:", ip)
 	if err != nil {
 		log.Println("CheckUserCanUsePassword address info, error:", err)
-		return false, "服务器错误"
+		return false, "校验设备错误"
 	}
 	err = json.Unmarshal([]byte(user.LoginAddressInfo), &addressInfo)
 	if err != nil {
 		log.Println("CheckUserCanUsePassword address info, error:", err)
-		return false, "服务器错误"
+		return false, "校验地址错误"
 	}
 	address := GetIPRegionByAPI(ip)
-	log.Println("check  user id", user.ID, "req address info:", address, ", host id:", hostId)
+	log.Println("check  user id", user.ID, "req address info:", address, ", host id:", hostId, ", address info:", addressInfo)
 	var currentDeviceInfo proto.UserLoginDeviceInfo
 	var currentAddressInfo proto.UserLoginAddressInfo
 	var reason string
-	for _, v := range addressInfo {
+	for i, v := range addressInfo {
 		if v.Address == address {
-			currentAddressInfo = v
+			currentAddressInfo = addressInfo[i]
 		}
 	}
 	for i, v := range deviceInfo {
