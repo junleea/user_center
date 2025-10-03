@@ -489,14 +489,13 @@ func CheckUserCanUsePassword(user *dao.User, hostId, ip string) (bool, string) {
 		return false, "校验地址错误"
 	}
 	address := GetIPRegionByAPI(ip)
-	log.Println("check  user id", user.ID, "req address info:", address, ", host id:", hostId, ", address info:", addressInfo)
+	//log.Println("check  user id", user.ID, "req address info:", address, ", host id:", hostId, ", address info:", addressInfo)
 	var currentDeviceInfo proto.UserLoginDeviceInfo
 	var currentAddressInfo proto.UserLoginAddressInfo
 	var reason string
 	for i, v := range addressInfo {
 		if v.Address == address {
 			currentAddressInfo = addressInfo[i]
-			log.Println("check is address:", v.Address)
 		}
 	}
 	for i, v := range deviceInfo {
@@ -511,7 +510,7 @@ func CheckUserCanUsePassword(user *dao.User, hostId, ip string) (bool, string) {
 	}
 
 	//是否是首次登录地点
-	if currentAddressInfo.IPAddress == "" {
+	if currentAddressInfo.Address == "" {
 		reason = "首次登录地点：" + address
 		return false, reason //首次登录地点，不能使用密码
 	}
@@ -577,6 +576,7 @@ func UpdateUserLoginAddressDeviceInfo(user *dao.User, hostID, ip string) {
 
 	if index == -1 {
 		address_ := proto.UserLoginAddressInfo{
+			IPAddress:  ip,
 			Address:    address,
 			FirstLogin: now,
 			LastLogin:  now,
