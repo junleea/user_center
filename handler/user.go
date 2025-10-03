@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -512,7 +513,9 @@ func loginHandler(c *gin.Context) {
 		if user.ID != 0 {
 			can, reason := service.CheckUserCanUsePassword(&user, req_data.FingerPrint, ip)
 			if can == false {
-				c.JSON(http.StatusOK, gin.H{"code": proto.NeedEmailCodeLogin, "message": "由于:" + reason + ",不支持密码登录, 请使用验证码登录！"})
+				message := "由于:" + reason + ",不支持密码登录, 请使用验证码登录！"
+				log.Println("user id:", user.ID, ", login by password error:", message, ",ip:", ip, ", host id:", req_data.FingerPrint)
+				c.JSON(http.StatusOK, gin.H{"code": proto.NeedEmailCodeLogin, "message": message})
 				return
 			}
 			accessToken, refreshToken, err2 := service.GenerateAuthTokens(user)

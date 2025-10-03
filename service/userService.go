@@ -489,6 +489,7 @@ func CheckUserCanUsePassword(user *dao.User, hostId, ip string) (bool, string) {
 		return false, "服务器错误"
 	}
 	address := GetIPRegionByAPI(ip)
+	log.Println("check  user id", user.ID, "req address info:", address, ", host id:", hostId)
 	var currentDeviceInfo proto.UserLoginDeviceInfo
 	var currentAddressInfo proto.UserLoginAddressInfo
 	var reason string
