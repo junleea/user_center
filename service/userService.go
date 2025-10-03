@@ -496,6 +496,7 @@ func CheckUserCanUsePassword(user *dao.User, hostId, ip string) (bool, string) {
 	for i, v := range addressInfo {
 		if v.Address == address {
 			currentAddressInfo = addressInfo[i]
+			log.Println("check is address:", v.Address)
 		}
 	}
 	for i, v := range deviceInfo {
