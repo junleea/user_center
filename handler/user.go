@@ -690,10 +690,12 @@ func refreshTokenHandler(c *gin.Context) {
 
 func LoginOAuth(c *gin.Context) {
 	uuid := c.Query("uuid")
+	host_id := c.Query("host_id")
+	// ip := c.ClientIP()
 	var resp proto.GenerateResp
-	if uuid == "" {
+	if uuid == "" || host_id == "" || len(uuid) < 32 || len(host_id) < 32{
 		resp.Code = proto.ParameterError
-		resp.Message = "uuid is empty"
+		resp.Message = "uuid or host_id is invalid"
 		c.JSON(200, resp)
 		return
 	}
@@ -713,6 +715,7 @@ func LoginOAuth(c *gin.Context) {
 		return
 	}
 	if status.Status == 0 {
+		//service.UpdateUserLoginAddressDeviceInfo(&user, host_id, ip)
 		worker.DelRedis(uuid) //删除uuid,只能查一次
 	}
 	resp.Code = proto.SuccessCode

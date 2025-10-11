@@ -25,11 +25,6 @@ type User struct {
 	DeviceFunc       bool   `gorm:"column:device_func"` //设备功能
 	CIDFunc          bool   `gorm:"column:cid_func"`    //持续集成功能
 	Avatar           string `gorm:"column:avatar"`
-	AuthPolicy       int    `gorm:"column:auth_policy" json:"auth_policy"`
-	CreateTime       string `gorm:"column:create_time"`
-	QQ               int64  `gorm:"column:qq"`
-	QQOpenID         string `gorm:"column:qq_openid"`
-	UpdateTime       string `gorm:"column:update_time"`
 	LoginAddressInfo string `gorm:"column:login_address_info" json:"login_address_info,omitempty"`
 	LoginDeviceInfo  string `gorm:"column:login_device_info" json:"login_device_info,omitempty"`
 }
@@ -44,6 +39,13 @@ type ThirdPartyUserInfo struct {
 	ThirdPartyUserName   string `json:"third_party_user_name"`   // 第三方用户名
 	ThirdPartyUserAvatar string `json:"third_party_user_avatar"` // 第三方用户头像
 	ThirdPartyUserUrl    string `json:"third_party_user_url"`    // 第三方用户主页,可选
+}
+
+//存储totp密钥信息
+type TOTPSecretInfo struct {
+	gorm.Model
+	UserID               int    `gorm:"column:user_id" json:"user_id"`                 // 用户ID
+	Secret               string `gorm:"column:secret" json:"secret"`
 }
 
 func CreateUser(name, password, email, gender string, age int) uint {
@@ -129,7 +131,7 @@ func UpdateUserByID2(id int, req proto.UpdateUserInfoReq) error {
 
 // 用户修改自己的信息
 func UpdateUserByID3(id int, req proto.UpdateUserInfoReq) error {
-	res := DB.Model(&User{}).Where("id = ?", id).Updates(User{Name: req.Username, Age: req.Age, Avatar: req.Avatar, Gender: req.Gender, QQ: req.QQ})
+	res := DB.Model(&User{}).Where("id = ?", id).Updates(User{Name: req.Username, Age: req.Age, Avatar: req.Avatar, Gender: req.Gender})
 	return res.Error
 }
 
