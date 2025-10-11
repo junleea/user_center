@@ -83,6 +83,14 @@ func Init() error {
 		log.Println("local ip db table migrated successfully")
 	}
 
+	err = db.AutoMigrate(&TOTPSecretInfo{})
+	if err != nil {
+		log.Println("totp secret info db table:", err)
+		return err
+	} else {
+		log.Println("totp secret info db table migrated successfully")
+	}
+
 	DB = db
 	return err
 }
