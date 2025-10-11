@@ -64,6 +64,8 @@ func init() {
 	os.MkdirAll(proto.CID_BASE_DIR, os.ModePerm)
 	os.MkdirAll(proto.CID_BASE_DIR+"script", os.ModePerm)
 	os.MkdirAll(proto.CID_BASE_DIR+"workspace", os.ModePerm)
+	//设置不需认证api
+	proto.InitAppendDontNeedAuthAPI()
 	//readConfig()
 }
 

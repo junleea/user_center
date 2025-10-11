@@ -253,3 +253,7 @@ func DefaultConfig() {
 	Config.SERVER_NAME = "default"
 	Config.SPARK_PPT_USAGE = false
 }
+
+func InitAppendDontNeedAuthAPI() {
+	Url_map["/user/totp_second_auth"] = true //totp二次认证
+}
