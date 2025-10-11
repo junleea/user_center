@@ -542,3 +542,14 @@ type SQLResultColumnsValue struct {
 	Label string `json:"label"`
 	Attr  string `json:"attr"`
 }
+
+type GenAndGetTOTPSecretResponse struct {
+	CreatedAt time.Time `json:"created_at"`
+	Secret    string    `json:"secret"`
+	URL       string    `json:"url"`
+}
+
+type TOTPSecondAuthRequest struct {
+	State string `json:"state" form:"state" binding:"required"`
+	Code  string `json:"code" form:"code" binding:"required"`
+}

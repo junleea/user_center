@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/golang-jwt/jwt"
+	"github.com/pquerna/otp"
+	"github.com/pquerna/otp/totp"
 	"log"
 	"regexp"
 	"strconv"
@@ -592,4 +594,86 @@ func UpdateUserLoginAddressDeviceInfo(user *dao.User, hostID, ip string) {
 	if err != nil {
 		log.Println("update user login device and address info error:", err)
 	}
+	UpdateUserCache(int(user.ID)) //更新缓存
+}
+
+func CheckAndGenerateTOTPSecret(user *dao.User) (*proto.GenAndGetTOTPSecretResponse, error) {
+	resp := &proto.GenAndGetTOTPSecretResponse{}
+	//查看是否已有，若已有则不能生成
+	totp_secret_info := dao.FindUserTOTPSecretByUserID(user.ID)
+	if totp_secret_info.ID != 0 {
+		resp.CreatedAt = totp_secret_info.CreatedAt
+		//errors.New("已有密钥，若要创建需先解绑")
+		return resp, nil
+	}
+	// 生成随机TOTP密钥
+	secret_info, err := totp.Generate(totp.GenerateOpts{
+		Issuer:      user.Name,
+		AccountName: user.Email,
+		Algorithm:   otp.AlgorithmSHA1,
+		Digits:      proto.TOTP_CODE_LENGTH,
+		Period:      proto.TOTP_PERIOD,
+	})
+	if err != nil {
+		log.Println("generate TOTP secret error:", err)
+		return nil, errors.New("创建TOTP密钥失败")
+	}
+
+	//创建
+	err = dao.InsertUserTOTPSecret(int(user.ID), secret_info.Secret())
+	if err != nil {
+		log.Println("insert user totp secret error:", err)
+		return nil, errors.New("保存TOTP失败")
+	}
+	resp.Secret, resp.URL = secret_info.Secret(), secret_info.URL()
+	return resp, nil
+}
+
+func DelTOTPSecret(user *dao.User, delType int, userID uint) error {
+	var err error
+	if user.Role == "admin" {
+		if delType == 0 {
+			//删除自己的，默认
+			err = dao.DelUserTOTPSecret(user.ID)
+		} else if delType == 1 {
+			if userID == 0 {
+				err = errors.New("")
+			} else {
+				//删除指定用户的
+				err = dao.DelUserTOTPSecret(userID)
+			}
+		} else if delType == 2 {
+			//删除所有
+			err = dao.DelAllUserTOTPSecret()
+		} else {
+			err = errors.New("错误的操作类型")
+		}
+	} else {
+		err = dao.DelUserTOTPSecret(user.ID)
+	}
+	return err
+}
+
+func CheckUserTOTPCode(user *dao.User, code string) error {
+	var err error
+	secret_info := dao.FindUserTOTPSecretByUserID(user.ID)
+	if secret_info.ID == 0 {
+		return errors.New("未绑定TOTP密钥，请先登录绑定！")
+	}
+
+	// 验证TOTP验证码
+	valid, err := totp.ValidateCustom(
+		code,
+		secret_info.Secret,
+		time.Now(),
+		totp.ValidateOpts{
+			Algorithm: otp.AlgorithmSHA1,
+			Digits:    proto.TOTP_CODE_LENGTH,
+			Period:    proto.TOTP_PERIOD,
+		},
+	)
+	if valid == false {
+		return errors.New("无效的TOTP验证码")
+	}
+	return err
 }

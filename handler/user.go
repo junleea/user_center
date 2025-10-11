@@ -45,6 +45,7 @@ func SetUpUserGroup(router *gin.Engine) {
 	userGroup.POST("/refresh_token", refreshTokenHandler)  //刷新token
 	userGroup.GET("/get_token_code", GetTokenCode)         //获取token的code
 	userGroup.GET("/get_token_by_code", GetTokenByCode)    //通过code获取token
+	userGroup.POST("/totp_second_auth", HandleTOTPSecondAuth)
 }
 
 type RefreshTokenReq struct {
@@ -513,9 +514,14 @@ func loginHandler(c *gin.Context) {
 		if user.ID != 0 {
 			can, reason := service.CheckUserCanUsePassword(&user, req_data.FingerPrint, ip)
 			if can == false {
+				var uuidStr string
+				if proto.Config.PASSWORD_NEED_SECOND_AUTH {
+					uuid_ := uuid.New()
+					worker.SetKVWithExpire(uuid_.String(), strconv.Itoa(int(user.ID)), time.Minute*5) //二次认证允许时间
+				}
 				message := "由于:" + reason + ",不支持密码登录, 请使用验证码登录！"
 				log.Println("user id:", user.ID, ", login by password error:", message, ",ip:", ip, ", host id:", req_data.FingerPrint)
-				c.JSON(http.StatusOK, gin.H{"code": proto.NeedEmailCodeLogin, "message": message})
+				c.JSON(http.StatusOK, gin.H{"code": proto.NeedEmailCodeLogin, "message": message, "data": uuidStr})
 				return
 			}
 			accessToken, refreshToken, err2 := service.GenerateAuthTokens(user)
@@ -691,9 +697,9 @@ func refreshTokenHandler(c *gin.Context) {
 func LoginOAuth(c *gin.Context) {
 	uuid := c.Query("uuid")
 	host_id := c.Query("host_id")
-	// ip := c.ClientIP()
+	ip := c.ClientIP()
 	var resp proto.GenerateResp
-	if uuid == "" || host_id == "" || len(uuid) < 32 || len(host_id) < 32{
+	if uuid == "" || host_id == "" || len(uuid) < 32 || len(host_id) < 32 {
 		resp.Code = proto.ParameterError
 		resp.Message = "uuid or host_id is invalid"
 		c.JSON(200, resp)
@@ -715,7 +721,8 @@ func LoginOAuth(c *gin.Context) {
 		return
 	}
 	if status.Status == 0 {
-		//service.UpdateUserLoginAddressDeviceInfo(&user, host_id, ip)
+		user := service.GetUserByIDWithCache(int(status.UserInfo.UserID))
+		service.UpdateUserLoginAddressDeviceInfo(&user, host_id, ip)
 		worker.DelRedis(uuid) //删除uuid,只能查一次
 	}
 	resp.Code = proto.SuccessCode
@@ -918,5 +925,49 @@ func GetTokenByCode(c *gin.Context) {
 			}
 		}
 	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func HandleTOTPSecondAuth(c *gin.Context) {
+	var resp proto.GenerateResp
+	//处理二次认证
+	var req proto.TOTPSecondAuthRequest
+	if err := c.ShouldBind(&req); err == nil {
+		user_id_str := worker.GetRedis(req.State)
+		if user_id_str == "" {
+			resp.Code = proto.ParameterError
+			resp.Message = "状态错误"
+		} else {
+			user_id, _ := strconv.Atoi(user_id_str)
+			user := service.GetUserByIDWithCache(user_id)
+			err = service.CheckUserTOTPCode(&user, req.Code)
+			if err != nil {
+				resp.Code = proto.ParameterError
+				resp.Message = "无效的验证码"
+			} else {
+				accessToken, refreshToken, err2 := service.GenerateAuthTokens(user)
+				if err2 != nil {
+					resp.Code = proto.OperationFailed
+					resp.Message = "生成TOKEN错误"
+				} else {
+					authResponse := proto.AuthResponse{
+						AccessToken:  accessToken,
+						RefreshToken: refreshToken,
+						UserID:       user.ID,
+						ExpireIn:     time.Now().Add(proto.AccessTokenDuration).Unix(), // 令牌过期时间
+						Username:     user.Name,
+						Email:        user.Email,
+					}
+					resp.Code = proto.SuccessCode
+					resp.Message = "success"
+					resp.Data = authResponse
+				}
+			}
+		}
+	} else {
+		resp.Code = proto.ParameterError
+		resp.Message = "解析参数错误：" + err.Error()
+	}
+
 	c.JSON(http.StatusOK, resp)
 }

@@ -229,3 +229,9 @@ const (
 const (
 	TX_LOCATION_URL = "https://apis.map.qq.com/ws/location/v1/ip"
 )
+
+// totp配置
+const (
+	TOTP_CODE_LENGTH = 6
+	TOTP_PERIOD      = 30 // 30秒刷新
+)

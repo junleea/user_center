@@ -41,11 +41,11 @@ type ThirdPartyUserInfo struct {
 	ThirdPartyUserUrl    string `json:"third_party_user_url"`    // 第三方用户主页,可选
 }
 
-//存储totp密钥信息
+// 存储totp密钥信息
 type TOTPSecretInfo struct {
 	gorm.Model
-	UserID               int    `gorm:"column:user_id" json:"user_id"`                 // 用户ID
-	Secret               string `gorm:"column:secret" json:"secret"`
+	UserID int    `gorm:"column:user_id" json:"user_id"` // 用户ID
+	Secret string `gorm:"column:secret" json:"secret"`
 }
 
 func CreateUser(name, password, email, gender string, age int) uint {
@@ -393,5 +393,55 @@ func UpdateUserLoginAddressAndDeviceInfo(id int, loginDevice string, addressInfo
 		db = DB
 	}
 	res := db.Exec("UPDATE users SET login_device_info = ?, login_address_info = ? WHERE id = ?", loginDevice, addressInfo, id)
+	return res.Error
+}
+
+func FindUserTOTPSecretByUserID(user_id uint) TOTPSecretInfo {
+	var secret TOTPSecretInfo
+	var db *gorm.DB
+	if proto.Config.SERVER_SQL_LOG {
+		db = DB.Debug()
+	} else {
+		db = DB
+	}
+	db.Where("user_id = ?", user_id).Find(&secret)
+	return secret
+}
+
+func InsertUserTOTPSecret(user_id int, secret string) error {
+	var db *gorm.DB
+	if proto.Config.SERVER_SQL_LOG {
+		db = DB.Debug()
+	} else {
+		db = DB
+	}
+	totp_secret := TOTPSecretInfo{UserID: user_id, Secret: secret}
+	res := db.Create(&totp_secret)
+	return res.Error
+}
+
+func DelUserTOTPSecret(user_id uint) error {
+	var db *gorm.DB
+	if proto.Config.SERVER_SQL_LOG {
+		db = DB.Debug()
+	} else {
+		db = DB
+	}
+	res := db.Delete(&TOTPSecretInfo{}, user_id)
+	return res.Error
+}
+func GetDB() *gorm.DB {
+	var db *gorm.DB
+	if proto.Config.SERVER_SQL_LOG {
+		db = DB.Debug()
+	} else {
+		db = DB
+	}
+	return db
+}
+
+func DelAllUserTOTPSecret() error {
+	db := GetDB()
+	res := db.Where("deleted_at IS NULL").Delete(&TOTPSecretInfo{})
 	return res.Error
 }

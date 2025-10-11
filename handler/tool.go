@@ -57,6 +57,9 @@ func SetUpToolGroup(router *gin.Engine) {
 	//国外服务器处理请求
 	toolGroup.POST("/online_server_request", HandleOnlineServerRequest)
 	toolGroup.POST("/sync_system_config", HandleSyncSystemConfig) //同步系统配置
+	//totp
+	toolGroup.GET("/gen_get_totp_secret", GenAndGetTOTPSecret)
+	toolGroup.DELETE("/del_totp_secret", DelTOTPSecret)
 }
 
 type QQCallbackReq struct {
@@ -515,6 +518,46 @@ func HandleOnlineServerRequest(c *gin.Context) {
 	} else {
 		resp.Code = proto.ParameterError
 		resp.Message = "参数错误"
+	}
+	c.JSON(http.StatusOK, resp)
+}
+func RequestGetUserInfo(c *gin.Context) dao.User {
+	id, _ := c.Get("id")
+	userId := int(id.(float64))
+	user := service.GetUserByIDWithCache(userId)
+	return user
+}
+
+func GenAndGetTOTPSecret(c *gin.Context) {
+	var resp proto.GenerateResp
+	user := RequestGetUserInfo(c)
+	//生成totp密钥
+	secret_info, err := service.CheckAndGenerateTOTPSecret(&user)
+	if err != nil {
+		resp.Code = proto.OperationFailed
+		resp.Message = err.Error()
+	} else {
+		resp.Code = proto.SuccessCode
+		resp.Message = "success"
+		resp.Data = secret_info
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func DelTOTPSecret(c *gin.Context) {
+	del_type := c.Query("type")
+	huser_id := c.Query("user_id")
+	var resp proto.GenerateResp
+	user := RequestGetUserInfo(c)
+	del_type_int, _ := strconv.Atoi(del_type)
+	huser_id_int, _ := strconv.Atoi(huser_id)
+	err := service.DelTOTPSecret(&user, del_type_int, uint(huser_id_int))
+	if err != nil {
+		resp.Code = proto.OperationFailed
+		resp.Message = err.Error()
+	} else {
+		resp.Code = proto.SuccessCode
+		resp.Message = "success"
 	}
 	c.JSON(http.StatusOK, resp)
 }
