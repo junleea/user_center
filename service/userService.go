@@ -702,7 +702,8 @@ func NeedSecondAuthService(user *dao.User) (*proto.NeedSecondAuthResp, error) {
 	}
 	var uuidStr string //state信息
 	uuid_ := uuid.New()
-	worker.SetKVWithExpire(uuid_.String(), strconv.Itoa(int(user.ID)), time.Minute*5) //二次认证允许时间
+	uuidStr = uuid_.String()
+	worker.SetKVWithExpire(uuidStr, strconv.Itoa(int(user.ID)), time.Minute*5) //二次认证允许时间
 
 	resp.State = uuidStr
 	resp.Expire = 5
