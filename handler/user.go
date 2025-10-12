@@ -972,6 +972,7 @@ func HandleSecondAuth(c *gin.Context) {
 					resp.Code = proto.SuccessCode
 					resp.Message = "success"
 					resp.Data = authResponse
+					worker.DelKV(req.State) //成功则删除，只能用一次
 				}
 			}
 		}
