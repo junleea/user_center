@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/golang-jwt/jwt"
+	"github.com/google/uuid"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
 	"log"
@@ -683,4 +684,27 @@ func CheckUserTOTPCode(user *dao.User, code string) error {
 		return errors.New("无效的TOTP验证码")
 	}
 	return err
+}
+
+func NeedSecondAuthService(user *dao.User) (*proto.NeedSecondAuthResp, error) {
+	var resp proto.NeedSecondAuthResp
+	//支持认证方式
+	user_totp_secret := GetUserTOTPSecretInfo(user)
+	if user_totp_secret.ID != 0 {
+		//支持totp
+		resp.Type += ",totp"
+	}
+	//后续支持其他认证方式添加在下面
+
+	if resp.Type == "" {
+		log.Println("[error] admin config need second auth but the user not support any second auth type!")
+		return nil, errors.New("类型不支持，二次认证配置不支持")
+	}
+	var uuidStr string //state信息
+	uuid_ := uuid.New()
+	worker.SetKVWithExpire(uuid_.String(), strconv.Itoa(int(user.ID)), time.Minute*5) //二次认证允许时间
+
+	resp.State = uuidStr
+	resp.Expire = 5
+	return &resp, nil
 }

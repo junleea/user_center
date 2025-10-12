@@ -512,16 +512,20 @@ func loginHandler(c *gin.Context) {
 		}
 		user := service.GetUser(req_data.User, req_data.Password, req_data.Password)
 		if user.ID != 0 {
-			can, reason := service.CheckUserCanUsePassword(&user, req_data.FingerPrint, ip)
-			if can == false || proto.Config.PASSWORD_NEED_SECOND_AUTH {
-				var uuidStr string
-				if proto.Config.PASSWORD_NEED_SECOND_AUTH {
-					uuid_ := uuid.New()
-					worker.SetKVWithExpire(uuid_.String(), strconv.Itoa(int(user.ID)), time.Minute*5) //二次认证允许时间
+			if proto.Config.PASSWORD_NEED_SECOND_AUTH {
+				resp, err4 := service.NeedSecondAuthService(&user)
+				//无错误才支持二次认证
+				if err4 == nil {
+					c.JSON(http.StatusOK, gin.H{"code": proto.NeedEmailCodeLogin, "message": "需要二次认证支持方式", "data": resp})
+					return
 				}
+			}
+
+			can, reason := service.CheckUserCanUsePassword(&user, req_data.FingerPrint, ip)
+			if can == false {
 				message := "由于:" + reason + ",不支持密码登录, 请使用验证码登录！"
 				log.Println("user id:", user.ID, ", login by password error:", message, ",ip:", ip, ", host id:", req_data.FingerPrint)
-				c.JSON(http.StatusOK, gin.H{"code": proto.NeedEmailCodeLogin, "message": message, "data": uuidStr})
+				c.JSON(http.StatusOK, gin.H{"code": proto.NeedEmailCodeLogin, "message": message})
 				return
 			}
 			accessToken, refreshToken, err2 := service.GenerateAuthTokens(user)
