@@ -255,5 +255,5 @@ func DefaultConfig() {
 }
 
 func InitAppendDontNeedAuthAPI() {
-	Url_map["/user/totp_second_auth"] = true //totp二次认证
+	Url_map["/user/second_auth"] = true //二次认证通用接口
 }

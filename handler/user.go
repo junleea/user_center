@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
@@ -45,7 +46,7 @@ func SetUpUserGroup(router *gin.Engine) {
 	userGroup.POST("/refresh_token", refreshTokenHandler)  //刷新token
 	userGroup.GET("/get_token_code", GetTokenCode)         //获取token的code
 	userGroup.GET("/get_token_by_code", GetTokenByCode)    //通过code获取token
-	userGroup.POST("/totp_second_auth", HandleTOTPSecondAuth)
+	userGroup.POST("/second_auth", HandleSecondAuth)
 }
 
 type RefreshTokenReq struct {
@@ -929,6 +930,56 @@ func GetTokenByCode(c *gin.Context) {
 			}
 		}
 	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func HandleSecondAuth(c *gin.Context) {
+	var resp proto.GenerateResp
+	//处理二次认证
+	var req proto.SecondAuthRequest
+	if err := c.ShouldBind(&req); err == nil {
+		state_str := worker.GetRedis(req.State)
+		if state_str == "" {
+			resp.Code = proto.ParameterError
+			resp.Message = "状态错误"
+		} else {
+			var state proto.SecondAuthServerSaveState
+			_ = json.Unmarshal([]byte(state_str), &state)
+			user := service.GetUserByIDWithCache(state.UserId)
+			switch req.Type {
+			case "TOTP":
+				err = service.CheckUserTOTPCode(&user, req.Code)
+			default:
+				err = errors.New("错误的二次认证类型")
+			}
+			if err != nil {
+				resp.Code = proto.ParameterError
+				resp.Message = "无效的验证码"
+			} else {
+				accessToken, refreshToken, err2 := service.GenerateAuthTokens(user)
+				if err2 != nil {
+					resp.Code = proto.OperationFailed
+					resp.Message = "生成TOKEN错误"
+				} else {
+					authResponse := proto.AuthResponse{
+						AccessToken:  accessToken,
+						RefreshToken: refreshToken,
+						UserID:       user.ID,
+						ExpireIn:     time.Now().Add(proto.AccessTokenDuration).Unix(), // 令牌过期时间
+						Username:     user.Name,
+						Email:        user.Email,
+					}
+					resp.Code = proto.SuccessCode
+					resp.Message = "success"
+					resp.Data = authResponse
+				}
+			}
+		}
+	} else {
+		resp.Code = proto.ParameterError
+		resp.Message = "解析参数错误：" + err.Error()
+	}
+
 	c.JSON(http.StatusOK, resp)
 }
 

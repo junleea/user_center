@@ -553,10 +553,21 @@ type TOTPSecondAuthRequest struct {
 	State string `json:"state" form:"state" binding:"required"`
 	Code  string `json:"code" form:"code" binding:"required"`
 }
+type SecondAuthRequest struct {
+	State string `json:"state" form:"state" binding:"required"`
+	Code  string `json:"code" form:"code" binding:"required"`
+	Type  string `json:"type" form:"type" binding:"required"`
+}
 
 // 密码登录需二次认证支持类型及状态
 type NeedSecondAuthResp struct {
 	State  string `json:"state" form:"state"`
 	Expire int    `json:"expire" form:"expire"` //二次认证状态最长时间分钟
 	Type   string `json:"type" form:"type"`     //二次认证支持类型
+}
+
+type SecondAuthServerSaveState struct {
+	UserId int    `json:"user_id"`
+	Type   string `json:"type" form:"type"` //二次认证支持类型
+	Code   string `json:"code" form:"code"` //如邮件等保持的验证码
 }

@@ -692,7 +692,7 @@ func NeedSecondAuthService(user *dao.User) (*proto.NeedSecondAuthResp, error) {
 	user_totp_secret := GetUserTOTPSecretInfo(user)
 	if user_totp_secret.ID != 0 {
 		//支持totp
-		resp.Type += ",totp"
+		resp.Type += ",TOTP"
 	}
 	//后续支持其他认证方式添加在下面
 
@@ -703,7 +703,12 @@ func NeedSecondAuthService(user *dao.User) (*proto.NeedSecondAuthResp, error) {
 	var uuidStr string //state信息
 	uuid_ := uuid.New()
 	uuidStr = uuid_.String()
-	worker.SetKVWithExpire(uuidStr, strconv.Itoa(int(user.ID)), time.Minute*5) //二次认证允许时间
+
+	var state proto.SecondAuthServerSaveState
+	state.Type = resp.Type
+	state.UserId = int(user.ID)
+	stateBytes, _ := json.Marshal(state)
+	worker.SetKVWithExpire(uuidStr, string(stateBytes), time.Minute*5) //二次认证允许时间
 
 	resp.State = uuidStr
 	resp.Expire = 5
