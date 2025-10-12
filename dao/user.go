@@ -427,7 +427,7 @@ func DelUserTOTPSecret(user_id uint) error {
 	} else {
 		db = DB
 	}
-	res := db.Delete(&TOTPSecretInfo{}, user_id)
+	res := db.Where("deleted_at IS NULL").Delete(&TOTPSecretInfo{}, user_id)
 	return res.Error
 }
 func GetDB() *gorm.DB {
