@@ -513,7 +513,7 @@ func loginHandler(c *gin.Context) {
 		user := service.GetUser(req_data.User, req_data.Password, req_data.Password)
 		if user.ID != 0 {
 			can, reason := service.CheckUserCanUsePassword(&user, req_data.FingerPrint, ip)
-			if can == false {
+			if can == false || proto.Config.PASSWORD_NEED_SECOND_AUTH {
 				var uuidStr string
 				if proto.Config.PASSWORD_NEED_SECOND_AUTH {
 					uuid_ := uuid.New()
