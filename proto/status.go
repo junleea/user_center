@@ -106,6 +106,7 @@ const (
 	SigningKeyVersionIsTooOld = 200 // 签名密钥版本过旧
 
 	NeedEmailCodeLogin = 1101
+	NeedSecondAuth     = 1102
 )
 
 const (

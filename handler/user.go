@@ -516,7 +516,7 @@ func loginHandler(c *gin.Context) {
 				resp, err4 := service.NeedSecondAuthService(&user)
 				//无错误才支持二次认证
 				if err4 == nil {
-					c.JSON(http.StatusOK, gin.H{"code": proto.NeedEmailCodeLogin, "message": "需要二次认证支持方式", "data": resp})
+					c.JSON(http.StatusOK, gin.H{"code": proto.NeedSecondAuth, "message": "需要二次认证", "data": resp})
 					return
 				}
 			}
