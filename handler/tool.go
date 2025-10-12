@@ -58,7 +58,8 @@ func SetUpToolGroup(router *gin.Engine) {
 	toolGroup.POST("/online_server_request", HandleOnlineServerRequest)
 	toolGroup.POST("/sync_system_config", HandleSyncSystemConfig) //同步系统配置
 	//totp
-	toolGroup.GET("/gen_get_totp_secret", GenAndGetTOTPSecret)
+	toolGroup.GET("/gen_totp_secret", GenTOTPSecret)
+	toolGroup.GET("/get_totp_secret_info", GetTOTPSecret)
 	toolGroup.DELETE("/del_totp_secret", DelTOTPSecret)
 }
 
@@ -528,7 +529,7 @@ func RequestGetUserInfo(c *gin.Context) dao.User {
 	return user
 }
 
-func GenAndGetTOTPSecret(c *gin.Context) {
+func GenTOTPSecret(c *gin.Context) {
 	var resp proto.GenerateResp
 	user := RequestGetUserInfo(c)
 	//生成totp密钥
@@ -541,6 +542,14 @@ func GenAndGetTOTPSecret(c *gin.Context) {
 		resp.Message = "success"
 		resp.Data = secret_info
 	}
+	c.JSON(http.StatusOK, resp)
+}
+func GetTOTPSecret(c *gin.Context) {
+	var resp proto.GenerateResp
+	user := RequestGetUserInfo(c)
+	resp.Code = proto.SuccessCode
+	resp.Data = service.GetUserTOTPSecretInfo(&user)
+	resp.Message = "success"
 	c.JSON(http.StatusOK, resp)
 }
 

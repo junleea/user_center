@@ -597,20 +597,27 @@ func UpdateUserLoginAddressDeviceInfo(user *dao.User, hostID, ip string) {
 	UpdateUserCache(int(user.ID)) //更新缓存
 }
 
+func GetUserTOTPSecretInfo(user *dao.User) *dao.TOTPSecretInfo {
+	totp_secret_info := dao.FindUserTOTPSecretByUserID(user.ID)
+	if totp_secret_info.ID != 0 {
+		totp_secret_info.Secret = ""
+	}
+	return &totp_secret_info
+}
+
 func CheckAndGenerateTOTPSecret(user *dao.User) (*proto.GenAndGetTOTPSecretResponse, error) {
 	resp := &proto.GenAndGetTOTPSecretResponse{}
 	//查看是否已有，若已有则不能生成
 	totp_secret_info := dao.FindUserTOTPSecretByUserID(user.ID)
 	if totp_secret_info.ID != 0 {
-		resp.CreatedAt = totp_secret_info.CreatedAt
-		//errors.New("已有密钥，若要创建需先解绑")
-		return resp, nil
+		//resp.CreatedAt = totp_secret_info.CreatedAt
+		return resp, errors.New("已有密钥，若要创建需先解绑")
 	}
 	// 生成随机TOTP密钥
 	secret_info, err := totp.Generate(totp.GenerateOpts{
 		Issuer:      user.Name,
 		AccountName: user.Email,
-		Algorithm:   otp.AlgorithmSHA1,
+		Algorithm:   proto.TOTP_SECRET_ALGORITHM,
 		Digits:      proto.TOTP_CODE_LENGTH,
 		Period:      proto.TOTP_PERIOD,
 	})
@@ -667,9 +674,9 @@ func CheckUserTOTPCode(user *dao.User, code string) error {
 		secret_info.Secret,
 		time.Now(),
 		totp.ValidateOpts{
-			Algorithm: otp.AlgorithmSHA1,
-			Digits:    proto.TOTP_CODE_LENGTH,
-			Period:    proto.TOTP_PERIOD,
+			Algorithm: otp.Algorithm(secret_info.Algorithm),
+			Digits:    otp.Digits(secret_info.Length),
+			Period:    uint(secret_info.Period),
 		},
 	)
 	if valid == false {

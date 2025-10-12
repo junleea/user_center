@@ -44,8 +44,11 @@ type ThirdPartyUserInfo struct {
 // 存储totp密钥信息
 type TOTPSecretInfo struct {
 	gorm.Model
-	UserID int    `gorm:"column:user_id" json:"user_id"` // 用户ID
-	Secret string `gorm:"column:secret" json:"secret"`
+	UserID    int    `gorm:"column:user_id" json:"user_id"` // 用户ID
+	Secret    string `gorm:"column:secret" json:"secret"`
+	Period    int    `gorm:"column:period" json:"period"`
+	Length    int    `gorm:"column:length" json:"length"`
+	Algorithm int    `gorm:"column:algorithm" json:"algorithm"`
 }
 
 func CreateUser(name, password, email, gender string, age int) uint {
@@ -415,7 +418,7 @@ func InsertUserTOTPSecret(user_id int, secret string) error {
 	} else {
 		db = DB
 	}
-	totp_secret := TOTPSecretInfo{UserID: user_id, Secret: secret}
+	totp_secret := TOTPSecretInfo{UserID: user_id, Secret: secret, Period: proto.TOTP_PERIOD, Length: proto.TOTP_CODE_LENGTH, Algorithm: int(proto.TOTP_SECRET_ALGORITHM)}
 	res := db.Create(&totp_secret)
 	return res.Error
 }

@@ -1,5 +1,7 @@
 package proto
 
+import "github.com/pquerna/otp"
+
 const (
 	SuccessCode = 0 // 成功
 
@@ -232,6 +234,7 @@ const (
 
 // totp配置
 const (
-	TOTP_CODE_LENGTH = 6
-	TOTP_PERIOD      = 30 // 30秒刷新
+	TOTP_CODE_LENGTH      = 6
+	TOTP_PERIOD           = 30 // 30秒刷新
+	TOTP_SECRET_ALGORITHM = otp.AlgorithmSHA1
 )
