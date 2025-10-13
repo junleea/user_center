@@ -935,6 +935,7 @@ func GetTokenByCode(c *gin.Context) {
 
 func HandleSecondAuth(c *gin.Context) {
 	var resp proto.GenerateResp
+	ip := c.ClientIP()
 	//处理二次认证
 	var req proto.SecondAuthRequest
 	if err := c.ShouldBind(&req); err == nil {
@@ -973,6 +974,7 @@ func HandleSecondAuth(c *gin.Context) {
 					resp.Message = "success"
 					resp.Data = authResponse
 					worker.DelKV(req.State) //成功则删除，只能用一次
+					service.UpdateUserLoginAddressDeviceInfo(&user, req.HostID, ip)
 				}
 			}
 		}

@@ -554,9 +554,10 @@ type TOTPSecondAuthRequest struct {
 	Code  string `json:"code" form:"code" binding:"required"`
 }
 type SecondAuthRequest struct {
-	State string `json:"state" form:"state" binding:"required"`
-	Code  string `json:"code" form:"code" binding:"required"`
-	Type  string `json:"type" form:"type" binding:"required"`
+	State  string `json:"state" form:"state" binding:"required"`
+	Code   string `json:"code" form:"code" binding:"required"`
+	Type   string `json:"type" form:"type" binding:"required"`
+	HostID string `json:"host_id" form:"host_id" binding:"required"`
 }
 
 // 密码登录需二次认证支持类型及状态
