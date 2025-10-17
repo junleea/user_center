@@ -238,4 +238,6 @@ const (
 	TOTP_CODE_LENGTH      = 6
 	TOTP_PERIOD           = 30 // 30秒刷新
 	TOTP_SECRET_ALGORITHM = otp.AlgorithmSHA1
+	OTP_TYPE_TOTP         = 0
+	OTP_TYPE_HOTP         = 1
 )

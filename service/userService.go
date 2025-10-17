@@ -7,6 +7,7 @@ import (
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"github.com/pquerna/otp"
+	"github.com/pquerna/otp/hotp"
 	"github.com/pquerna/otp/totp"
 	"log"
 	"regexp"
@@ -460,6 +461,18 @@ func SendLoginCodeByEmailPhone(req proto.EmailPhoneCodeLoginReq) error {
 			} else {
 				//随机字符串验证码大写
 				code := worker.GetRandomString(6)
+				if req.State != "" {
+					state_str := worker.GetKV(req.State)
+					if state_str == "" {
+						return errors.New("二次认证状态错误")
+					} else {
+						var state proto.SecondAuthServerSaveState
+						_ = json.Unmarshal([]byte(state_str), &state)
+						state.Code = code
+						stateBytes, _ := json.Marshal(state)
+						worker.SetKV(req.State, string(stateBytes)) //二次认证允许时间
+					}
+				}
 				worker.SetRedisWithExpire(key, code, time.Minute*5) //设置5分钟过期
 				//发送邮件
 				//go SendEmail(req.Email, "集成AI工具邮件验证码", "登录验证码:"+code+" ,请在5分钟内使用!")
@@ -616,7 +629,7 @@ func CheckAndGenerateTOTPSecret(user *dao.User) (*proto.GenAndGetTOTPSecretRespo
 	}
 	// 生成随机TOTP密钥
 	secret_info, err := totp.Generate(totp.GenerateOpts{
-		Issuer:      user.Name,
+		Issuer:      "SAW_" + user.Name,
 		AccountName: user.Email,
 		Algorithm:   proto.TOTP_SECRET_ALGORITHM,
 		Digits:      proto.TOTP_CODE_LENGTH,
@@ -628,7 +641,37 @@ func CheckAndGenerateTOTPSecret(user *dao.User) (*proto.GenAndGetTOTPSecretRespo
 	}
 
 	//创建
-	err = dao.InsertUserTOTPSecret(int(user.ID), secret_info.Secret())
+	err = dao.InsertUserTOTPSecret(int(user.ID), secret_info.Secret(), proto.OTP_TYPE_TOTP)
+	if err != nil {
+		log.Println("insert user totp secret error:", err)
+		return nil, errors.New("保存TOTP失败")
+	}
+	resp.Secret, resp.URL = secret_info.Secret(), secret_info.URL()
+	return resp, nil
+}
+
+func CheckAndGenerateHOTPSecret(user *dao.User) (*proto.GenAndGetTOTPSecretResponse, error) {
+	resp := &proto.GenAndGetTOTPSecretResponse{}
+	//查看是否已有，若已有则不能生成
+	totp_secret_info := dao.FindUserTOTPSecretByUserID(user.ID)
+	if totp_secret_info.ID != 0 {
+		//resp.CreatedAt = totp_secret_info.CreatedAt
+		return resp, errors.New("已有密钥，若要创建需先解绑")
+	}
+	// 生成随机TOTP密钥
+	secret_info, err := hotp.Generate(hotp.GenerateOpts{
+		Issuer:      "SAW_" + user.Name,
+		AccountName: user.Email,
+		Algorithm:   proto.TOTP_SECRET_ALGORITHM,
+		Digits:      proto.TOTP_CODE_LENGTH,
+	})
+	if err != nil {
+		log.Println("generate TOTP secret error:", err)
+		return nil, errors.New("创建TOTP密钥失败")
+	}
+
+	//创建
+	err = dao.InsertUserTOTPSecret(int(user.ID), secret_info.Secret(), proto.OTP_TYPE_TOTP)
 	if err != nil {
 		log.Println("insert user totp secret error:", err)
 		return nil, errors.New("保存TOTP失败")
@@ -686,7 +729,30 @@ func CheckUserTOTPCode(user *dao.User, code string) error {
 	return err
 }
 
-func NeedSecondAuthService(user *dao.User) (*proto.NeedSecondAuthResp, error) {
+func CheckUserHOTPCode(user *dao.User, code string) error {
+	var err error
+	secret_info := dao.FindUserTOTPSecretByUserID(user.ID)
+	if secret_info.ID == 0 {
+		return errors.New("未绑定TOTP密钥，请先登录绑定！")
+	}
+
+	// 验证TOTP验证码
+	valid, err := hotp.ValidateCustom(
+		code,
+		0,
+		secret_info.Secret,
+		hotp.ValidateOpts{
+			Algorithm: otp.Algorithm(secret_info.Algorithm),
+			Digits:    otp.Digits(secret_info.Length),
+		},
+	)
+	if valid == false {
+		return errors.New("无效的TOTP验证码")
+	}
+	return err
+}
+
+func NeedSecondAuthService(user *dao.User, second_auth_type string) (*proto.NeedSecondAuthResp, error) {
 	var resp proto.NeedSecondAuthResp
 	//支持认证方式
 	user_totp_secret := GetUserTOTPSecretInfo(user)
@@ -695,6 +761,8 @@ func NeedSecondAuthService(user *dao.User) (*proto.NeedSecondAuthResp, error) {
 		resp.Type += ",TOTP"
 	}
 	//后续支持其他认证方式添加在下面
+	//支持邮件验证码
+	resp.Type += ",EMAIL"
 
 	if resp.Type == "" {
 		log.Println("[error] admin config need second auth but the user not support any second auth type!")

@@ -500,59 +500,56 @@ func SearchHandler(c *gin.Context) {
 
 func loginHandler(c *gin.Context) {
 	var req_data RLReq
+	var resp proto.GenerateResp
 	ip := c.ClientIP()
 	if err := c.ShouldBind(&req_data); err == nil {
 		if req_data.FingerPrint == "" || len(req_data.FingerPrint) != 32 {
-			c.JSON(http.StatusOK, gin.H{"code": proto.ParameterError, "message": "设备ID错误"})
-			return
-		}
-		if len(req_data.Password) != 32 {
-			hasher := md5.New()
-			hasher.Write([]byte(req_data.Password))                 // 生成密码的 MD5 散列值
-			req_data.Password = hex.EncodeToString(hasher.Sum(nil)) // 生成密码的 MD5 散列值
-		}
-		user := service.GetUser(req_data.User, req_data.Password, req_data.Password)
-		if user.ID != 0 {
-			if proto.Config.PASSWORD_NEED_SECOND_AUTH {
-				resp, err4 := service.NeedSecondAuthService(&user)
-				//无错误才支持二次认证
-				if err4 == nil {
-					c.JSON(http.StatusOK, gin.H{"code": proto.NeedSecondAuth, "message": "需要二次认证", "data": resp})
-					return
-				}
-			}
-
-			can, reason := service.CheckUserCanUsePassword(&user, req_data.FingerPrint, ip)
-			if can == false {
-				message := "由于:" + reason + ",不支持密码登录, 请使用验证码登录！"
-				log.Println("user id:", user.ID, ", login by password error:", message, ",ip:", ip, ", host id:", req_data.FingerPrint)
-				c.JSON(http.StatusOK, gin.H{"code": proto.NeedEmailCodeLogin, "message": message})
-				return
-			}
-			accessToken, refreshToken, err2 := service.GenerateAuthTokens(user)
-			if err2 != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"code": proto.TokenGenerationError, "message": "Failed to generate tokens", "data": err2.Error()})
-				return
-			}
-			authResponse := proto.AuthResponse{
-				AccessToken:  accessToken,
-				RefreshToken: refreshToken,
-				UserID:       user.ID,
-				ExpireIn:     time.Now().Add(proto.AccessTokenDuration).Unix(), // 令牌过期时间
-				Username:     user.Name,
-				Email:        user.Email,
-			}
-			service.UpdateUserLoginAddressDeviceInfo(&user, req_data.FingerPrint, ip)
-			authBytes, _ := json.Marshal(authResponse)
-			c.SetCookie("user_token", string(authBytes), 3600*24, "/", ".ljsea.top", true, false) //设置cookie
-			c.JSON(http.StatusOK, gin.H{"code": proto.SuccessCode, "message": "success", "data": authResponse})
+			resp.Message, resp.Code = "设备ID错误", proto.ParameterError
 		} else {
-			//用户名或密码错误
-			c.JSON(http.StatusOK, gin.H{"code": proto.UsernameOrPasswordError, "message": "用户名或密码错误", "data": nil})
+			if len(req_data.Password) != 32 {
+				hasher := md5.New()
+				hasher.Write([]byte(req_data.Password))                 // 生成密码的 MD5 散列值
+				req_data.Password = hex.EncodeToString(hasher.Sum(nil)) // 生成密码的 MD5 散列值
+			}
+			user := service.GetUser(req_data.User, req_data.Password, req_data.Password)
+			if user.ID != 0 {
+				if user.PasswordNeedSecondAuth == true {
+					resp2, err4 := service.NeedSecondAuthService(&user, "pwd")
+					//无错误才支持二次认证
+					if err4 == nil {
+						resp.Code, resp.Message, resp.Data = proto.NeedSecondAuth, "密码登录需要二次认证", resp2
+					}
+				} else {
+					accessToken, refreshToken, err2 := service.GenerateAuthTokens(user)
+					if err2 != nil {
+						c.JSON(http.StatusInternalServerError, gin.H{"code": proto.TokenGenerationError, "message": "Failed to generate tokens", "data": err2.Error()})
+						return
+					} else {
+						authResponse := proto.AuthResponse{
+							AccessToken:  accessToken,
+							RefreshToken: refreshToken,
+							UserID:       user.ID,
+							ExpireIn:     time.Now().Add(proto.AccessTokenDuration).Unix(), // 令牌过期时间
+							Username:     user.Name,
+							Email:        user.Email,
+						}
+						service.UpdateUserLoginAddressDeviceInfo(&user, req_data.FingerPrint, ip)
+						authBytes, _ := json.Marshal(authResponse)
+						c.SetCookie("user_token", string(authBytes), 3600*24, "/", ".ljsea.top", true, false) //设置cookie
+						resp.Code, resp.Data = proto.SuccessCode, authResponse
+
+					}
+				}
+			} else {
+				//用户名或密码错误
+				resp.Code, resp.Message = proto.UsernameOrPasswordError, "用户名或密码错误"
+			}
 		}
 	} else {
-		c.JSON(http.StatusBadRequest, gin.H{"code": proto.ParameterError, "message": err.Error(), "data": nil})
+		resp.Code, resp.Message = proto.ParameterError, "解析参数错误"
+		log.Printf("user %s password login decode request param err:%s\n", req_data.User, err.Error())
 	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func registerHandler(c *gin.Context) {
@@ -950,6 +947,10 @@ func HandleSecondAuth(c *gin.Context) {
 			switch req.Type {
 			case "TOTP":
 				err = service.CheckUserTOTPCode(&user, req.Code)
+			case "EMAIL":
+				if state.Code != req.Code {
+					err = errors.New("邮件验证码错误")
+				}
 			default:
 				err = errors.New("错误的二次认证类型")
 			}

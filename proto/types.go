@@ -35,19 +35,23 @@ type AuthResponse struct {
 }
 
 type UpdateUserInfoReq struct {
-	ID         int    `json:"id" form:"id"`                   //用户id
-	Username   string `json:"name" form:"name"`               //用户名
-	Age        int    `json:"age" form:"age"`                 //年龄
-	Role       string `json:"role" form:"role"`               //角色
-	Gender     string `json:"gender" form:"gender"`           //性别
-	Redis      bool   `json:"redis" form:"redis"`             //是否刷新redis
-	Upload     bool   `json:"upload" form:"upload"`           //是否上传头像
-	VideoFunc  bool   `json:"video_func" form:"video_func"`   //视频功能
-	DeviceFunc bool   `json:"device_func" form:"device_func"` //设备功能
-	CIDFunc    bool   `json:"cid_func" form:"cid_func"`       //持续集成功能
-	Run        bool   `json:"run" form:"run"`                 //是否运行
-	QQ         int64  `json:"qq" form:"qq"`                   //QQ
-	Avatar     string `json:"avatar" form:"avatar"`           //头像
+	ID                       int    `json:"id" form:"id"`                   //用户id
+	Username                 string `json:"name" form:"name"`               //用户名
+	Age                      int    `json:"age" form:"age"`                 //年龄
+	Role                     string `json:"role" form:"role"`               //角色
+	Gender                   string `json:"gender" form:"gender"`           //性别
+	Redis                    bool   `json:"redis" form:"redis"`             //是否刷新redis
+	Upload                   bool   `json:"upload" form:"upload"`           //是否上传头像
+	VideoFunc                bool   `json:"video_func" form:"video_func"`   //视频功能
+	DeviceFunc               bool   `json:"device_func" form:"device_func"` //设备功能
+	CIDFunc                  bool   `json:"cid_func" form:"cid_func"`       //持续集成功能
+	Run                      bool   `json:"run" form:"run"`                 //是否运行
+	QQ                       int64  `json:"qq" form:"qq"`                   //QQ
+	Avatar                   string `json:"avatar" form:"avatar"`           //头像
+	PasswordNeedSecondAuth   bool   `json:"password_need_second_auth"`
+	ThirdPartyNeedSecondAuth bool   `json:"third_party_need_second_auth"`
+	CodeNeedSecondAuth       bool   `json:"code_need_second_auth"`
+	AISecondAuth             bool   `json:"ai_second_auth"`
 }
 
 // 用户基础信息
@@ -479,6 +483,7 @@ type EmailPhoneCodeLoginReq struct {
 	Code        string `json:"code" form:"code"`
 	LoginType   int    `json:"login_type" form:"login_type"` //1,2
 	FingerPrint string `json:"fingerprint" form:"fingerPrint"`
+	State       string `json:"state" form:"state"` //二次认证时的状态
 }
 
 type UserLoginAddressInfo struct {

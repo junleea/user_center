@@ -12,21 +12,25 @@ import (
 
 type User struct {
 	gorm.Model
-	Name             string `gorm:"column:name"`
-	Age              int    `gorm:"column:age"`
-	Email            string `gorm:"column:email"`
-	Password         string `gorm:"column:password"`
-	Gender           string `gorm:"column:gender"`
-	Role             string `gorm:"column:role"`
-	Redis            bool   `gorm:"column:redis"`
-	Run              bool   `gorm:"column:run"`
-	Upload           bool   `gorm:"column:upload"`
-	VideoFunc        bool   `gorm:"column:video_func"`  //视频功能
-	DeviceFunc       bool   `gorm:"column:device_func"` //设备功能
-	CIDFunc          bool   `gorm:"column:cid_func"`    //持续集成功能
-	Avatar           string `gorm:"column:avatar"`
-	LoginAddressInfo string `gorm:"column:login_address_info" json:"login_address_info,omitempty"`
-	LoginDeviceInfo  string `gorm:"column:login_device_info" json:"login_device_info,omitempty"`
+	Name                     string `gorm:"column:name"`
+	Age                      int    `gorm:"column:age"`
+	Email                    string `gorm:"column:email"`
+	Password                 string `gorm:"column:password"`
+	Gender                   string `gorm:"column:gender"`
+	Role                     string `gorm:"column:role"`
+	Redis                    bool   `gorm:"column:redis"`
+	Run                      bool   `gorm:"column:run"`
+	Upload                   bool   `gorm:"column:upload"`
+	VideoFunc                bool   `gorm:"column:video_func"`  //视频功能
+	DeviceFunc               bool   `gorm:"column:device_func"` //设备功能
+	CIDFunc                  bool   `gorm:"column:cid_func"`    //持续集成功能
+	Avatar                   string `gorm:"column:avatar"`
+	PasswordNeedSecondAuth   bool   `gorm:"column:password_need_second_auth" json:"password_need_second_auth"`
+	ThirdPartyNeedSecondAuth bool   `gorm:"column:third_party_need_second_auth" json:"third_party_need_second_auth"`
+	CodeNeedSecondAuth       bool   `gorm:"column:code_need_second_auth" json:"code_need_second_auth"`
+	AISecondAuth             bool   `json:"ai_second_auth" column:"ai_second_auth"`
+	LoginAddressInfo         string `gorm:"column:login_address_info" json:"login_address_info,omitempty"`
+	LoginDeviceInfo          string `gorm:"column:login_device_info" json:"login_device_info,omitempty"`
 }
 
 // 存储第三方统一信息
@@ -41,10 +45,11 @@ type ThirdPartyUserInfo struct {
 	ThirdPartyUserUrl    string `json:"third_party_user_url"`    // 第三方用户主页,可选
 }
 
-// 存储totp密钥信息
+// 存储otp密钥信息
 type TOTPSecretInfo struct {
 	gorm.Model
 	UserID    int    `gorm:"column:user_id" json:"user_id"` // 用户ID
+	Type      int    `gorm:"column:type" json:"type"`       //0,totp;1,hotp
 	Secret    string `gorm:"column:secret" json:"secret"`
 	Period    int    `gorm:"column:period" json:"period"`
 	Length    int    `gorm:"column:length" json:"length"`
@@ -125,6 +130,10 @@ func UpdateUserByID2(id int, req proto.UpdateUserInfoReq) error {
 	updateData["Avatar"] = req.Avatar
 	updateData["Gender"] = req.Gender
 	updateData["QQ"] = req.QQ
+	updateData["code_need_second_auth"] = req.CodeNeedSecondAuth
+	updateData["password_need_second_auth"] = req.PasswordNeedSecondAuth
+	updateData["third_party_need_second_auth"] = req.ThirdPartyNeedSecondAuth
+	updateData["ai_second_auth"] = req.AISecondAuth
 	res := DB.Model(&User{}).Where("id =?", id).Updates(updateData)
 	if res.Error != nil {
 		return res.Error
@@ -134,7 +143,7 @@ func UpdateUserByID2(id int, req proto.UpdateUserInfoReq) error {
 
 // 用户修改自己的信息
 func UpdateUserByID3(id int, req proto.UpdateUserInfoReq) error {
-	res := DB.Model(&User{}).Where("id = ?", id).Updates(User{Name: req.Username, Age: req.Age, Avatar: req.Avatar, Gender: req.Gender})
+	res := DB.Model(&User{}).Where("id = ?", id).Updates(User{Name: req.Username, Age: req.Age, Avatar: req.Avatar, Gender: req.Gender, PasswordNeedSecondAuth: req.PasswordNeedSecondAuth, CodeNeedSecondAuth: req.CodeNeedSecondAuth, ThirdPartyNeedSecondAuth: req.ThirdPartyNeedSecondAuth, AISecondAuth: req.AISecondAuth})
 	return res.Error
 }
 
@@ -411,14 +420,14 @@ func FindUserTOTPSecretByUserID(user_id uint) TOTPSecretInfo {
 	return secret
 }
 
-func InsertUserTOTPSecret(user_id int, secret string) error {
+func InsertUserTOTPSecret(user_id int, secret string, otp_type int) error {
 	var db *gorm.DB
 	if proto.Config.SERVER_SQL_LOG {
 		db = DB.Debug()
 	} else {
 		db = DB
 	}
-	totp_secret := TOTPSecretInfo{UserID: user_id, Secret: secret, Period: proto.TOTP_PERIOD, Length: proto.TOTP_CODE_LENGTH, Algorithm: int(proto.TOTP_SECRET_ALGORITHM)}
+	totp_secret := TOTPSecretInfo{UserID: user_id, Secret: secret, Period: proto.TOTP_PERIOD, Length: proto.TOTP_CODE_LENGTH, Algorithm: int(proto.TOTP_SECRET_ALGORITHM), Type: otp_type}
 	res := db.Create(&totp_secret)
 	return res.Error
 }
@@ -430,9 +439,21 @@ func DelUserTOTPSecret(user_id uint) error {
 	} else {
 		db = DB
 	}
-	res := db.Where("deleted_at IS NULL and user_id = ?", user_id).Delete(&TOTPSecretInfo{})
+	res := db.Where("deleted_at IS NULL and type = 0 and user_id = ?", user_id).Delete(&TOTPSecretInfo{})
 	return res.Error
 }
+
+func DelUserHOTPSecret(user_id uint) error {
+	var db *gorm.DB
+	if proto.Config.SERVER_SQL_LOG {
+		db = DB.Debug()
+	} else {
+		db = DB
+	}
+	res := db.Where("deleted_at IS NULL and type = 1 and user_id = ?", user_id).Delete(&TOTPSecretInfo{})
+	return res.Error
+}
+
 func GetDB() *gorm.DB {
 	var db *gorm.DB
 	if proto.Config.SERVER_SQL_LOG {
