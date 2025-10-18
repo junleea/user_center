@@ -40,18 +40,18 @@ type UpdateUserInfoReq struct {
 	Age                      int    `json:"age" form:"age"`                 //年龄
 	Role                     string `json:"role" form:"role"`               //角色
 	Gender                   string `json:"gender" form:"gender"`           //性别
-	Redis                    bool   `json:"redis" form:"redis"`             //是否刷新redis
-	Upload                   bool   `json:"upload" form:"upload"`           //是否上传头像
-	VideoFunc                bool   `json:"video_func" form:"video_func"`   //视频功能
-	DeviceFunc               bool   `json:"device_func" form:"device_func"` //设备功能
-	CIDFunc                  bool   `json:"cid_func" form:"cid_func"`       //持续集成功能
-	Run                      bool   `json:"run" form:"run"`                 //是否运行
+	Redis                    int    `json:"redis" form:"redis"`             //是否刷新redis
+	Upload                   int    `json:"upload" form:"upload"`           //是否上传头像
+	VideoFunc                int    `json:"video_func" form:"video_func"`   //视频功能
+	DeviceFunc               int    `json:"device_func" form:"device_func"` //设备功能
+	CIDFunc                  int    `json:"cid_func" form:"cid_func"`       //持续集成功能
+	Run                      int    `json:"run" form:"run"`                 //是否运行
 	QQ                       int64  `json:"qq" form:"qq"`                   //QQ
 	Avatar                   string `json:"avatar" form:"avatar"`           //头像
-	PasswordNeedSecondAuth   bool   `json:"password_need_second_auth"`
-	ThirdPartyNeedSecondAuth bool   `json:"third_party_need_second_auth"`
-	CodeNeedSecondAuth       bool   `json:"code_need_second_auth"`
-	AISecondAuth             bool   `json:"ai_second_auth"`
+	PasswordNeedSecondAuth   int    `json:"password_need_second_auth"`
+	ThirdPartyNeedSecondAuth int    `json:"third_party_need_second_auth"`
+	CodeNeedSecondAuth       int    `json:"code_need_second_auth"`
+	AISecondAuth             int    `json:"ai_second_auth"`
 }
 
 // 用户基础信息

@@ -18,17 +18,17 @@ type User struct {
 	Password                 string `gorm:"column:password"`
 	Gender                   string `gorm:"column:gender"`
 	Role                     string `gorm:"column:role"`
-	Redis                    bool   `gorm:"column:redis"`
-	Run                      bool   `gorm:"column:run"`
-	Upload                   bool   `gorm:"column:upload"`
-	VideoFunc                bool   `gorm:"column:video_func"`  //视频功能
-	DeviceFunc               bool   `gorm:"column:device_func"` //设备功能
-	CIDFunc                  bool   `gorm:"column:cid_func"`    //持续集成功能
+	Redis                    int    `gorm:"column:redis"`
+	Run                      int    `gorm:"column:run"`
+	Upload                   int    `gorm:"column:upload"`
+	VideoFunc                int    `gorm:"column:video_func"`  //视频功能
+	DeviceFunc               int    `gorm:"column:device_func"` //设备功能
+	CIDFunc                  int    `gorm:"column:cid_func"`    //持续集成功能, 0为无效， -1为false, 1为true
 	Avatar                   string `gorm:"column:avatar"`
-	PasswordNeedSecondAuth   bool   `gorm:"column:password_need_second_auth" json:"password_need_second_auth"`
-	ThirdPartyNeedSecondAuth bool   `gorm:"column:third_party_need_second_auth" json:"third_party_need_second_auth"`
-	CodeNeedSecondAuth       bool   `gorm:"column:code_need_second_auth" json:"code_need_second_auth"`
-	AISecondAuth             bool   `json:"ai_second_auth" column:"ai_second_auth"`
+	PasswordNeedSecondAuth   int    `gorm:"column:password_need_second_auth" json:"password_need_second_auth"`
+	ThirdPartyNeedSecondAuth int    `gorm:"column:third_party_need_second_auth" json:"third_party_need_second_auth"`
+	CodeNeedSecondAuth       int    `gorm:"column:code_need_second_auth" json:"code_need_second_auth"`
+	AISecondAuth             int    `json:"ai_second_auth" column:"ai_second_auth"`
 	LoginAddressInfo         string `gorm:"column:login_address_info" json:"login_address_info,omitempty"`
 	LoginDeviceInfo          string `gorm:"column:login_device_info" json:"login_device_info,omitempty"`
 }

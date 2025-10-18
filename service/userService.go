@@ -110,10 +110,58 @@ func GetUsersDefault() []dao.User {
 	return users
 }
 
+func setUpdateReq(user *dao.User, req *proto.UpdateUserInfoReq) {
+	if req.Username == "" {
+		req.Username = user.Name
+	}
+	if req.Run == 0 {
+		req.Run = user.Run
+	}
+	if req.Redis == 0 {
+		req.Redis = user.Redis
+	}
+	if req.Role == "" {
+		req.Role = user.Role
+	}
+	if req.Age == 0 {
+		req.Age = user.Age
+	}
+	if req.Avatar == "" {
+		req.Avatar = user.Avatar
+	}
+	if req.CIDFunc == 0 {
+		req.CIDFunc = user.CIDFunc
+	}
+	if req.VideoFunc == 0 {
+		req.VideoFunc = user.VideoFunc
+	}
+	if req.Upload == 0 {
+		req.Upload = user.Upload
+	}
+	if req.Gender == "" {
+		req.Gender = user.Gender
+	}
+
+	if req.PasswordNeedSecondAuth == 0 {
+		req.PasswordNeedSecondAuth = user.PasswordNeedSecondAuth
+	}
+	if req.CodeNeedSecondAuth == 0 {
+		req.CodeNeedSecondAuth = user.CodeNeedSecondAuth
+	}
+	if req.ThirdPartyNeedSecondAuth == 0 {
+		req.ThirdPartyNeedSecondAuth = user.ThirdPartyNeedSecondAuth
+	}
+	if req.AISecondAuth == 0 {
+		req.AISecondAuth = user.AISecondAuth
+	}
+
+}
+
 func UpdateUser(user_id int, req proto.UpdateUserInfoReq) (int, error) {
 	cur_user := dao.FindUserByID2(user_id)
 	//fmt.Println("cur_user:", cur_user, "req:", req)
 	if user_id == req.ID && cur_user.Role != "admin" {
+		setUpdateReq(&cur_user, &req)
 		err := dao.UpdateUserByID3(user_id, req) //用户修改自己的信息，不能修改权限信息
 		//添加修改用户信息到同步列表
 		if err == nil {
@@ -126,6 +174,8 @@ func UpdateUser(user_id int, req proto.UpdateUserInfoReq) (int, error) {
 		}
 		return user_id, err
 	} else if cur_user.Role == "admin" {
+		user := dao.FindUserByID(req.ID)[0]
+		setUpdateReq(&user, &req)
 		err := dao.UpdateUserByID2(req.ID, req)
 		if err == nil {
 			//添加修改用户信息到同步列表
