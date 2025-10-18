@@ -135,6 +135,9 @@ func setUpdateReq(user *dao.User, req *proto.UpdateUserInfoReq) {
 	if req.VideoFunc == 0 {
 		req.VideoFunc = user.VideoFunc
 	}
+	if req.DeviceFunc == 0 {
+		req.DeviceFunc = user.DeviceFunc
+	}
 	if req.Upload == 0 {
 		req.Upload = user.Upload
 	}
