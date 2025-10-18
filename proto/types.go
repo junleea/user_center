@@ -48,10 +48,10 @@ type UpdateUserInfoReq struct {
 	Run                      int    `json:"run" form:"run"`                 //是否运行
 	QQ                       int64  `json:"qq" form:"qq"`                   //QQ
 	Avatar                   string `json:"avatar" form:"avatar"`           //头像
-	PasswordNeedSecondAuth   int    `json:"password_need_second_auth"`
-	ThirdPartyNeedSecondAuth int    `json:"third_party_need_second_auth"`
-	CodeNeedSecondAuth       int    `json:"code_need_second_auth"`
-	AISecondAuth             int    `json:"ai_second_auth"`
+	PasswordNeedSecondAuth   int    `json:"password_need_second_auth" form:"password_need_second_auth"`
+	ThirdPartyNeedSecondAuth int    `json:"third_party_need_second_auth" form:"third_party_need_second_auth"`
+	CodeNeedSecondAuth       int    `json:"code_need_second_auth" form:"code_need_second_auth"`
+	AISecondAuth             int    `json:"ai_second_auth" form:"ai_second_auth"`
 }
 
 // 用户基础信息
