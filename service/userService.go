@@ -200,10 +200,7 @@ func UpdateUserCache(id int) {
 		if err != nil {
 			fmt.Println("get user info , json marshal error:", err)
 		}
-		success := worker.SetRedis(key, string(userJson))
-		if !success {
-			fmt.Println("set redis error,user json:", string(userJson))
-		}
+		worker.SetKVWithExpire(key, string(userJson), time.Second*10)
 	}
 }
 
