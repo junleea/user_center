@@ -513,7 +513,7 @@ func loginHandler(c *gin.Context) {
 			}
 			user := service.GetUser(req_data.User, req_data.Password, req_data.Password)
 			if user.ID != 0 {
-				if user.PasswordNeedSecondAuth == true {
+				if user.PasswordNeedSecondAuth > 0 {
 					resp2, err4 := service.NeedSecondAuthService(&user, "pwd")
 					//无错误才支持二次认证
 					if err4 == nil {
