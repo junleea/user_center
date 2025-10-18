@@ -134,7 +134,8 @@ func UpdateUserByID2(id int, req proto.UpdateUserInfoReq) error {
 	updateData["password_need_second_auth"] = req.PasswordNeedSecondAuth
 	updateData["third_party_need_second_auth"] = req.ThirdPartyNeedSecondAuth
 	updateData["ai_second_auth"] = req.AISecondAuth
-	res := DB.Model(&User{}).Where("id =?", id).Updates(updateData)
+	db := GetDB()
+	res := db.Model(&User{}).Where("id =?", id).Updates(updateData)
 	if res.Error != nil {
 		return res.Error
 	}
@@ -143,7 +144,8 @@ func UpdateUserByID2(id int, req proto.UpdateUserInfoReq) error {
 
 // 用户修改自己的信息
 func UpdateUserByID3(id int, req proto.UpdateUserInfoReq) error {
-	res := DB.Model(&User{}).Where("id = ?", id).Updates(User{Name: req.Username, Age: req.Age, Avatar: req.Avatar, Gender: req.Gender, PasswordNeedSecondAuth: req.PasswordNeedSecondAuth, CodeNeedSecondAuth: req.CodeNeedSecondAuth, ThirdPartyNeedSecondAuth: req.ThirdPartyNeedSecondAuth, AISecondAuth: req.AISecondAuth})
+	db := GetDB()
+	res := db.Model(&User{}).Where("id = ?", id).Updates(User{Name: req.Username, Age: req.Age, Avatar: req.Avatar, Gender: req.Gender, PasswordNeedSecondAuth: req.PasswordNeedSecondAuth, CodeNeedSecondAuth: req.CodeNeedSecondAuth, ThirdPartyNeedSecondAuth: req.ThirdPartyNeedSecondAuth, AISecondAuth: req.AISecondAuth})
 	return res.Error
 }
 
