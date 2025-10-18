@@ -406,13 +406,13 @@ func UserFuncIntercept(id int, url string) bool {
 	//如果用户有权限，则不拦截
 	for k, v := range proto.Per_menu_map {
 		if strings.Contains(url, k) {
-			if v == 1 && user.VideoFunc == false {
+			if v == 1 && user.VideoFunc <= 0 {
 				return true
 			}
-			if v == 2 && user.DeviceFunc == false {
+			if v == 2 && user.DeviceFunc <= 0 {
 				return true
 			}
-			if v == 3 && user.CIDFunc == false {
+			if v == 3 && user.CIDFunc <= 0 {
 				return true
 			}
 		}
