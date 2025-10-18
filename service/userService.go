@@ -494,6 +494,17 @@ func SetUserUIConfigInfo(userID int, config proto.UserUIConfigInfo) error {
 }
 
 func SendLoginCodeByEmailPhone(req proto.EmailPhoneCodeLoginReq) error {
+	var state proto.SecondAuthServerSaveState
+	if req.State != "" {
+		state_str := worker.GetKV(req.State)
+		if state_str == "" {
+			return errors.New("二次认证状态错误")
+		} else {
+			_ = json.Unmarshal([]byte(state_str), &state)
+			user := GetUserByIDWithCache(state.UserId)
+			req.Email = user.Email
+		}
+	}
 	var res error
 	//邮件
 	if req.LoginType == 1 {
@@ -511,17 +522,10 @@ func SendLoginCodeByEmailPhone(req proto.EmailPhoneCodeLoginReq) error {
 			} else {
 				//随机字符串验证码大写
 				code := worker.GetRandomString(6)
-				if req.State != "" {
-					state_str := worker.GetKV(req.State)
-					if state_str == "" {
-						return errors.New("二次认证状态错误")
-					} else {
-						var state proto.SecondAuthServerSaveState
-						_ = json.Unmarshal([]byte(state_str), &state)
-						state.Code = code
-						stateBytes, _ := json.Marshal(state)
-						worker.SetKV(req.State, string(stateBytes)) //二次认证允许时间
-					}
+				if state.UserId > 0 {
+					state.Code = code
+					stateBytes, _ := json.Marshal(state)
+					worker.SetKV(req.State, string(stateBytes)) //二次认证允许时间
 				}
 				worker.SetRedisWithExpire(key, code, time.Minute*5) //设置5分钟过期
 				//发送邮件
