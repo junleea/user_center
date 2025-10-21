@@ -125,24 +125,33 @@ func handleLoginByCode(c *gin.Context) {
 					resp.Code, resp.Message = proto.OperationFailed, "无效的验证码"
 				} else {
 					user := dao.FindUserByEmail(req.Email)
-					accessToken, refreshToken, err2 := service.GenerateAuthTokens(user)
-					if err2 != nil {
-						c.JSON(http.StatusInternalServerError, gin.H{"code": proto.TokenGenerationError, "message": "Failed to generate tokens", "data": err2.Error()})
-						return
+					if user.CodeNeedSecondAuth > 0 && service.GetUserTOTPSecretInfo(&user).ID > 0 { //需要二次认证且TOTP需配置
+						resp2, err4 := service.NeedSecondAuthService(&user, "code")
+						//无错误才支持二次认证
+						if err4 == nil && resp2.Type != "" {
+							resp.Code, resp.Message, resp.Data = proto.NeedSecondAuth, "验证码登录需要二次认证", resp2
+						}
+					} else {
+						accessToken, refreshToken, err2 := service.GenerateAuthTokens(user)
+						if err2 != nil {
+							c.JSON(http.StatusInternalServerError, gin.H{"code": proto.TokenGenerationError, "message": "Failed to generate tokens", "data": err2.Error()})
+							return
+						}
+						authResponse := proto.AuthResponse{
+							AccessToken:  accessToken,
+							RefreshToken: refreshToken,
+							UserID:       user.ID,
+							ExpireIn:     time.Now().Add(proto.AccessTokenDuration).Unix(), // 令牌过期时间
+							Username:     user.Name,
+							Email:        user.Email,
+						}
+						authBytes, _ := json.Marshal(authResponse)
+						c.SetCookie("user_token", string(authBytes), 3600*24, "/", ".ljsea.top", true, false) //设置cookie
+						resp.Code, resp.Message, resp.Data = proto.SuccessCode, "success", authResponse
+						service.UpdateUserLoginAddressDeviceInfo(&user, req.FingerPrint, ip)
+						worker.DelRedis(key)
 					}
-					authResponse := proto.AuthResponse{
-						AccessToken:  accessToken,
-						RefreshToken: refreshToken,
-						UserID:       user.ID,
-						ExpireIn:     time.Now().Add(proto.AccessTokenDuration).Unix(), // 令牌过期时间
-						Username:     user.Name,
-						Email:        user.Email,
-					}
-					authBytes, _ := json.Marshal(authResponse)
-					c.SetCookie("user_token", string(authBytes), 3600*24, "/", ".ljsea.top", true, false) //设置cookie
-					resp.Code, resp.Message, resp.Data = proto.SuccessCode, "success", authResponse
-					service.UpdateUserLoginAddressDeviceInfo(&user, req.FingerPrint, ip)
-					worker.DelRedis(key)
+
 				}
 			}
 		} else if req.LoginType == 2 {

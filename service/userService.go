@@ -816,7 +816,9 @@ func NeedSecondAuthService(user *dao.User, second_auth_type string) (*proto.Need
 	}
 	//后续支持其他认证方式添加在下面
 	//支持邮件验证码
-	resp.Type += ",EMAIL"
+	if second_auth_type != "code" {
+		resp.Type += ",EMAIL"
+	}
 
 	if resp.Type == "" {
 		log.Println("[error] admin config need second auth but the user not support any second auth type!")
