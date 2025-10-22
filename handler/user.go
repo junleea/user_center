@@ -725,20 +725,35 @@ func LoginOAuth(c *gin.Context) {
 		return
 	}
 	var status proto.ThirdPartyLoginStatus
-	if err := json.Unmarshal([]byte(loginStatus), &status); err != nil {
+	var err error
+	if err = json.Unmarshal([]byte(loginStatus), &status); err != nil {
 		resp.Code = proto.OperationFailed
 		resp.Message = "error"
 		c.JSON(200, resp)
 		return
 	}
+	var secondAuth *proto.NeedSecondAuthResp
 	if status.Status == 0 {
 		user := service.GetUserByIDWithCache(int(status.UserInfo.UserID))
+		if user.ThirdPartyNeedSecondAuth > 0 {
+			secondAuth, err = service.NeedSecondAuthService(&user, "third")
+			if err != nil {
+				resp.Code = proto.OperationFailed
+				resp.Message = "需二次认证，但服务器处理错误"
+				c.JSON(200, resp)
+				return
+			}
+		}
 		service.UpdateUserLoginAddressDeviceInfo(&user, host_id, ip)
 		worker.DelRedis(uuid) //删除uuid,只能查一次
 	}
 	resp.Code = proto.SuccessCode
 	resp.Message = "success"
-	resp.Data = status
+	if secondAuth != nil {
+		resp.Data = secondAuth
+	} else {
+		resp.Data = status //不需二次认证，直接返回token信息
+	}
 	c.JSON(200, resp)
 }
 
