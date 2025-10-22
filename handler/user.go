@@ -747,11 +747,13 @@ func LoginOAuth(c *gin.Context) {
 		service.UpdateUserLoginAddressDeviceInfo(&user, host_id, ip)
 		worker.DelRedis(uuid) //删除uuid,只能查一次
 	}
-	resp.Code = proto.SuccessCode
-	resp.Message = "success"
 	if secondAuth != nil {
+		resp.Code = proto.NeedSecondAuth
+		resp.Message = "需要二次认证"
 		resp.Data = secondAuth
 	} else {
+		resp.Code = proto.SuccessCode
+		resp.Message = "success"
 		resp.Data = status //不需二次认证，直接返回token信息
 	}
 	c.JSON(200, resp)
