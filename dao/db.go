@@ -91,6 +91,22 @@ func Init() error {
 		log.Println("totp secret info db table migrated successfully")
 	}
 
+	err = db.AutoMigrate(&proto.PermissionPolicy{})
+	if err != nil {
+		log.Println("permission policy info db table:", err)
+		return err
+	} else {
+		log.Println("permission policy  db table migrated successfully")
+	}
+
+	err = db.AutoMigrate(&proto.UserPolicyInfo{})
+	if err != nil {
+		log.Println("permission policy user info db table:", err)
+		return err
+	} else {
+		log.Println("permission policy user db table migrated successfully")
+	}
+
 	DB = db
 	return err
 }

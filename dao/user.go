@@ -12,6 +12,8 @@ import (
 
 type User struct {
 	gorm.Model
+	Type                     int    `gorm:"column:type" json:"type"` //类型用户组或用户，用户组1， 用户初始值0
+	Prev                     int    `gorm:"column:prev" json:"prev"` //所属用户组，0为不属于
 	Name                     string `gorm:"column:name"`
 	Age                      int    `gorm:"column:age"`
 	Email                    string `gorm:"column:email"`

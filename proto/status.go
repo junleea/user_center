@@ -110,84 +110,7 @@ const (
 )
 
 const (
-	// 代码中使用常量定义
-	UserAndModelMsgType = 2 // 用户与模型消息类型
-	MsgHasRead          = 1 // 消息已读
-
-	//用户发到模型
-	UserToModelMsgType = 3
-	//模型发到用户
-	ModelToUserMsgType = 4
-
-	//用户发送图片对话
-	UserToModelImageMsgType = 3
-	UserToModelFileMsgType  = 3
-	//模型发送文件对话
-	ModelToUserFileMsgType = 4
-	//用户与模型制作ppt的会话
-	UserToModelPPTMsgType = 5 //用户与模型制作ppt的会话
-)
-
-// 豆包返回的数据停止原因
-const (
-	FinishReasonStop          = "stop"
-	FinishReasonLength        = "length"
-	FinishReasonFunctionCall  = "function_call"
-	FinishReasonToolCalls     = "tool_calls"
-	FinishReasonContentFilter = "content_filter"
-	FinishReasonNull          = "null"
-)
-
-// spark 角色
-const (
-	SparkRoleUser      = "user"
-	SparkRoleAssistant = "assistant"
-	SparRoleSystem     = "system"
-)
-
-// 支持模型类型
-const (
-	ModelTypeSpark                  = "spark"
-	ModelTypeDouBao                 = "doubao"
-	ModelTypeOllama                 = "ollama"
-	ModelTypeQianfan                = "qianfan"
-	ModelTypeTongyi                 = "tongyi"
-	ModelTypeHunyuan                = "hunyuan"
-	ModelTypeGemini                 = "gemini"
-	KnowledgeBaseServerResponseType = "kbase_query_resp"
-)
-
-// 其它
-const (
-	SparkContextLength  = 6
-	DouBaoContextLength = 6
-)
-
-// 模型参数
-const (
-	DefaultTemperature = 0.5
-	DefaultMaxTokens   = 4096
-	DefaultTopK        = 0.5
-	DefaultTopP        = 0.8
-)
-
-// 文件
-const (
-	UserFileTypeIM     = "im"     // IM文件
-	UserFileTypeAvatar = "avatar" // 用户头像
-	UserFileTypeFile   = "file"   // 通用文件
-	UserFileTypeConfig = "config" // 配置文件
-	UserMaxUploadSize  = 1024 * 1024 * 100
-
-	KnowledgeBaseFunction = "kbase-chat" // 知识库功能
-)
-
-// 会话类型
-const (
-	SessionTypeUserWithModelGeneration = 1 // 用户与模型通用会话
-	SessionTypeUserPrompt              = 2 // 用户与模型提示词
-	SessionTypeUserCreatePPT           = 3 // 用户与模型制作PPT
-	SessionTypeKnowledgeBase           = 4 // 用户与知识库
+	USER_IS_ADMIN = "admin"
 )
 
 // 文件类型（文本、图片）
@@ -209,19 +132,6 @@ const (
 	GiteaAuthorizeBaseUrl         = "https://gitea.com/login/oauth/authorize"
 )
 
-// 百度千帆
-const (
-	QianfanAccessKey = "e1757df9133649f59cb1ef45667049b7"
-	QianfanSecretKey = "6c0ee3154db14d99ad2b66c5623277fb"
-)
-
-// 千帆 角色
-const (
-	QianfanRoleUser  = "user"
-	QianfanAssistant = "assistant"
-	QianfanSystem    = "system"
-)
-
 // kv type
 const (
 	KV_TYPE_REDIS  = 1
@@ -241,3 +151,5 @@ const (
 	OTP_TYPE_TOTP         = 0
 	OTP_TYPE_HOTP         = 1
 )
+
+const ()
