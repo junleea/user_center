@@ -839,6 +839,14 @@ func NeedSecondAuthService(user *dao.User, second_auth_type string) (*proto.Need
 	return &resp, nil
 }
 
+func GetUserGroup(user *dao.User) (res []dao.User, code int, msg string) {
+	if user.Role != proto.USER_IS_ADMIN {
+		return res, proto.PermissionDenied, "no permission"
+	}
+	res = dao.FindUserGroup()
+	return res, proto.SuccessCode, "success"
+}
+
 func AddUserGroup(user *dao.User, req *proto.AddUserGroupReq) (code int, msg string) {
 	if user.Role != proto.USER_IS_ADMIN {
 		code, msg = proto.PermissionDenied, "no permission"

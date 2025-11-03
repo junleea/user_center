@@ -49,8 +49,15 @@ func SetUpUserGroup(router *gin.Engine) {
 	userGroup.POST("/second_auth", HandleSecondAuth)
 	userGroup.POST("/catalogue", UpdateUserCatalogueHandle)
 	userGroup.POST("/add_group", AddUserGroupHandle)
+	userGroup.GET("/get_group", GetUserGroupHandle)
 }
 
+func GetUserGroupHandle(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	resp.Data, resp.Code, resp.Message = service.GetUserGroup(&user)
+	c.JSON(http.StatusOK, resp)
+}
 func AddUserGroupHandle(c *gin.Context) {
 	user := RequestGetUserInfo(c)
 	var req proto.AddUserGroupReq

@@ -107,6 +107,13 @@ func FindUserByNameLike(name string) []User {
 	return users
 }
 
+func FindUserGroup() []User {
+	var users []User
+	//不查询密码
+	DB.Where("type > 0").Find(&users)
+	return users
+}
+
 func FindUserByEmail(email string) User {
 	var user User
 	DB.Where("email = ?", email).First(&user)
