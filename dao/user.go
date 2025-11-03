@@ -117,6 +117,11 @@ func UpdateUserByID(id int, name, password, email string) {
 	DB.Model(&User{}).Where("id = ?", id).Updates(User{Name: name, Password: password, Email: email})
 }
 
+func UpdateUserByIDV4(id uint, user *User) {
+	db2 := GetDB()
+	db2.Model(&User{}).Where("id = ?", id).Updates(user)
+}
+
 // 管理员修改用户信息
 func UpdateUserByID2(id int, req proto.UpdateUserInfoReq) error {
 	updateData := make(map[string]interface{})

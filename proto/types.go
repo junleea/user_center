@@ -577,3 +577,8 @@ type SecondAuthServerSaveState struct {
 	Type   string `json:"type" form:"type"` //二次认证支持类型
 	Code   string `json:"code" form:"code"` //如邮件等保持的验证码
 }
+
+type UserCatalogueReq struct {
+	UserId  int `json:"user_id" form:"user_id" binding:"required"`
+	GroupID int `json:"group_id" form:"group_id" binding:"required"`
+}

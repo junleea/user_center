@@ -47,6 +47,20 @@ func SetUpUserGroup(router *gin.Engine) {
 	userGroup.GET("/get_token_code", GetTokenCode)         //获取token的code
 	userGroup.GET("/get_token_by_code", GetTokenByCode)    //通过code获取token
 	userGroup.POST("/second_auth", HandleSecondAuth)
+	userGroup.POST("/catalogue", UpdateUserCatalogueHandle)
+}
+
+func UpdateUserCatalogueHandle(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var req proto.UserCatalogueReq
+	var resp proto.GenerateResp
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code, resp.Message = proto.ParameterError, "缺少必要参数"
+		log.Println("[ERROR] update user catalogue req:", err.Error())
+	} else {
+		resp.Code, resp.Message = service.UpdateUserCatalogue(&user, &req)
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 type RefreshTokenReq struct {

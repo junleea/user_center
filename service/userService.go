@@ -838,3 +838,23 @@ func NeedSecondAuthService(user *dao.User, second_auth_type string) (*proto.Need
 	resp.Expire = 5
 	return &resp, nil
 }
+
+func UpdateUserCatalogue(user *dao.User, req *proto.UserCatalogueReq) (code int, msg string) {
+	if user.Role != proto.USER_IS_ADMIN {
+		code, msg = proto.PermissionDenied, "no permission"
+		return code, msg
+	}
+	//查看目标目录是否有效
+	userGroup := GetUserByIDWithCache(req.GroupID)
+	if userGroup.Type == 0 {
+		code, msg = proto.OperationFailed, "target group id is invalid"
+	} else {
+		//更新目标用户
+		targetUser := GetUserByIDWithCache(req.UserId)
+		targetUser.Prev = req.GroupID
+		//更新用户
+		dao.UpdateUserByIDV4(targetUser.ID, &targetUser)
+		code, msg = proto.SuccessCode, "success"
+	}
+	return code, msg
+}
