@@ -578,6 +578,11 @@ type SecondAuthServerSaveState struct {
 	Code   string `json:"code" form:"code"` //如邮件等保持的验证码
 }
 
+type AddUserGroupReq struct {
+	Name string `json:"name" form:"name" binding:"required"`
+	Prev int    `json:"prev" form:"prev"`
+}
+
 type UserCatalogueReq struct {
 	UserId  int `json:"user_id" form:"user_id" binding:"required"`
 	GroupID int `json:"group_id" form:"group_id" binding:"required"`

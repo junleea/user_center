@@ -122,6 +122,12 @@ func UpdateUserByIDV4(id uint, user *User) {
 	db2.Model(&User{}).Where("id = ?", id).Updates(user)
 }
 
+func AddUserGroup(user *User) error {
+	db2 := GetDB()
+	res := db2.Model(&User{}).Create(user)
+	return res.Error
+}
+
 // 管理员修改用户信息
 func UpdateUserByID2(id int, req proto.UpdateUserInfoReq) error {
 	updateData := make(map[string]interface{})
