@@ -585,5 +585,5 @@ type AddUserGroupReq struct {
 
 type UserCatalogueReq struct {
 	UserId  int `json:"user_id" form:"user_id" binding:"required"`
-	GroupID int `json:"group_id" form:"group_id" binding:"required"`
+	GroupID int `json:"group_id" form:"group_id"`
 }
