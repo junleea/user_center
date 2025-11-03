@@ -17,6 +17,18 @@ type PermissionPolicy struct {
 	SendMail      int    `gorm:"column:send_mail" json:"send_mail"`             //发送邮件
 }
 
+type UserDefaultInfo struct {
+	ID   uint   `gorm:"primaryKey" json:"id"`
+	Type int    `gorm:"column:type" json:"type"` //类型用户组或用户，用户组1， 用户初始值0
+	Prev int    `gorm:"column:prev" json:"prev"` //所属用户组，0为不属于
+	Name string `gorm:"column:name" json:"name"`
+}
+
+type GetPermissionPolicyResponse struct {
+	Policy PermissionPolicy  `json:"policy" form:"policy"`
+	Range  []UserDefaultInfo `json:"range" form:"range"`
+}
+
 type UserPolicyInfo struct {
 	ID                 uint `gorm:"primarykey" json:"user_id"`                               //user  id
 	PermissionPolicyID int  `gorm:"column:permission_policy_id" json:"permission_policy_id"` //permission policy id

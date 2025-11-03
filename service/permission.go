@@ -44,9 +44,25 @@ func GetUserPermissionPolicy(user *dao.User) *proto.PermissionPolicy {
 }
 
 // 对permission policy info进行管理
-func GetAllPermissionInfo() ([]proto.PermissionPolicy, error) {
+func GetAllPermissionInfo() ([]proto.GetPermissionPolicyResponse, error) {
 	res, err := dao.GetAllPermissionPolicy()
-	return res, err
+	resp := []proto.GetPermissionPolicyResponse{}
+	if err != nil {
+		return resp, err
+	}
+	for _, v := range res {
+		users, err2 := dao.GetDefaultUserInfoByPermissionPolicyID(v.ID)
+		if err2 != nil {
+			log.Println("[ERROR] GetDefaultUserInfoByPermissionPolicyID err:", err2.Error())
+		} else {
+			resp = append(resp, proto.GetPermissionPolicyResponse{
+				Policy: v,
+				Range:  users,
+			})
+		}
+
+	}
+	return resp, err
 }
 
 func AddPermissionPolicy(user *dao.User, req *proto.PermissionPolicyRequest) (code int, err error) {

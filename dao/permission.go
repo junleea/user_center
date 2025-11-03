@@ -49,6 +49,18 @@ func GetUserPolicyInfo(id uint) (*proto.UserPolicyInfo, error) {
 	return &policyInfo, res.Error
 }
 
+// 通过policy id获取生效用户
+func GetDefaultUserInfoByPermissionPolicyID(id uint) ([]proto.UserDefaultInfo, error) {
+	db2 := GetDB()
+	var userInfo []proto.UserDefaultInfo
+	err := db2.Table("users").
+		Select("users.id, users.type, users.prev, users.name").
+		Joins("JOIN user_policy_infos ON user_policy_infos.user_id = users.id").
+		Where("user_policy_infos.permission_policy_id = ?", id).
+		Find(&userInfo).Error
+	return userInfo, err
+}
+
 // 更新，先查看是否存在
 func UpdateUserPermissionPolicyInfo(user_id uint, permission_policy_id int) error {
 	db2 := GetDB()
