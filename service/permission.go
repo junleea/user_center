@@ -56,6 +56,13 @@ func AddPermissionPolicy(user *dao.User, req *proto.PermissionPolicyRequest) (co
 		return code, err
 	}
 	var policy proto.PermissionPolicy
+	if req.PolicyName == "" {
+		code = proto.ParameterError
+		err = errors.New("policy name is empty")
+		return code, err
+	}
+	policy.Name = req.PolicyName
+	policy.Info = req.PolicyInfo
 	policy.Redis = req.Redis
 	policy.Upload = req.Upload
 	policy.Device = req.Device
@@ -114,6 +121,12 @@ func UpdatePermissionPolicy(user *dao.User, req *proto.PermissionPolicyRequest) 
 	}
 	var policy proto.PermissionPolicy
 	policy = permissionPolicy[0]
+	if req.PolicyName != "" {
+		policy.Name = req.PolicyName
+	}
+	if req.PolicyInfo != "" {
+		policy.Info = req.PolicyInfo
+	}
 	if req.Redis != 0 {
 		policy.Redis = req.Redis
 	}
