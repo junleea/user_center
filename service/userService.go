@@ -848,8 +848,8 @@ func AddUserGroup(user *dao.User, req *proto.AddUserGroupReq) (code int, msg str
 		code, msg = proto.ParameterError, "name is empty"
 		return code, msg
 	}
-	userGroup := GetUserByIDWithCache(req.Prev)
-	if userGroup.Type == 0 {
+
+	if req.Prev != 0 && GetUserByIDWithCache(req.Prev).Type == 0 {
 		code, msg = proto.OperationFailed, "target group id is invalid"
 	} else {
 		u := dao.User{
@@ -872,8 +872,7 @@ func UpdateUserCatalogue(user *dao.User, req *proto.UserCatalogueReq) (code int,
 		return code, msg
 	}
 	//查看目标目录是否有效
-	userGroup := GetUserByIDWithCache(req.GroupID)
-	if userGroup.Type == 0 {
+	if req.GroupID != 0 && GetUserByIDWithCache(req.GroupID).Type == 0 {
 		code, msg = proto.OperationFailed, "target group id is invalid"
 	} else {
 		//更新目标用户
