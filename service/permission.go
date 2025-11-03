@@ -46,7 +46,7 @@ func GetUserPermissionPolicy(user *dao.User) *proto.PermissionPolicy {
 // 对permission policy info进行管理
 func GetAllPermissionInfo() ([]proto.GetPermissionPolicyResponse, error) {
 	res, err := dao.GetAllPermissionPolicy()
-	resp := []proto.GetPermissionPolicyResponse{}
+	var resp []proto.GetPermissionPolicyResponse
 	if err != nil {
 		return resp, err
 	}

@@ -55,7 +55,7 @@ func GetDefaultUserInfoByPermissionPolicyID(id uint) ([]proto.UserDefaultInfo, e
 	var userInfo []proto.UserDefaultInfo
 	err := db2.Table("users").
 		Select("users.id, users.type, users.prev, users.name").
-		Joins("JOIN user_policy_infos ON user_policy_infos.user_id = users.id").
+		Joins("JOIN user_policy_infos ON user_policy_infos.id = users.id").
 		Where("user_policy_infos.permission_policy_id = ?", id).
 		Find(&userInfo).Error
 	return userInfo, err
