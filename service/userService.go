@@ -101,6 +101,11 @@ func GetUserByNameLike(name string) []dao.User {
 	return users
 }
 
+func GetUserByName(name string) dao.User {
+	user := dao.FindUserByName(name)
+	return user
+}
+
 // 获取默认前20个用户
 func GetUsersDefault() []dao.User {
 	users := dao.FindUsersDefault()

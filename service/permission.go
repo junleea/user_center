@@ -65,6 +65,57 @@ func GetAllPermissionInfo() ([]proto.GetPermissionPolicyResponse, error) {
 	return resp, err
 }
 
+func GetOnePermissionInfo(id int) (*[]proto.GetPermissionPolicyResponse, error) {
+	res, err := dao.GetOnePermissionPolicy(id)
+	var resp []proto.GetPermissionPolicyResponse
+	if err != nil || len(res) == 0 {
+		log.Println("[ERROR] GetOnePermissionInfo err:", err.Error())
+	} else {
+		for _, v := range res {
+			users, err2 := dao.GetDefaultUserInfoByPermissionPolicyID(v.ID)
+			if err2 != nil {
+				log.Println("[ERROR] GetDefaultUserInfoByPermissionPolicyID err:", err2.Error())
+				err = errors.New("get user info error")
+			}
+			resp = append(resp, proto.GetPermissionPolicyResponse{
+				Policy: v,
+				Range:  users,
+			})
+		}
+	}
+	return &resp, err
+}
+
+func GetUserPermissionInfo(req *proto.GetUserPermissionPolicyRequest) (proto.GetPermissionPolicyResponse, error) {
+	var resp proto.GetPermissionPolicyResponse
+	var err error
+	if req.UserID == 0 && req.UserName == "" {
+		err = errors.New("请求参数错误")
+	} else {
+		var user dao.User
+		if req.UserID > 0 {
+			user = GetUserByIDWithCache(int(req.UserID))
+		} else if req.UserName != "" {
+			user = GetUserByName(req.UserName)
+		}
+		if user.ID > 0 {
+			resp.Policy = *GetUserPermissionPolicy(&user)
+			users, err2 := dao.GetDefaultUserInfoByPermissionPolicyID(resp.Policy.ID)
+			if err2 != nil {
+				log.Println("[ERROR] GetUserPermissionPolicy err:", err2.Error())
+				err = err2
+			} else {
+				resp.Range = users
+			}
+		} else {
+			log.Println("[ERROR] GetUserPermissionInfo user req user is invalid, req  userID:", req.UserID, " req user name:", req.UserName)
+			err = errors.New("请求参数错误")
+		}
+	}
+
+	return resp, err
+}
+
 func AddPermissionPolicy(user *dao.User, req *proto.PermissionPolicyRequest) (code int, err error) {
 	if user.Role != "admin" {
 		code = proto.PermissionDenied

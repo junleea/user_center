@@ -95,7 +95,6 @@ func FindUserByUserID(id int) User {
 
 func FindUserByName(name string) User {
 	var user User
-	fmt.Println("name:", name)
 	DB.Where("name = ?", name).First(&user)
 	return user
 }
