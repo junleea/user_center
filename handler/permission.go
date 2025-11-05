@@ -21,7 +21,7 @@ func DelPermissionPolicy(c *gin.Context) {
 	user := RequestGetUserInfo(c)
 	var resp proto.GenerateResp
 	var req proto.PermissionPolicyRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		resp.Code = proto.ParameterError
 		resp.Message = "服务器解析参数错误"
 	} else {
@@ -39,7 +39,7 @@ func UpdatePermissionPolicy(c *gin.Context) {
 	user := RequestGetUserInfo(c)
 	var resp proto.GenerateResp
 	var req proto.PermissionPolicyRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		resp.Code = proto.ParameterError
 		resp.Message = "服务器解析参数错误"
 	} else {
@@ -57,7 +57,7 @@ func AddPermissionPolicy(c *gin.Context) {
 	user := RequestGetUserInfo(c)
 	var resp proto.GenerateResp
 	var req proto.PermissionPolicyRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		resp.Code = proto.ParameterError
 		resp.Message = "服务器解析参数错误"
 	} else {
