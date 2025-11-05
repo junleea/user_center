@@ -229,21 +229,21 @@ func UpdatePermissionPolicy(user *dao.User, req *proto.PermissionPolicyRequest) 
 	err = dao.UpdatePermissionPolicy(int(policy.ID), &policy)
 	if err != nil {
 		code = proto.OperationFailed
-		err = errors.New("add permission policy failed")
+		err = errors.New("update permission policy failed")
 	} else {
 		//更新生效用户
 		//先删除所有是这个的用户
 		err = dao.ResetUserPermissionInfo(int(policy.ID))
 		if err != nil {
 			code = proto.OperationFailed
-			err = errors.New("add permission policy failed")
+			err = errors.New("update permission policy failed")
 		} else {
 			//设置生效用户
 			for _, v := range req.UserRange {
 				//设置生效
 				err = dao.UpdateUserPermissionPolicyInfo(v.ID, int(policy.ID))
 				if err != nil {
-					log.Println("[ERROR] AddPermissionPolicy user id:", v.ID, " err:", err.Error())
+					log.Println("[ERROR] updatePermissionPolicy user id:", v.ID, " err:", err.Error())
 				}
 			}
 			code, err = proto.SuccessCode, nil
