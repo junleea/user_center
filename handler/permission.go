@@ -21,9 +21,12 @@ func DelPermissionPolicy(c *gin.Context) {
 	user := RequestGetUserInfo(c)
 	var resp proto.GenerateResp
 	var req proto.PermissionPolicyRequest
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
 	if err := c.ShouldBind(&req); err != nil {
 		resp.Code = proto.ParameterError
 		resp.Message = "服务器解析参数错误"
+		log.Println("[ERROR] request_id: ", resp.RequestID, ", decode request fail:", err.Error())
 	} else {
 		resp.Code, err = service.DeletePermissionPolicy(&user, &req)
 		if err != nil {
