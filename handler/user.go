@@ -50,6 +50,27 @@ func SetUpUserGroup(router *gin.Engine) {
 	userGroup.POST("/catalogue", UpdateUserCatalogueHandle)
 	userGroup.POST("/add_group", AddUserGroupHandle)
 	userGroup.GET("/get_group", GetUserGroupHandle)
+	userGroup.GET("/get_all_default_users", GetAllDefaultUsers)
+}
+
+func GetAllDefaultUsers(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	if user.Role != proto.USER_IS_ADMIN {
+		resp.Code, resp.Message = proto.PermissionDenied, "no permission"
+	} else {
+		var err error
+		resp.Data, err = dao.GetAllDefaultUsers()
+		if err != nil {
+			resp.Code, resp.Message = proto.InternalServerError, "internal server error"
+			log.Println("[ERROR] request id:", resp.RequestID, "，GetAllDefaultUsers err:", err.Error())
+		} else {
+			resp.Code, resp.Message = proto.SuccessCode, "success"
+		}
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func GetUserGroupHandle(c *gin.Context) {

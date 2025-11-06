@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
+	"github.com/google/uuid"
 	"github.com/robfig/cron/v3"
 	"log"
 	"net/http"
@@ -164,6 +165,8 @@ func SecretInfoSetting() {
 
 func JWTAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		requestId := uuid.New()
+		c.Set("request_id", requestId.String())
 		// 从请求头中获取 JWT 令牌
 		tokenString := c.Request.Header.Get("Authorization")
 		if tokenString != "" {

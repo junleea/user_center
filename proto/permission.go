@@ -18,7 +18,7 @@ type PermissionPolicy struct {
 }
 
 type UserDefaultInfo struct {
-	ID   uint   `gorm:"primaryKey" json:"id"`
+	ID   uint   `gorm:"primaryKey,column:ID" json:"id"`
 	Type int    `gorm:"column:type" json:"type"` //类型用户组或用户，用户组1， 用户初始值0
 	Prev int    `gorm:"column:prev" json:"prev"` //所属用户组，0为不属于
 	Name string `gorm:"column:name" json:"name"`
