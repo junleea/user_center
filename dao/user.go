@@ -98,7 +98,6 @@ func GetAllDefaultUsers() (*[]proto.UserDefaultInfo, error) {
 	var userInfo []proto.UserDefaultInfo
 	err := db2.Table("users").
 		Select("users.id, users.type, users.prev, users.name").
-		Joins("JOIN user_policy_infos ON user_policy_infos.id = users.id").
 		Find(&userInfo).Error
 	return &userInfo, err
 }
