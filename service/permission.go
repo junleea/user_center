@@ -156,7 +156,7 @@ func AddPermissionPolicy(user *dao.User, req *proto.PermissionPolicyRequest) (co
 	return code, err
 }
 
-func DeletePermissionPolicy(user *dao.User, req *proto.PermissionPolicyRequest) (code int, err error) {
+func DeletePermissionPolicy(requestID string, user *dao.User, req *proto.PermissionPolicyRequest) (code int, err error) {
 	if user.Role != "admin" {
 		code = proto.PermissionDenied
 		err = errors.New("no permission")
@@ -171,6 +171,7 @@ func DeletePermissionPolicy(user *dao.User, req *proto.PermissionPolicyRequest) 
 		if err != nil {
 			code = proto.OperationFailed
 			err = errors.New("delete permission policy failed")
+			log.Println("[ERROR] request id:", requestID, ", DelPermissionPolicy err:", err.Error())
 		}
 	}
 	return code, err
