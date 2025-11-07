@@ -67,6 +67,15 @@ func CreateUser(name, password, email, gender string, age int) uint {
 	return user.ID
 }
 
+func CreateUserBaseInfo(name, password, email string) uint {
+	user := User{Name: name, Email: email, Password: password}
+	res := DB.Create(&user)
+	if res.Error != nil {
+		return 0
+	}
+	return user.ID
+}
+
 func DeleteUserByID(id int) int {
 	res := DB.Delete(&User{}, id)
 	if res.Error != nil {

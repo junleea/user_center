@@ -584,6 +584,12 @@ type AddUserGroupReq struct {
 	Prev int    `json:"prev" form:"prev"`
 }
 
+type AdminAddUserRequest struct {
+	Name     string `json:"name" form:"name" binding:"required"`
+	Email    string `json:"email" form:"email" binding:"required"`
+	Password string `json:"password" form:"password" binding:"required"`
+}
+
 type UserCatalogueReq struct {
 	UserId  int `json:"user_id" form:"user_id" binding:"required"`
 	GroupID int `json:"group_id" form:"group_id"`

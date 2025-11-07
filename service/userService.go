@@ -30,6 +30,18 @@ func CreateUser(name, password, email, gender string, age int) uint {
 	return id
 }
 
+func CreateUserBaseInfo(name, password, email string) uint {
+	id := dao.CreateUserBaseInfo(name, password, email)
+	if id != 0 {
+		//添加用户信息到同步列表
+		err := setSyncUserDataSet("add", int(id))
+		if err != nil {
+			return id
+		}
+	}
+	return id
+}
+
 func GetUser(name, email, password string) dao.User {
 	emailRegex := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
 	re := regexp.MustCompile(emailRegex)

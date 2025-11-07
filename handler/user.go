@@ -51,6 +51,7 @@ func SetUpUserGroup(router *gin.Engine) {
 	userGroup.POST("/add_group", AddUserGroupHandle)
 	userGroup.GET("/get_group", GetUserGroupHandle)
 	userGroup.GET("/get_all_default_users", GetAllDefaultUsers)
+	userGroup.POST("/admin_add_user", AdminAddUserHandle)
 }
 
 func GetAllDefaultUsers(c *gin.Context) {
@@ -88,6 +89,36 @@ func AddUserGroupHandle(c *gin.Context) {
 		log.Println("[ERROR] update user catalogue req:", err.Error())
 	} else {
 		resp.Code, resp.Message = service.AddUserGroup(&user, &req)
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func AdminAddUserHandle(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var req proto.AdminAddUserRequest
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code, resp.Message = proto.ParameterError, "缺少必要参数"
+		log.Println("[ERROR] request id:", resp.RequestID, ", admin add user req:", err.Error())
+	} else {
+		if user.Role == proto.USER_IS_ADMIN {
+			if service.ContainsUser(req.Name, req.Email) == true {
+				resp.Code, resp.Message = proto.OperationFailed, "user or email is exist"
+				log.Println("[ERROR] request id:", resp.RequestID, ", admin add user exist, name:", req.Name, ", email:", req.Email)
+			} else {
+				if len(req.Password) != 32 {
+					hashes := md5.New()
+					hashes.Write([]byte(req.Password))                 // 生成密码的 MD5 散列值
+					req.Password = hex.EncodeToString(hashes.Sum(nil)) // 生成密码的 MD5 散列值
+				}
+				resp.Code = proto.SuccessCode
+				resp.Data = service.CreateUserBaseInfo(req.Name, req.Email, req.Password)
+			}
+		} else {
+			resp.Code, resp.Message = proto.PermissionDenied, "no permission"
+		}
 	}
 	c.JSON(http.StatusOK, resp)
 }
