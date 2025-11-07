@@ -4,7 +4,7 @@ import "user_center/proto"
 
 func AddPermissionPolicy(policy *proto.PermissionPolicy) error {
 	db2 := GetDB()
-	res := db2.Model(proto.PermissionPolicy{}).Create(policy)
+	res := db2.Model(&proto.PermissionPolicy{}).Create(policy)
 	return res.Error
 }
 
@@ -16,28 +16,28 @@ func UpdatePermissionPolicy(id int, policy *proto.PermissionPolicy) error {
 
 func DelPermissionPolicy(policyID int) error {
 	db2 := GetDB()
-	res := db2.Delete(proto.PermissionPolicy{}, policyID)
+	res := db2.Delete(&proto.PermissionPolicy{}, policyID)
 	return res.Error
 }
 
 func GetDefaultPermissionPolicy() ([]*proto.PermissionPolicy, error) {
 	db2 := GetDB()
 	var policy []*proto.PermissionPolicy
-	res := db2.Model(proto.PermissionPolicy{}).First(&policy) //默认
+	res := db2.Model(&proto.PermissionPolicy{}).First(&policy) //默认
 	return policy, res.Error
 }
 
 func GetOnePermissionPolicy(policyID int) ([]proto.PermissionPolicy, error) {
 	db2 := GetDB()
 	var policy []proto.PermissionPolicy
-	res := db2.Model(proto.PermissionPolicy{}).Where("id = ?", policyID).Find(&policy)
+	res := db2.Model(&proto.PermissionPolicy{}).Where("id = ?", policyID).Find(&policy)
 	return policy, res.Error
 }
 
 func GetAllPermissionPolicy() ([]proto.PermissionPolicy, error) {
 	db2 := GetDB()
 	var policy []proto.PermissionPolicy
-	res := db2.Model(proto.PermissionPolicy{}).Find(&policy)
+	res := db2.Model(&proto.PermissionPolicy{}).Find(&policy)
 	return policy, res.Error
 }
 
@@ -45,7 +45,7 @@ func GetAllPermissionPolicy() ([]proto.PermissionPolicy, error) {
 func GetUserPolicyInfo(id uint) (*proto.UserPolicyInfo, error) {
 	db2 := GetDB()
 	var policyInfo proto.UserPolicyInfo
-	res := db2.Model(proto.UserPolicyInfo{}).Where("id = ?", id).Find(&policyInfo)
+	res := db2.Model(&proto.UserPolicyInfo{}).Where("id = ?", id).Find(&policyInfo)
 	return &policyInfo, res.Error
 }
 
@@ -79,13 +79,13 @@ func UpdateUserPermissionPolicyInfo(user_id uint, permission_policy_id int) erro
 
 func UpdateUserPolicyInfo(id int, policy *proto.UserPolicyInfo) error {
 	db2 := GetDB()
-	db2.Model(proto.UserPolicyInfo{}).Where("id = ?", id).Updates(policy)
+	db2.Model(&proto.UserPolicyInfo{}).Where("id = ?", id).Updates(policy)
 	return db2.Error
 }
 
 func AddUserPolicyInfo(policyInfo *proto.UserPolicyInfo) error {
 	db2 := GetDB()
-	res := db2.Model(proto.UserPolicyInfo{}).Create(policyInfo)
+	res := db2.Model(&proto.UserPolicyInfo{}).Create(policyInfo)
 	return res.Error
 }
 
