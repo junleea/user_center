@@ -720,3 +720,16 @@ func GetIPRegionByAPI(ip string) string {
 	address := resp.Result.AdInfo.Nation + resp.Result.AdInfo.Province + resp.Result.AdInfo.City //到市一级
 	return address
 }
+
+// 查看字符串是否是邮箱
+func CheckIsEmail(email string) bool {
+	// 邮箱正则表达式模式
+	// 规则说明：
+	// - 本地部分（@前）：允许字母、数字、以及 . _ % + - 等特殊字符
+	// - @ 符号：必须存在且唯一
+	// - 域名部分（@后）：允许字母、数字、. 和 -，且至少包含一个 .（如 .com .cn 等）
+	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+
+	// 匹配并返回结果
+	return emailRegex.MatchString(email)
+}

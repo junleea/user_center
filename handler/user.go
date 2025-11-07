@@ -104,17 +104,21 @@ func AdminAddUserHandle(c *gin.Context) {
 		log.Println("[ERROR] request id:", resp.RequestID, ", admin add user req:", err.Error())
 	} else {
 		if user.Role == proto.USER_IS_ADMIN {
-			if service.ContainsUser(req.Name, req.Email) == true {
-				resp.Code, resp.Message = proto.OperationFailed, "user or email is exist"
-				log.Println("[ERROR] request id:", resp.RequestID, ", admin add user exist, name:", req.Name, ", email:", req.Email)
+			if service.CheckIsEmail(req.Email) == false {
+				resp.Code, resp.Message = proto.ParameterError, "邮箱不合法"
 			} else {
-				if len(req.Password) != 32 {
-					hashes := md5.New()
-					hashes.Write([]byte(req.Password))                 // 生成密码的 MD5 散列值
-					req.Password = hex.EncodeToString(hashes.Sum(nil)) // 生成密码的 MD5 散列值
+				if service.ContainsUser(req.Name, req.Email) == true {
+					resp.Code, resp.Message = proto.OperationFailed, "user or email is exist"
+					log.Println("[ERROR] request id:", resp.RequestID, ", admin add user exist, name:", req.Name, ", email:", req.Email)
+				} else {
+					if len(req.Password) != 32 {
+						hashes := md5.New()
+						hashes.Write([]byte(req.Password))                 // 生成密码的 MD5 散列值
+						req.Password = hex.EncodeToString(hashes.Sum(nil)) // 生成密码的 MD5 散列值
+					}
+					resp.Code = proto.SuccessCode
+					resp.Data = service.CreateUserBaseInfo(req.Name, req.Email, req.Password)
 				}
-				resp.Code = proto.SuccessCode
-				resp.Data = service.CreateUserBaseInfo(req.Name, req.Email, req.Password)
 			}
 		} else {
 			resp.Code, resp.Message = proto.PermissionDenied, "no permission"
