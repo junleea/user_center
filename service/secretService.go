@@ -48,7 +48,6 @@ func SyncSystemConfig(req *proto.SyncSystemConfigReq, requestID string) (error, 
 	//获取密钥信息
 	redisKey := "secret_sync_settings"
 	settingsStr := worker.GetRedis(redisKey)
-	log.Println("settingsStr:", settingsStr)
 	var secret_sync_settings proto.SecretSyncSettings
 	err = json.Unmarshal([]byte(settingsStr), &secret_sync_settings)
 	if err != nil {
