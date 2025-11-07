@@ -10,12 +10,12 @@ import (
 	"user_center/worker"
 )
 
-func SyncSystemConfig(req *proto.SyncSystemConfigReq) (error, *proto.GenerateResp) {
+func SyncSystemConfig(req *proto.SyncSystemConfigReq, requestID string) (error, *proto.GenerateResp) {
 	var resp proto.GenerateResp
 	var respData proto.SyncSystemConfigResponse
 	//查看是否有权限
 	if req.SecretKeyMd5 == "" {
-		log.Println("SyncSystemConfig Error: SecretKey is empty")
+		log.Println("requestID: ", requestID, "SyncSystemConfig Error: SecretKey is empty")
 		resp.Code = proto.OperationFailed
 		resp.Message = "Secret key md5 is null"
 		return errors.New("secret key md5 is null"), &resp
@@ -23,7 +23,7 @@ func SyncSystemConfig(req *proto.SyncSystemConfigReq) (error, *proto.GenerateRes
 	//获取当前的secret
 	secret, err := dao.GetSecretByMd5(req.SecretKeyMd5)
 	if err != nil || secret.ID == 0 {
-		log.Println("SyncSystemConfig Error getting secret by md5, err:", err)
+		log.Println("requestID: ", requestID, ",SyncSystemConfig Error getting secret by md5, err:", err)
 		resp.Code = proto.OperationFailed
 		resp.Message = "Secret key md5 not found"
 		return errors.New("get secret by md5 error"), &resp
@@ -32,7 +32,7 @@ func SyncSystemConfig(req *proto.SyncSystemConfigReq) (error, *proto.GenerateRes
 	//获取当前的密钥信息
 	currentSecret, err := dao.GetSecretKeyBySecret(proto.Config.TOKEN_SECRET)
 	if err != nil || currentSecret.ID == 0 {
-		log.Println("SyncSystemConfig Error getting current secret, err:", err)
+		log.Println("requestID: ", requestID, " SyncSystemConfig Error getting current secret, err:", err)
 		resp.Code = proto.OperationFailed
 		resp.Message = "Current secret not found"
 		return errors.New("get current secret error"), &resp
@@ -52,7 +52,7 @@ func SyncSystemConfig(req *proto.SyncSystemConfigReq) (error, *proto.GenerateRes
 	var secret_sync_settings proto.SecretSyncSettings
 	err = json.Unmarshal([]byte(settingsStr), &secret_sync_settings)
 	if err != nil {
-		log.Println("SyncSystemConfig Error unmarshalling secret sync settings, err:", err)
+		log.Println("requestID: ", requestID, ", SyncSystemConfig Error unmarshalling secret sync settings, err:", err)
 		resp.Code = proto.OperationFailed
 		resp.Message = "Error unmarshalling secret sync settings"
 		return nil, &resp
@@ -71,18 +71,18 @@ func SyncSystemConfig(req *proto.SyncSystemConfigReq) (error, *proto.GenerateRes
 	//将respData转为string,加密后返回
 	respDataStr, err3 := json.Marshal(secret_sync_settings)
 	if err3 != nil {
-		log.Println("SyncSystemConfig Error marshalling response data, err:", err3)
+		log.Println("requestID: ", requestID, ",SyncSystemConfig Error marshalling response data, err:", err3)
 		resp.Code = proto.OperationFailed
 		resp.Message = "Error marshalling response data"
 		return nil, &resp
 	}
 	//对称加密密钥。通过密钥加 secret_key 取md5
 	secretKeyMd5 := worker.GenerateMD5(secret.SecretKey + "_sync_secret")
-	log.Println("SyncSystemConfig: Using secret key md5 for encryption:", secretKeyMd5)
+	//og.Println("SyncSystemConfig: Using secret key md5 for encryption:", secretKeyMd5)
 	//对称加密
 	next_secret_key_ase, err2 := worker.AESEncrypt(respDataStr, []byte(secretKeyMd5))
 	if err2 != nil {
-		log.Println("SyncSystemConfig Error encrypting response data, err:", err2)
+		log.Println("requestID: ", requestID, ",SyncSystemConfig Error encrypting response data, err:", err2)
 		resp.Code = proto.OperationFailed
 		resp.Message = "Error encrypting response data"
 		return nil, &resp

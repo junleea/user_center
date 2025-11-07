@@ -122,10 +122,12 @@ func GetQQAuthUrl(c *gin.Context) {
 func HandleSyncSystemConfig(c *gin.Context) {
 	var req proto.SyncSystemConfigReq
 	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
 	if err := c.ShouldBind(&req); err == nil {
 		//reqString, _ := json.Marshal(req)
 		//log.Println("handle sync system config request:", string(reqString))
-		err2, resp_ := service.SyncSystemConfig(&req)
+		err2, resp_ := service.SyncSystemConfig(&req, resp.RequestID)
 		if err2 != nil {
 			resp.Code = proto.OperationFailed
 			resp.Message = err2.Error()
