@@ -104,6 +104,14 @@ func AdminAddUserHandle(c *gin.Context) {
 		log.Println("[ERROR] request id:", resp.RequestID, ", admin add user req:", err.Error())
 	} else {
 		if user.Role == proto.USER_IS_ADMIN {
+			if len(req.Name) < 6 || len(req.Name) > 32 {
+				resp.Code, resp.Message = proto.ParameterError, "用户名过短或过长"
+				goto end
+			}
+			if len(req.Password) < 6 {
+				resp.Code, resp.Message = proto.ParameterError, "密码过短"
+				goto end
+			}
 			if service.CheckIsEmail(req.Email) == false {
 				resp.Code, resp.Message = proto.ParameterError, "邮箱不合法"
 			} else {
@@ -124,6 +132,7 @@ func AdminAddUserHandle(c *gin.Context) {
 			resp.Code, resp.Message = proto.PermissionDenied, "no permission"
 		}
 	}
+end:
 	c.JSON(http.StatusOK, resp)
 }
 
@@ -707,7 +716,7 @@ func registerHandlerV2(c *gin.Context) {
 	var resp proto.GenerateResp
 	ip := c.ClientIP()
 	if err := c.ShouldBind(&reqData); err == nil {
-		if reqData.User == "" || reqData.Email == "" || reqData.Password == "" || reqData.FingerPrint == "" {
+		if reqData.User == "" || reqData.Email == "" || reqData.Password == "" || reqData.FingerPrint == "" || len(reqData.User) < 6 || len(reqData.User) > 32 || len(reqData.Password) < 6 || len(reqData.Password) < 8 {
 			resp.Code = proto.ParameterError
 			resp.Message = "必要参数不能为空"
 		} else {
