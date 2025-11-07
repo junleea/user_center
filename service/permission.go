@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 	"user_center/dao"
@@ -116,14 +117,16 @@ func GetUserPermissionInfo(req *proto.GetUserPermissionPolicyRequest) (proto.Get
 	return resp, err
 }
 
-func AddPermissionPolicy(user *dao.User, req *proto.PermissionPolicyRequest) (code int, err error) {
-	if user.Role != "admin" {
+func AddPermissionPolicy(requestID string, user *dao.User, req *proto.PermissionPolicyRequest) (code int, err error) {
+	if user.Role != proto.USER_IS_ADMIN {
 		code = proto.PermissionDenied
 		err = errors.New("no permission")
 		return code, err
 	}
 	var policy proto.PermissionPolicy
 	if req.PolicyName == "" {
+		reqStr, _ := json.Marshal(req)
+		log.Println("requestID: ", requestID, " add permission policy req:", string(reqStr))
 		code = proto.ParameterError
 		err = errors.New("policy name is empty")
 		return code, err
@@ -145,7 +148,7 @@ func AddPermissionPolicy(user *dao.User, req *proto.PermissionPolicyRequest) (co
 			//设置生效
 			err = dao.UpdateUserPermissionPolicyInfo(v.ID, int(policy.ID))
 			if err != nil {
-				log.Println("[ERROR] AddPermissionPolicy user id:", v.ID, " err:", err.Error())
+				log.Println("[ERROR]", " requestID: ", requestID, " AddPermissionPolicy user id:", v.ID, " err:", err.Error())
 			}
 		}
 		code = proto.OperationFailed
