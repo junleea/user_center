@@ -169,9 +169,9 @@ func DeletePermissionPolicy(requestID string, user *dao.User, req *proto.Permiss
 	} else {
 		err = dao.DelPermissionPolicy(req.ID)
 		if err != nil {
+			log.Println("[ERROR] request id:", requestID, ", DelPermissionPolicy err:", err.Error())
 			code = proto.OperationFailed
 			err = errors.New("delete permission policy failed")
-			log.Println("[ERROR] request id:", requestID, ", DelPermissionPolicy err:", err.Error())
 		}
 	}
 	return code, err

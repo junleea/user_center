@@ -16,7 +16,7 @@ func UpdatePermissionPolicy(id int, policy *proto.PermissionPolicy) error {
 
 func DelPermissionPolicy(policyID int) error {
 	db2 := GetDB()
-	res := db2.Where("id = ?", policyID).Delete(proto.PermissionPolicy{})
+	res := db2.Delete(proto.PermissionPolicy{}, policyID)
 	return res.Error
 }
 
