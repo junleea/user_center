@@ -585,7 +585,7 @@ type AddUserGroupReq struct {
 }
 
 type AdminAddUserRequest struct {
-	Prev     uint   `json:"prev" form:"prev" binding:"required"`
+	Prev     uint   `json:"prev" form:"prev"`
 	Name     string `json:"name" form:"name" binding:"required"`
 	Email    string `json:"email" form:"email" binding:"required"`
 	Password string `json:"password" form:"password" binding:"required"`
