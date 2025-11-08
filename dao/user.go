@@ -113,6 +113,7 @@ func GetAllDefaultUsers() (*[]proto.UserDefaultInfo, error) {
 	var userInfo []proto.UserDefaultInfo
 	err := db2.Table("users").
 		Select("users.id, users.type, users.prev, users.name").
+		Where("deleted_at is null").
 		Find(&userInfo).Error
 	return &userInfo, err
 }

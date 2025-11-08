@@ -293,7 +293,7 @@ func FindBaseUserInfoList(ids []int) []proto.BaseUserInfo {
 
 func setSyncUserDataSet(t string, id int) error {
 	devices := worker.GetRedisSetMembers("sync_devices_ids") //主服务器查看从服务器的设备列表
-	fmt.Println("set sync user data set devices:", devices, "t:", t, "id:", id)
+	//log.Println("set sync user data set devices:", devices, "t:", t, "id:", id)
 	var err error
 	for _, device := range devices {
 		key := device + "_sync_user_ids"
