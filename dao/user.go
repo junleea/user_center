@@ -146,6 +146,13 @@ func UpdateUserByIDV4(id uint, user *User) {
 	db2.Model(&User{}).Where("id = ?", id).Updates(user)
 }
 
+func UpdateUserPrev(id uint, prev uint) error {
+	db2 := GetDB()
+	res := db2.Model(&User{}).Where("id = ?", id).Update("prev", prev)
+	return res.Error
+
+}
+
 func AddUserGroup(user *User) error {
 	db2 := GetDB()
 	res := db2.Model(&User{}).Create(user)

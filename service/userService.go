@@ -891,21 +891,25 @@ func AddUserGroup(user *dao.User, req *proto.AddUserGroupReq) (code int, msg str
 	return code, msg
 
 }
-func UpdateUserCatalogue(user *dao.User, req *proto.UserCatalogueReq) (code int, msg string) {
+func UpdateUserCatalogue(requestID string, user *dao.User, req *proto.UserCatalogueReq) (code int, msg string) {
 	if user.Role != proto.USER_IS_ADMIN {
 		code, msg = proto.PermissionDenied, "no permission"
 		return code, msg
 	}
 	//查看目标目录是否有效
-	if req.GroupID != 0 && GetUserByIDWithCache(req.GroupID).Type == 0 {
+	if req.GroupID != 0 && GetUserByIDWithCache(int(req.GroupID)).Type == 0 {
+		log.Println("[ERROR] request id:", requestID, " group id is invalid:", req.GroupID)
 		code, msg = proto.OperationFailed, "target group id is invalid"
 	} else {
 		//更新目标用户
-		targetUser := GetUserByIDWithCache(req.UserId)
-		targetUser.Prev = req.GroupID
-		//更新用户
-		dao.UpdateUserByIDV4(targetUser.ID, &targetUser)
-		code, msg = proto.SuccessCode, "success"
+		err := dao.UpdateUserPrev(req.UserId, req.GroupID)
+		if err != nil {
+			log.Println("[error] request id:", requestID, " update user group error:", err)
+			code, msg = proto.OperationFailed, "update user group error"
+		} else {
+			code, msg = proto.SuccessCode, "success"
+		}
+
 	}
 	return code, msg
 }

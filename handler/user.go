@@ -144,11 +144,13 @@ func UpdateUserCatalogueHandle(c *gin.Context) {
 	user := RequestGetUserInfo(c)
 	var req proto.UserCatalogueReq
 	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
 	if err := c.ShouldBind(&req); err != nil {
 		resp.Code, resp.Message = proto.ParameterError, "缺少必要参数"
-		log.Println("[ERROR] update user catalogue req:", err.Error())
+		log.Println("[ERROR] request id:", resp.RequestID, " update user catalogue req:", err.Error())
 	} else {
-		resp.Code, resp.Message = service.UpdateUserCatalogue(&user, &req)
+		resp.Code, resp.Message = service.UpdateUserCatalogue(resp.RequestID, &user, &req)
 	}
 	c.JSON(http.StatusOK, resp)
 }

@@ -592,6 +592,6 @@ type AdminAddUserRequest struct {
 }
 
 type UserCatalogueReq struct {
-	UserId  int `json:"user_id" form:"user_id" binding:"required"`
-	GroupID int `json:"group_id" form:"group_id"`
+	UserId  uint `json:"user_id" form:"user_id" binding:"required"`
+	GroupID uint `json:"group_id" form:"group_id"`
 }
