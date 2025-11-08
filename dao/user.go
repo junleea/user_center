@@ -84,6 +84,12 @@ func DeleteUserByID(id int) int {
 	return id
 }
 
+func DeleteUserByIDV2(id int) error {
+	db2 := GetDB()
+	res := db2.Delete(&User{}, id)
+	return res.Error
+}
+
 func FindUserByID(id int) []User {
 	var users []User
 	//不查询密码

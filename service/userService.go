@@ -224,24 +224,28 @@ func UpdateUserCache(id int) {
 	}
 }
 
-func DeleteUserService(id, user_id int) int {
-	res := 0
-	if user_id == id {
-		res = dao.DeleteUserByID(id)
+func DeleteUserService(requestID string, id, userId int) int {
+	var err error
+	if userId == id {
+		err = dao.DeleteUserByIDV2(id)
 	} else {
-		user := dao.FindUserByID2(user_id)
-		if user.Role == "admin" {
-			res = dao.DeleteUserByID(id)
+		user := GetUserByIDWithCache(userId)
+		if user.Role == proto.USER_IS_ADMIN {
+			err = dao.DeleteUserByIDV2(id)
 		}
 	}
-	if res != 0 {
+	if err == nil {
 		//添加删除用户信息到同步列表
-		err := setSyncUserDataSet("delete", id)
-		if err != nil {
-			return res
+		err2 := setSyncUserDataSet("delete", id)
+		if err2 != nil {
+			log.Println("[ERROR] request id:", requestID, ", set sync user data set error:", err2.Error())
+			return -1
 		}
+	} else {
+		log.Println("[ERROR] request id:", requestID, ", delete user error:", err.Error())
+		return -1
 	}
-	return res
+	return id
 }
 
 // 同步数据到主服务器-增删改数据

@@ -428,18 +428,22 @@ func GetUserBaseInfoList(c *gin.Context) {
 func DeleteUser(c *gin.Context) {
 	var req GetUserInfoReq
 	id, _ := c.Get("id")
-	user_id := int(id.(float64))
+	userId := int(id.(float64))
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
 	if err := c.ShouldBind(&req); err == nil {
-		res := service.DeleteUserService(req.ID, user_id)
-		if res != 0 {
-			c.JSON(200, gin.H{"code": proto.SuccessCode, "message": "success", "data": res})
+		res := service.DeleteUserService(resp.RequestID, req.ID, userId)
+		if res > 0 {
+			resp.Code, resp.Message, resp.Data = proto.SuccessCode, "success", res
 		} else {
-			c.JSON(200, gin.H{"code": proto.OperationFailed, "message": "failed", "data": res})
+			resp.Code, resp.Message = proto.OperationFailed, "删除失败"
 		}
 	} else {
-		c.JSON(200, gin.H{"code": proto.ParameterError, "message": err, "data": "2"})
-		return
+		resp.Code, resp.Message = proto.ParameterError, "解析请求参数失败"
+		log.Println("[ERROR] request id:", resp.RequestID, " ,error:", err)
 	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func UpdateUserInfo(c *gin.Context) {
