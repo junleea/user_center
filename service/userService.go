@@ -30,8 +30,8 @@ func CreateUser(name, password, email, gender string, age int) uint {
 	return id
 }
 
-func CreateUserBaseInfo(name, password, email string) uint {
-	id := dao.CreateUserBaseInfo(name, password, email)
+func CreateUserBaseInfo(name, password, email string, prev uint) uint {
+	id := dao.CreateUserBaseInfo(name, password, email, prev)
 	if id != 0 {
 		//添加用户信息到同步列表
 		err := setSyncUserDataSet("add", int(id))

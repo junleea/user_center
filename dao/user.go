@@ -67,8 +67,8 @@ func CreateUser(name, password, email, gender string, age int) uint {
 	return user.ID
 }
 
-func CreateUserBaseInfo(name, password, email string) uint {
-	user := User{Name: name, Email: email, Password: password}
+func CreateUserBaseInfo(name, password, email string, prev uint) uint {
+	user := User{Name: name, Email: email, Password: password, Prev: int(prev)}
 	res := DB.Create(&user)
 	if res.Error != nil {
 		return 0
