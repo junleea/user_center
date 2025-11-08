@@ -128,7 +128,7 @@ func AdminAddUserHandle(c *gin.Context) {
 							req.Password = hex.EncodeToString(hashes.Sum(nil)) // 生成密码的 MD5 散列值
 						}
 						resp.Code = proto.SuccessCode
-						resp.Data = service.CreateUserBaseInfo(req.Name, req.Email, req.Password, req.Prev)
+						resp.Data = service.CreateUserBaseInfo(req.Name, req.Password, req.Email, req.Prev)
 					}
 				}
 			}
