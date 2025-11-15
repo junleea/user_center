@@ -32,6 +32,7 @@ type GetPermissionPolicyResponse struct {
 type UserPolicyInfo struct {
 	ID                 uint `gorm:"primarykey" json:"user_id"`                               //user  id
 	PermissionPolicyID int  `gorm:"column:permission_policy_id" json:"permission_policy_id"` //permission policy id
+	ModelPolicyID      int  `gorm:"column:model_policy_id" json:"model_policy_id"`
 }
 
 type GetUserPermissionPolicyRequest struct {
