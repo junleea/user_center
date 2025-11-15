@@ -219,6 +219,9 @@ func AddUserModelPolicy(requestID string, user *dao.User, req *proto.ModelPolicy
 
 	err = dao.AddModelPolicy(&policy)
 	if err != nil {
+		code = proto.OperationFailed
+		err = errors.New("add Model policy failed")
+	} else {
 		for _, v := range req.UserRange {
 			//设置生效
 			err = dao.UpdateUserModelPolicyInfo(v.ID, int(policy.ID))
@@ -226,9 +229,6 @@ func AddUserModelPolicy(requestID string, user *dao.User, req *proto.ModelPolicy
 				log.Println("[ERROR]", " requestID: ", requestID, " AddModelPolicy user id:", v.ID, " err:", err.Error())
 			}
 		}
-		code = proto.OperationFailed
-		err = errors.New("add Model policy failed")
-	} else {
 		code, err = proto.SuccessCode, nil
 	}
 	return code, err

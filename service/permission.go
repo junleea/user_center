@@ -144,6 +144,9 @@ func AddPermissionPolicy(requestID string, user *dao.User, req *proto.Permission
 	policy.SendMail = req.SendMail
 	err = dao.AddPermissionPolicy(&policy)
 	if err != nil {
+		code = proto.OperationFailed
+		err = errors.New("add permission policy failed")
+	} else {
 		for _, v := range req.UserRange {
 			//设置生效
 			err = dao.UpdateUserPermissionPolicyInfo(v.ID, int(policy.ID))
@@ -151,9 +154,6 @@ func AddPermissionPolicy(requestID string, user *dao.User, req *proto.Permission
 				log.Println("[ERROR]", " requestID: ", requestID, " AddPermissionPolicy user id:", v.ID, " err:", err.Error())
 			}
 		}
-		code = proto.OperationFailed
-		err = errors.New("add permission policy failed")
-	} else {
 		code, err = proto.SuccessCode, nil
 	}
 	return code, err
