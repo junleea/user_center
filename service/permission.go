@@ -186,9 +186,16 @@ func UpdatePermissionPolicy(user *dao.User, req *proto.PermissionPolicyRequest) 
 		err = errors.New("no permission")
 		return code, err
 	}
+	if req.ID <= 0 {
+		code = proto.ParameterError
+		err = errors.New("policy id is invalid")
+		return code, err
+	}
 	permissionPolicy, err := dao.GetOnePermissionPolicy(req.ID)
-	if err != nil {
-		return 0, err
+	if err != nil || len(permissionPolicy) == 0 {
+		code = proto.ParameterError
+		err = errors.New("policy id is invalid")
+		return code, err
 	}
 	var policy proto.PermissionPolicy
 	policy = permissionPolicy[0]

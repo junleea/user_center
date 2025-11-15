@@ -144,9 +144,16 @@ func UpdateUserModelPolicy(user *dao.User, req *proto.ModelPolicyRequest, reques
 		err = errors.New("no Model")
 		return code, err
 	}
+	if req.ID <= 0 {
+		code = proto.ParameterError
+		err = errors.New("policy id is invalid")
+		return code, err
+	}
 	modelPolicy, err := dao.GetOneModelPolicy(req.ID)
-	if err != nil {
-		return 0, err
+	if err != nil || len(modelPolicy) == 0 {
+		code = proto.OperationFailed
+		err = errors.New("get Model policy failed")
+		return code, err
 	}
 	var policy proto.UserModelPolicy
 	policy = modelPolicy[0]
