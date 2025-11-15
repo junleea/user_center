@@ -83,6 +83,8 @@ func AddModelPolicy(c *gin.Context) {
 func GetModelPolicy(c *gin.Context) {
 	user := RequestGetUserInfo(c)
 	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
 	if user.Role == proto.USER_IS_ADMIN {
 		var req proto.GetUserModelPolicyRequest
 		if err := c.ShouldBindQuery(&req); err != nil {
