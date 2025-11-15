@@ -107,6 +107,14 @@ func Init() error {
 		log.Println("permission policy user db table migrated successfully")
 	}
 
+	err = db.AutoMigrate(&proto.UserModelPolicy{})
+	if err != nil {
+		log.Println("user model policy user info db table:", err)
+		return err
+	} else {
+		log.Println("user model policy user db table migrated successfully")
+	}
+
 	DB = db
 	return err
 }
