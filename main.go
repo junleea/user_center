@@ -42,10 +42,11 @@ func main() {
 	//}
 	worker.InitKV()
 	r.Use(handler.CrosHandler())
-	r.Use(JWTAuthMiddleware())      // 使用 JWT 认证中间件
-	handler.SetUpUserGroup(r)       // User
-	handler.SetUpToolGroup(r)       // Tool
-	handler.SetUpPermissionGroup(r) //permission
+	r.Use(JWTAuthMiddleware())       // 使用 JWT 认证中间件
+	handler.SetUpUserGroup(r)        // User
+	handler.SetUpToolGroup(r)        // Tool
+	handler.SetUpPermissionGroup(r)  //permission
+	handler.SetUpModelPolicyGroup(r) //model policy
 	defer dao.Close()
 	defer worker.CloseKV()
 	//defer dao.CloseMongoDB()

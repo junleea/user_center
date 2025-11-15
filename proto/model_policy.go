@@ -28,3 +28,8 @@ type GetUserModelPolicyRequest struct {
 	UserName      string `form:"user_name" json:"user_name"`
 	ModelPolicyID int    `json:"model_policy_id" form:"model_policy_id"`
 }
+
+type GetModelPolicyResponse struct {
+	Policy UserModelPolicy   `json:"policy" form:"policy"`
+	Range  []UserDefaultInfo `json:"range" form:"range"`
+}
