@@ -15,6 +15,7 @@ func SetUpModelPolicyGroup(router *gin.Engine) {
 	modelPolicyGroup.POST("/add_policy", AddModelPolicy)
 	modelPolicyGroup.POST("/update_policy", UpdateModelPolicy)
 	modelPolicyGroup.POST("/del_policy", DelModelPolicy)
+	modelPolicyGroup.GET("/get_user_model_policy", GetUserModelPolicyInfo)
 }
 
 func DelModelPolicy(c *gin.Context) {
@@ -134,5 +135,14 @@ func GetModelPolicy(c *gin.Context) {
 		resp.Code = proto.PermissionDenied
 		resp.Message = "no permission"
 	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetUserModelPolicyInfo(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	resp.Data = service.GetUserModelPolicy(&user)
 	c.JSON(http.StatusOK, resp)
 }
