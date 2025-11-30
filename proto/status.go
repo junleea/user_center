@@ -152,4 +152,7 @@ const (
 	OTP_TYPE_HOTP         = 1
 )
 
-const ()
+const (
+	IP_IN_NETWORKAREA     = 1
+	IP_NOT_IN_NETWORKAREA = 2
+)

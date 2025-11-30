@@ -163,6 +163,9 @@ func UpdateUserModelPolicy(user *dao.User, req *proto.ModelPolicyRequest, reques
 	if req.PolicyInfo != "" {
 		policy.Info = req.PolicyInfo
 	}
+	if req.FunctionID > 0 {
+		policy.FunctionID = req.FunctionID
+	}
 	//model id 列表
 	var strModelIDs string
 	res, _ := json.Marshal(req.ModelID)
@@ -211,6 +214,7 @@ func AddUserModelPolicy(requestID string, user *dao.User, req *proto.ModelPolicy
 	}
 	policy.Name = req.PolicyName
 	policy.Info = req.PolicyInfo
+	policy.FunctionID = req.FunctionID
 	//model id 列表
 	var strModelIDs string
 	res, _ := json.Marshal(req.ModelID)

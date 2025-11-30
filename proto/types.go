@@ -595,3 +595,34 @@ type UserCatalogueReq struct {
 	UserId  uint `json:"user_id" form:"user_id" binding:"required"`
 	GroupID uint `json:"group_id" form:"group_id"`
 }
+
+type NetworkAreaDetail struct {
+	Type    int    `gorm:"column:type" json:"type" form:"type"` //1 in, 2 not in
+	CidrStr string `gorm:"column:cidr_str" json:"cidr_str" form:"cidr_str"`
+}
+
+type UserNetworkArea struct {
+	gorm.Model
+	UserID     uint   `gorm:"column:user_id" json:"user_id" form:"user_id"`
+	AreaName   string `gorm:"column:area_name" json:"area_name" form:"area_name"`
+	AreaInfo   string `gorm:"column:area_info" json:"area_info" form:"area_info"`
+	AreaDetail string `gorm:"column:area_detail" json:"area_detail" form:"area_detail"` //json array NetworkAreaDetail
+}
+
+// update or create user network area
+type UserNetworkAreaReq struct {
+	ID         uint                `json:"id" form:"id"`
+	UserID     uint                `json:"user_id" form:"user_id" binding:"required"`
+	AreaName   string              `json:"area_name" form:"area_name" binding:"required"`
+	AreaInfo   string              `json:"area_info" form:"area_info"`
+	AreaDetail []NetworkAreaDetail `json:"area_detail" form:"area_detail" binding:"required"` //json array NetworkAreaDetail
+}
+
+// response user network area
+type UserNetworkAreaResp struct {
+	ID         uint                `json:"id" form:"id"`
+	UserID     uint                `json:"user_id" form:"user_id"`
+	AreaName   string              `json:"area_name" form:"area_name"`
+	AreaInfo   string              `json:"area_info" form:"area_info"`
+	AreaDetail []NetworkAreaDetail `json:"area_detail" form:"area_detail"` //json array NetworkAreaDetail
+}

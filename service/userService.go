@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/hotp"
 	"github.com/pquerna/otp/totp"
 	"log"
+	"net"
 	"regexp"
 	"strconv"
 	"time"
@@ -916,4 +918,66 @@ func UpdateUserCatalogue(requestID string, user *dao.User, req *proto.UserCatalo
 
 	}
 	return code, msg
+}
+
+func IsIPInCIDR(ipStr, cidrStr string) bool {
+	// 解析IP地址
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return false
+	}
+
+	// 解析CIDR网段
+	_, ipNet, err := net.ParseCIDR(cidrStr)
+	if err != nil {
+		return false
+	}
+
+	// 判断IP是否在网段内
+	return ipNet.Contains(ip)
+}
+
+func CheckUserClientIPInNetworkArea(clientIP string, networkArea []proto.UserNetworkArea) bool {
+
+	for _, area := range networkArea {
+		var detail []proto.NetworkAreaDetail
+		err := json.Unmarshal([]byte(area.AreaDetail), &detail)
+		if err != nil {
+			continue
+		}
+		for _, info := range detail {
+			if IsIPInCIDR(clientIP, info.CidrStr) && info.Type == proto.IP_IN_NETWORKAREA {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func CheckUserClientIPNotInNetworkArea(clientIP string, networkArea []proto.UserNetworkArea) bool {
+	for _, area := range networkArea {
+		var detail []proto.NetworkAreaDetail
+		err := json.Unmarshal([]byte(area.AreaDetail), &detail)
+		if err != nil {
+			continue
+		}
+		for _, info := range detail {
+			if IsIPInCIDR(clientIP, info.CidrStr) == false && info.Type == proto.IP_NOT_IN_NETWORKAREA {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func UserLoginSkipSecondAuth(user *dao.User, c *gin.Context) bool {
+	skip := false
+	clientIP := c.ClientIP()
+	var userNetworkAreas []proto.UserNetworkArea
+	if CheckUserClientIPInNetworkArea(clientIP, userNetworkAreas) && !CheckUserClientIPNotInNetworkArea(clientIP, userNetworkAreas) {
+		skip = true
+	}
+	return skip
 }
