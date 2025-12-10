@@ -364,6 +364,9 @@ func CalculateUserTokenAndSetCache(user dao.User) (string, error) {
 
 // GenerateAuthTokens creates new access and refresh tokens for a user
 func GenerateAuthTokens(user dao.User) (accessTokenString string, refreshTokenString string, err error) {
+	if user.ID == 0 {
+		return "", "", fmt.Errorf("invalid user")
+	}
 	// Generate Access Token
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"username": user.Name,
