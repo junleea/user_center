@@ -256,4 +256,5 @@ func DefaultConfig() {
 
 func InitAppendDontNeedAuthAPI() {
 	Url_map["/user/second_auth"] = true //二次认证通用接口
+	Url_map["/user/get_client_token_uuid"] = true
 }

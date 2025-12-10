@@ -54,14 +54,64 @@ func GetUserModelPolicy(user *dao.User) *proto.UserModelPolicy {
 			}
 			return policy[0]
 		} else {
-			user_info := GetUserByIDWithCache(user.Prev)
-			return GetUserModelPolicy(&user_info)
+			userInfo := GetUserByIDWithCache(user.Prev)
+			return GetUserModelPolicy(&userInfo)
 		}
 	}
 	policy, err3 := dao.GetOneModelPolicy(userPolicyInfo.ModelPolicyID)
 	if err3 != nil || policy == nil || len(policy) == 0 {
 		log.Println("[ERROR] GetUserModelPolicy err:", err3.Error())
 		return nil
+	}
+	return &policy[0]
+}
+
+// 递归获取
+func GetUserModelPolicyWithFunctionID(user *dao.User, functionID int) *proto.UserModelPolicy {
+	//user policy info
+	userPolicyInfo, err := dao.GetUserPolicyInfo(user.ID)
+	if err != nil || userPolicyInfo == nil {
+		//返回默认策略
+		policy, err2 := dao.GetDefaultModelPolicy()
+		if err2 != nil {
+			log.Println("[ERROR] GetUserModelPolicy err:", err2.Error())
+			return policy[0]
+		}
+		return policy[0]
+	}
+
+	if userPolicyInfo.ModelPolicyID == 0 {
+		if user.Prev == 0 {
+			//返回默认策略
+			policy, err2 := dao.GetDefaultModelPolicy()
+			if err2 != nil {
+				log.Println("[ERROR] GetUserModelPolicy err:", err2.Error())
+				return policy[0]
+			}
+			return policy[0]
+		} else {
+			userInfo := GetUserByIDWithCache(user.Prev)
+			return GetUserModelPolicy(&userInfo)
+		}
+	}
+	policy, err3 := dao.GetOneModelPolicy(userPolicyInfo.ModelPolicyID)
+	if err3 != nil || policy == nil || len(policy) == 0 {
+		log.Println("[ERROR] GetUserModelPolicy err:", err3.Error())
+		return nil
+	}
+	if policy[0].FunctionID != functionID {
+		if user.Prev == 0 {
+			//返回默认策略
+			policy2, err2 := dao.GetDefaultModelPolicy()
+			if err2 != nil {
+				log.Println("[ERROR] GetUserModelPolicy err:", err2.Error())
+				return policy2[0]
+			}
+			return policy2[0]
+		} else {
+			userInfo := GetUserByIDWithCache(user.Prev)
+			return GetUserModelPolicyWithFunctionID(&userInfo, functionID)
+		}
 	}
 	return &policy[0]
 }

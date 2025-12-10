@@ -46,12 +46,24 @@ func SetUpUserGroup(router *gin.Engine) {
 	userGroup.POST("/refresh_token", refreshTokenHandler)  //刷新token
 	userGroup.GET("/get_token_code", GetTokenCode)         //获取token的code
 	userGroup.GET("/get_token_by_code", GetTokenByCode)    //通过code获取token
+	userGroup.GET("/get_client_token_uuid", GetClientTokenUUID)
+	userGroup.GET("/set_client_token_status", SetClientTokenStatus)
 	userGroup.POST("/second_auth", HandleSecondAuth)
 	userGroup.POST("/catalogue", UpdateUserCatalogueHandle)
 	userGroup.POST("/add_group", AddUserGroupHandle)
 	userGroup.GET("/get_group", GetUserGroupHandle)
 	userGroup.GET("/get_all_default_users", GetAllDefaultUsers)
 	userGroup.POST("/admin_add_user", AdminAddUserHandle)
+	userGroup.GET("/get_my_vpn_server_config", GetMyVPNServerConfig)
+}
+
+func GetMyVPNServerConfig(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+
+	resp.Data = user
+
+	c.JSON(http.StatusOK, resp)
 }
 
 func GetAllDefaultUsers(c *gin.Context) {
@@ -1001,6 +1013,52 @@ type GetTokenCodeResp struct {
 	ExpireIn int64  `json:"expire_in"` //过期时间
 }
 
+func GetClientTokenUUID(c *gin.Context) {
+	var resp proto.GenerateResp
+	//生成code
+	code := uuid.New().String()
+	//设置code到redis
+	success := worker.SetRedisWithExpire("token_code_"+code, "0", time.Minute*5) //5分钟过期
+	if success {
+		resp.Code = proto.SuccessCode
+		resp.Message = "success"
+		var getTokenCodeResp GetTokenCodeResp
+		getTokenCodeResp.Code = code
+		getTokenCodeResp.ExpireIn = time.Now().Add(time.Minute * 5).Unix() //设置过期时间
+		resp.Data = getTokenCodeResp
+	} else {
+		resp.Code = proto.RedisSetError
+		resp.Message = "设置code失败"
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func SetClientTokenStatus(c *gin.Context) {
+	id, _ := c.Get("user_id")
+	code := c.Query("code")
+	userId := id.(int)
+	var resp proto.GenerateResp
+	//设置code到redis
+	var success bool
+	if worker.IsContainKey(code) == false {
+		success = false
+		log.Println("[ERROR] set client token status failed, code not found:", code)
+	} else {
+		success = worker.SetRedisWithExpire("token_code_"+code, fmt.Sprintf("%d", userId), time.Minute*5) //5分钟过期
+	}
+	if success {
+		resp.Code = proto.SuccessCode
+		resp.Message = "success"
+		var getTokenCodeResp GetTokenCodeResp
+		getTokenCodeResp.Code = code
+		getTokenCodeResp.ExpireIn = time.Now().Add(time.Minute * 5).Unix() //设置过期时间
+		resp.Data = getTokenCodeResp
+	} else {
+		resp.Code = proto.RedisSetError
+		resp.Message = "设置code失败"
+	}
+	c.JSON(http.StatusOK, resp)
+}
 func GetTokenCode(c *gin.Context) {
 	id, _ := c.Get("user_id")
 	userId := id.(int)
