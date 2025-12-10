@@ -1041,7 +1041,7 @@ func SetClientTokenStatus(c *gin.Context) {
 	//设置code到redis
 	var success bool
 	key := "token_code_" + code
-	if worker.IsContainKey(code) == false {
+	if worker.IsContainKey(key) == false {
 		success = false
 		log.Println("[ERROR] set client token status failed, code not found:", key)
 	} else {
