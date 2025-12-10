@@ -1040,11 +1040,12 @@ func SetClientTokenStatus(c *gin.Context) {
 	var resp proto.GenerateResp
 	//设置code到redis
 	var success bool
+	key := "token_code_" + code
 	if worker.IsContainKey(code) == false {
 		success = false
-		log.Println("[ERROR] set client token status failed, code not found:", code)
+		log.Println("[ERROR] set client token status failed, code not found:", key)
 	} else {
-		success = worker.SetRedisWithExpire("token_code_"+code, fmt.Sprintf("%d", userId), time.Minute*5) //5分钟过期
+		success = worker.SetRedisWithExpire(key, fmt.Sprintf("%d", userId), time.Minute*5) //5分钟过期
 	}
 	if success {
 		resp.Code = proto.SuccessCode
