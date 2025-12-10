@@ -1096,9 +1096,9 @@ func GetTokenByCode(c *gin.Context) {
 			resp.Message = "code已失效"
 		} else {
 			userId, err := strconv.Atoi(userIdStr)
-			if err != nil {
+			if err != nil || userId == 0 {
 				resp.Code = proto.OperationFailed
-				resp.Message = "code解析失败"
+				resp.Message = "code无有效信息"
 			} else {
 				user := service.GetUserByIDWithCache(userId)
 				accessToken, refreshToken, err2 := service.GenerateAuthTokens(user)
