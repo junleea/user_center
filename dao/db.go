@@ -115,6 +115,14 @@ func Init() error {
 		log.Println("user model policy user db table migrated successfully")
 	}
 
+	err = db.AutoMigrate(&proto.MyVPNServerConfig{})
+	if err != nil {
+		log.Println("my vpn server conf db table:", err)
+		return err
+	} else {
+		log.Println("my vpn server conf db table migrated successfully")
+	}
+
 	DB = db
 	return err
 }

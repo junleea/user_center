@@ -107,6 +107,8 @@ const (
 
 	NeedEmailCodeLogin = 1101
 	NeedSecondAuth     = 1102
+
+	MyVPNServerExist = 1101
 )
 
 const (

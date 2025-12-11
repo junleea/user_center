@@ -47,6 +47,7 @@ func main() {
 	handler.SetUpToolGroup(r)        // Tool
 	handler.SetUpPermissionGroup(r)  //permission
 	handler.SetUpModelPolicyGroup(r) //model policy
+	handler.SetUpMyVPNGroup(r)       //my vpn
 	defer dao.Close()
 	defer worker.CloseKV()
 	//defer dao.CloseMongoDB()
