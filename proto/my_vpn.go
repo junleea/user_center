@@ -72,6 +72,16 @@ type AddressPoolConfig struct {
 	IPv6AddressPool AddressPool `json:"ipv6_address_pool" form:"ipv6_address_pool"`
 }
 
+type AddressPoolRequest struct {
+	PoolName string            `json:"pool_name" form:"pool_name" required:"true"`
+	Config   AddressPoolConfig `json:"config" form:"config"`
+}
+
+type TunnelRequestAndResponse struct {
+	TunnelName string       `json:"tunnel_name" form:"tunnel_name" required:"true"`
+	Config     TunnelConfig `json:"config" form:"config"`
+}
+
 type UserClientRequestVPNOnlineResponse struct {
 	ServerID string `json:"server_id" form:"server_id"`
 	ServerIP string `json:"server_ip" form:"server_ip"`

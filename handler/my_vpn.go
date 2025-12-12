@@ -2,6 +2,7 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
+	"log"
 	"net/http"
 	"user_center/proto"
 	"user_center/service"
@@ -19,23 +20,66 @@ func SetUpMyVPNGroup(router *gin.Engine) {
 	myVPNGroup.GET("/get_vpn_server_config", GetVPNServerConfigHandler)
 	myVPNGroup.DELETE("/delete_vpn_server", DeleteVPNServerHandler)
 	myVPNGroup.POST("/set_vpn_ip_pool", SetVPNPoolHandler)
+	myVPNGroup.GET("/get_vpn_ip_pool", GetVPNAddressPoolHandler)
 	myVPNGroup.DELETE("/delete_vpn_ip_pool", DeleteVPNPoolHandler)
 	myVPNGroup.POST("/set_vpn_tunnel", SetVPNTunnelHandler)
 	myVPNGroup.DELETE("/delete_vpn_tunnel", DeleteVPNTunnelHandler)
+	myVPNGroup.GET("/get_vpn_tunnel_config", GetVPNTunnelConfigHandler)
 }
 
 func SetVPNTunnelHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
 	var resp proto.GenerateResp
 	requestID, _ := c.Get("request_id")
 	resp.RequestID = requestID.(string)
+	var req proto.TunnelRequestAndResponse
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid parameter: " + err.Error()
+	} else {
+		err = service.SetMyVPNTunnelService(&user, &req, &resp)
+		if err != nil {
+			log.Println("[ERROR] SetVPNTunnelHandler:", err)
+			resp.Message = "设置操作失败"
+			resp.Code = proto.OperationFailed
+		}
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetVPNTunnelConfigHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	err := service.GetMyVPNTunnelService(&user, &resp)
+	if err != nil {
+		log.Println("[ERROR] GetVPNTunnelHandler:", err)
+		resp.Message = "获取失败"
+		resp.Code = proto.OperationFailed
+	}
 
 	c.JSON(http.StatusOK, resp)
 }
 
 func DeleteVPNTunnelHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
 	var resp proto.GenerateResp
 	requestID, _ := c.Get("request_id")
 	resp.RequestID = requestID.(string)
+	var req proto.TunnelRequestAndResponse
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid parameter: " + err.Error()
+	} else {
+		err = service.DeleteMyVPNTunnelService(&user, &req, &resp)
+		if err != nil {
+			log.Println("[ERROR] SetVPNTunnelHandler:", err)
+			resp.Message = "删除操作失败"
+			resp.Code = proto.OperationFailed
+		}
+	}
 
 	c.JSON(http.StatusOK, resp)
 }
@@ -151,17 +195,58 @@ func GetVPNServerConfigHandler(c *gin.Context) {
 }
 
 func SetVPNPoolHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
 	var resp proto.GenerateResp
 	requestID, _ := c.Get("request_id")
 	resp.RequestID = requestID.(string)
+	var req proto.AddressPoolRequest
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid parameter: " + err.Error()
+	} else {
+		err = service.SetMyVPNAddressPoolService(&user, &req, &resp)
+		if err != nil {
+			log.Println("[ERROR] SetVPNPoolHandler:", err)
+			resp.Message = "设置操作失败"
+			resp.Code = proto.OperationFailed
+		}
+	}
 
 	c.JSON(http.StatusOK, resp)
 }
 
 func DeleteVPNPoolHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
 	var resp proto.GenerateResp
 	requestID, _ := c.Get("request_id")
 	resp.RequestID = requestID.(string)
+	var req proto.AddressPoolRequest
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid parameter: " + err.Error()
+	} else {
+		err = service.DeleteMyVPNAddressPoolService(&user, &req, &resp)
+		if err != nil {
+			log.Println("[ERROR] SetVPNPoolHandler:", err)
+			resp.Message = "删除操作失败"
+			resp.Code = proto.OperationFailed
+		}
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetVPNAddressPoolHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	err := service.GetMyVPNAddressPoolService(&user, &resp)
+	if err != nil {
+		log.Println("[ERROR] SetVPNPoolHandler:", err)
+		resp.Message = "获取失败"
+		resp.Code = proto.OperationFailed
+	}
 
 	c.JSON(http.StatusOK, resp)
 }

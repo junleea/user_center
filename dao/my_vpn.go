@@ -19,6 +19,13 @@ func GetMyVPNServerConfigByAttr(type_ int, attr string) proto.MyVPNServerConfig 
 	return config
 }
 
+func GetMyVPNServerConfigByType(type_ int) []proto.MyVPNServerConfig {
+	db := GetDB()
+	var config []proto.MyVPNServerConfig
+	db.Where("type = ?", type_).Find(&config)
+	return config
+}
+
 func UpdateMyVPNServerConfig(id, type_ int, attr, value string) error {
 	db := GetDB()
 	var config proto.MyVPNServerConfig
