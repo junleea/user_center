@@ -47,15 +47,13 @@ func UpdateMyVPNServerConfigByTypeAttr(type_ int, attr, value string) error {
 }
 func DeleteMyVPNServerConfigByID(id int) error {
 	db := GetDB()
-	var config proto.MyVPNServerConfig
-	res := db.Where("id = ?", id).Delete(&config)
+	res := db.Where("id = ?", id).Delete(&proto.MyVPNServerConfig{})
 	return res.Error
 }
 
 func DeleteMyVPNServerConfigByType(type_ int, attr string) error {
 	db := GetDB()
-	var config proto.MyVPNServerConfig
-	res := db.Where("type = ? AND attr = ?", type_, attr).Delete(&config)
+	res := db.Where("type = ? AND attr = ?", type_, attr).Delete(&proto.MyVPNServerConfig{})
 	return res.Error
 }
 
