@@ -40,6 +40,7 @@ func SetMyVPNServerConfigService(user *dao.User, req *proto.SetServerConfigReque
 	configByte, _ := json.Marshal(req.Config)
 	configStr = string(configByte)
 	err = dao.UpdateMyVPNServerConfigByTypeAttr(proto.VPNServerConfigTypeServer, req.ServerID, configStr)
+	err = UpdateServerConfigToOnlineInfo(req.Config)
 	if err != nil {
 		log.Println("[ERROR] SetMyVPNServerConfigService:", err)
 		code = proto.OperationFailed
@@ -333,16 +334,16 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	GlobalVPNServerConfigMap.mutex.Lock()
 	defer GlobalVPNServerConfigMap.mutex.Unlock()
 	vpnOnlineServer := GlobalVPNServerConfigMap.ServerConfigMap[serverID]
-	if vpnOnlineServer == nil {
-		resp.Code = proto.VPNServerStatusError
-		resp.Message = "VPN服务器状态不可用"
-		return nil
-	}
-	if vpnOnlineServer.Status != proto.VPNDPServerOnlineStatus {
-		resp.Code = proto.VPNServerStatusError
-		resp.Message = "VPN服务器状态不可用"
-		return nil
-	}
+	//if vpnOnlineServer == nil {
+	//	resp.Code = proto.VPNServerStatusError
+	//	resp.Message = "VPN服务器状态不可用"
+	//	return nil
+	//}
+	//if vpnOnlineServer.Status != proto.VPNDPServerOnlineStatus {
+	//	resp.Code = proto.VPNServerStatusError
+	//	resp.Message = "VPN服务器状态不可用"
+	//	return nil
+	//}
 
 	//获取地址池
 	poolInfo := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeAddressPool, vpnOnlineServer.IPv6AddressPool)
