@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"math"
 	"net"
@@ -94,7 +95,16 @@ func (ipa *IPAllocator) AllocateIP(userID uint, ipv4Pool, ipv6Pool *proto.Addres
 		if uint(bindIP.UserID) == userID {
 			ipv4_ := net.ParseIP(bindIP.BindIP).To4()
 			//mark as used
-			ipv4Offset := iv4pToOffsetBaseStartIP(ipv4_, ipa.ipv4Start)
+			ipv4Offset, offErr := iv4pToOffsetBaseStartIP(ipv4_, ipa.ipv4Start)
+			if offErr != nil {
+				log.Println("[WARN] invalid bound IPv4 for user:", userID, " ip:", bindIP.BindIP, " err:", offErr)
+				continue
+			}
+			// bounds check before bitmap access
+			if ipv4Offset < 0 || ipv4Offset/8 >= len(ipa.ipv4Bitmap) {
+				log.Println("[WARN] bound IPv4 offset out of range:", ipv4_, " offset:", ipv4Offset)
+				continue
+			}
 			//该IP是否已经被使用
 			if (ipa.ipv4Bitmap[ipv4Offset/8] & (1 << (ipv4Offset % 8))) != 0 {
 				log.Println("[INFO]: user id:", userID, " Bound IPv4 address is already in use:", ipv4_)
@@ -117,6 +127,11 @@ func (ipa *IPAllocator) AllocateIP(userID uint, ipv4Pool, ipv6Pool *proto.Addres
 						//该IP被绑定给其他用户，跳过
 						continue
 					}
+					// build ipv4 from start + offset, ensure start is valid
+					if ipa.ipv4Start == nil || ipa.ipv4Start.To4() == nil {
+						log.Println("[ERROR] ipv4Start is invalid")
+						return nil, nil, fmt.Errorf("invalid ipv4 start")
+					}
 					ipv4 = make(net.IP, 4)
 					for k := 0; k < 4; k++ {
 						ipv4[k] = ipa.ipv4Start[k] + byte((ipv4Offset>>(8*(3-k)))&0xFF)
@@ -130,10 +145,20 @@ func (ipa *IPAllocator) AllocateIP(userID uint, ipv4Pool, ipv6Pool *proto.Addres
 		}
 		if ipv4 != nil {
 			//如果分到的IP大于结束IP，则表示没有可用IP
-			offset := iv4pToOffsetBaseStartIP(ipv4, ipa.ipv4Start)
+			offset, offErr := iv4pToOffsetBaseStartIP(ipv4, ipa.ipv4Start)
+			if offErr != nil {
+				log.Println("[ERROR]: computed ipv4 offset invalid:", offErr)
+				ipv4 = nil
+				break
+			}
 
 			//计算结束IP的offset
-			endOffset := iv4pToOffsetBaseStartIP(ipa.ipv4End, ipa.ipv4Start)
+			endOffset, offErr2 := iv4pToOffsetBaseStartIP(ipa.ipv4End, ipa.ipv4Start)
+			if offErr2 != nil {
+				log.Println("[ERROR]: end offset invalid:", offErr2)
+				ipv4 = nil
+				break
+			}
 			if offset > endOffset {
 				log.Println("[INFO]: user id:", userID, " No available IPv4 addresses within the specified range")
 				ipv4 = nil
@@ -149,26 +174,59 @@ func (ipa *IPAllocator) AllocateIP(userID uint, ipv4Pool, ipv6Pool *proto.Addres
 
 	return ipv4, ipv6, nil
 }
-func iv4pToOffsetBaseStartIP(ip, startIP net.IP) int {
+
+func iv4pToOffsetBaseStartIP(ip, startIP net.IP) (int, error) {
+	if ip == nil || startIP == nil {
+		return 0, fmt.Errorf("nil ip provided")
+	}
+	ip4 := ip.To4()
+	start4 := startIP.To4()
+	if ip4 == nil || start4 == nil || len(ip4) < 4 || len(start4) < 4 {
+		return 0, fmt.Errorf("invalid ipv4 bytes: ip=%v start=%v", ip, startIP)
+	}
 	offset := 0
 	for i := 0; i < 4; i++ {
-		offset = offset<<8 + int(ip[i]-startIP[i])
+		offset = offset<<8 + int(ip4[i]-start4[i])
 	}
-	return offset
+	return offset, nil
 }
 
 func (ipa *IPAllocator) AddUseIP(ipv4, ipv6 net.IP) {
-	ipv4Offset := iv4pToOffsetBaseStartIP(ipv4, ipa.ipv4Start)
+	ipv4Offset, err := iv4pToOffsetBaseStartIP(ipv4, ipa.ipv4Start)
+	if err != nil {
+		log.Println("[WARN] AddUseIP invalid ipv4:", ipv4, " err:", err)
+		return
+	}
+	if ipv4Offset < 0 || ipv4Offset/8 >= len(ipa.ipv4Bitmap) {
+		log.Println("[WARN] AddUseIP offset out of range:", ipv4Offset)
+		return
+	}
 	ipa.ipv4Bitmap[ipv4Offset/8] |= 1 << (ipv4Offset % 8)
 }
 
 func (ipa *IPAllocator) AddUseIPByStr(ipv4, ipv6 string) {
 	ipv4_ := net.ParseIP(ipv4).To4()
-	ipv4Offset := iv4pToOffsetBaseStartIP(ipv4_, ipa.ipv4Start)
+	ipv4Offset, err := iv4pToOffsetBaseStartIP(ipv4_, ipa.ipv4Start)
+	if err != nil {
+		log.Println("[WARN] AddUseIPByStr invalid ipv4:", ipv4, " err:", err)
+		return
+	}
+	if ipv4Offset < 0 || ipv4Offset/8 >= len(ipa.ipv4Bitmap) {
+		log.Println("[WARN] AddUseIPByStr offset out of range:", ipv4Offset)
+		return
+	}
 	ipa.ipv4Bitmap[ipv4Offset/8] |= 1 << (ipv4Offset % 8)
 }
 
 func (ipa *IPAllocator) ReleaseIP(ipv4 net.IP, ipv6 net.IP) {
-	ipv4Offset := iv4pToOffsetBaseStartIP(ipv4, ipa.ipv4Start)
+	ipv4Offset, err := iv4pToOffsetBaseStartIP(ipv4, ipa.ipv4Start)
+	if err != nil {
+		log.Println("[WARN] ReleaseIP invalid ipv4:", ipv4, " err:", err)
+		return
+	}
+	if ipv4Offset < 0 || ipv4Offset/8 >= len(ipa.ipv4Bitmap) {
+		log.Println("[WARN] ReleaseIP offset out of range:", ipv4Offset)
+		return
+	}
 	ipa.ipv4Bitmap[ipv4Offset/8] &^= 1 << (ipv4Offset % 8)
 }
