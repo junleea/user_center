@@ -29,7 +29,7 @@ var GlobalVPNServerConfigMap = VPNServerConfigMap{
 func UpdateServerConfigToOnlineInfo(serverConfig proto.ServerConfig) (err error) {
 	var onlineServerConf proto.DPServerOnlineConfig
 	//获取地址池信息
-	poolConf := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeAddressPool, serverConfig.Tunnel)
+	poolConf := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeAddressPool, serverConfig.IPv4AddressPool)
 	var poolConfig proto.AddressPoolConfig
 	err = json.Unmarshal([]byte(poolConf.Value), &poolConfig)
 	if err != nil {
