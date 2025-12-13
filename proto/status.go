@@ -108,7 +108,10 @@ const (
 	NeedEmailCodeLogin = 1101
 	NeedSecondAuth     = 1102
 
-	MyVPNServerExist = 1101
+	MyVPNServerExist       = 1101
+	VPNServerNotExist      = 1102
+	VPNAddressPoolNotExist = 1103
+	VPNNoAvailableIP       = 1104
 )
 
 const (

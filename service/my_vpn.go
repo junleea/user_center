@@ -119,6 +119,22 @@ func DeleteMyVPNAddressPoolService(user *dao.User, req *proto.AddressPoolRequest
 		resp.Message = "permission denied"
 		return nil
 	}
+	//获取所有服务器
+	server := dao.GetMyVPNServerConfigByType(proto.VPNServerConfigTypeServer)
+	//查看地址池是否被使用
+	for _, conf := range server {
+		var serverConfig proto.ServerConfig
+		err2 := json.Unmarshal([]byte(conf.Value), &serverConfig)
+		if err2 != nil {
+			log.Println("[ERROR] DeleteMyVPNAddressPoolService:", err2)
+			continue
+		}
+		if serverConfig.IPv4AddressPool == req.PoolName || serverConfig.IPv6AddressPool == req.PoolName {
+			resp.Code = proto.OperationFailed
+			resp.Message = "address pool is in use by vpn server: " + serverConfig.Name
+			return nil
+		}
+	}
 	err = dao.DeleteMyVPNServerConfigByType(proto.VPNServerConfigTypeAddressPool, req.PoolName)
 	if err != nil {
 		log.Println("[ERROR] DeleteMyVPNAddressPoolService:", err)
@@ -163,6 +179,23 @@ func DeleteMyVPNTunnelService(user *dao.User, req *proto.TunnelRequestAndRespons
 		resp.Code = proto.PermissionDenied
 		resp.Message = "permission denied"
 		return nil
+	}
+
+	//获取所有服务器
+	server := dao.GetMyVPNServerConfigByType(proto.VPNServerConfigTypeServer)
+	//查看地址池是否被使用
+	for _, conf := range server {
+		var serverConfig proto.ServerConfig
+		err2 := json.Unmarshal([]byte(conf.Value), &serverConfig)
+		if err2 != nil {
+			log.Println("[ERROR] DeleteMyVPNAddressPoolService:", err2)
+			continue
+		}
+		if serverConfig.IPv4AddressPool == req.TunnelName || serverConfig.IPv6AddressPool == req.TunnelName {
+			resp.Code = proto.OperationFailed
+			resp.Message = "tunnel is in use by vpn server: " + serverConfig.Name
+			return nil
+		}
 	}
 	err = dao.DeleteMyVPNServerConfigByType(proto.VPNServerConfigTypeTunnel, req.TunnelName)
 	if err != nil {
@@ -232,5 +265,126 @@ func SetMyVPNAddressPoolService(user *dao.User, req *proto.AddressPoolRequest, r
 	}
 	resp.Code = proto.SuccessCode
 	resp.Message = "success"
+	return nil
+}
+
+func GetSupportVPNServerList(user *dao.User, resp *proto.GenerateResp) error {
+
+	var res []proto.SupportVPNServer
+	//获取所有的Server
+	servers := dao.GetMyVPNServerConfigByType(proto.VPNServerConfigTypeServer)
+
+	for _, server := range servers {
+		var serverConfig proto.ServerConfig
+		err := json.Unmarshal([]byte(server.Value), &serverConfig)
+		if err != nil {
+			log.Println("[ERROR] GetSupportVPNServerList:", err)
+			continue
+		}
+		for _, userID := range serverConfig.AllowUserID {
+			if userID.ID == user.ID {
+				var supportServer proto.SupportVPNServer
+				supportServer.ServerID = server.Attr
+				supportServer.ServerIP = serverConfig.ServerIP
+				supportServer.ServerInfo = serverConfig.ServerInfo
+				res = append(res, supportServer)
+			}
+		}
+	}
+	resp.Code = proto.SuccessCode
+	resp.Message = "success"
+	resp.Data = res
+	return nil
+}
+
+func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID string) (err error) {
+	var res proto.GetClientConfigOnlineResponse
+	var authUser proto.VPNAuthUserDPInfo
+	authUser.UserID = user.ID
+	authUser.UserName = user.Name
+
+	server := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeServer, serverID)
+	if server.ID == 0 {
+		resp.Code = proto.VPNServerNotExist
+		resp.Message = "vpn server not exist"
+		return nil
+	}
+
+	//是否允许该用户
+	var serverConfig proto.ServerConfig
+	err = json.Unmarshal([]byte(server.Value), &serverConfig)
+	if err != nil {
+		log.Println("[ERROR] GetClientConfigService:", err)
+		resp.Code = proto.OperationFailed
+		resp.Message = "decode vpn server config failed"
+		return nil
+	}
+	allowed := false
+	for _, userID := range serverConfig.AllowUserID {
+		if userID.ID == user.ID {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		resp.Code = proto.PermissionDenied
+		resp.Message = "permission denied"
+		return nil
+	}
+
+	//查看VPN DP服务器状态，在线正常才可
+
+	//客户端配置
+	res.IPv4Router = serverConfig.IPv4Router
+	res.IPv6Router = serverConfig.IPv6Router
+	res.ServerID = serverConfig.ServerID
+	res.ServerIP = serverConfig.ServerIP
+	res.UDPPort = serverConfig.UDPPort
+	res.TCPPort = serverConfig.TCPPort
+	res.Protocol = serverConfig.Protocol
+	res.IPType = serverConfig.IPType
+
+	//获取tunnel
+	tunnel := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeTunnel, serverConfig.Tunnel)
+	var tunnelConfig proto.TunnelConfig
+	err = json.Unmarshal([]byte(tunnel.Value), &tunnelConfig)
+	if err != nil {
+		log.Println("[ERROR] GetClientConfigService:", err)
+		resp.Code = proto.OperationFailed
+		resp.Message = "decode vpn tunnel config failed"
+		return nil
+	}
+	/*加入tunnel配置*/
+	res.IPv4MTU = tunnelConfig.IPv4MTU
+	res.IPv6MTU = tunnelConfig.IPv6MTU
+	res.UploadLimit = tunnelConfig.UploadLimit
+	res.DownloadLimit = tunnelConfig.DownloadLimit
+
+	//分配客户端IP， 根据ip类型
+	//根据地址池分配
+	GlobalAddressPoolMap.mutex.Lock()
+	defer GlobalAddressPoolMap.mutex.Unlock()
+	ipAllocator := GlobalAddressPoolMap.PoolMap[serverConfig.IPv4AddressPool]
+	if ipAllocator == nil {
+		resp.Code = proto.VPNAddressPoolNotExist
+		resp.Message = "vpn address pool not exist"
+		return nil
+	}
+	ipv4, ipv6, err := ipAllocator.AllocateIP(user.ID, nil, nil)
+	res.IPType = serverConfig.IPType
+	if ipv4 == nil {
+		resp.Code = proto.VPNNoAvailableIP
+		resp.Message = "no available ipv4"
+		return nil
+	} else {
+		res.PrivateIPv4 = ipv4.String()
+		authUser.PrivateIPv4 = ipv4.String()
+	}
+	//unsupported ipv6 now
+	if ipv6 != nil {
+		res.PrivateIPv6 = ipv6.String()
+		authUser.PrivateIPv6 = ipv6.String()
+	}
+
 	return nil
 }

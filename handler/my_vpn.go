@@ -12,7 +12,7 @@ func SetUpMyVPNGroup(router *gin.Engine) {
 	myVPNGroup := router.Group("/vpn")
 	myVPNGroup.POST("/server_register", ServerRegisterHandler)
 	myVPNGroup.GET("/get_support_vpn_server", GetSupportVPNServerHandler)
-	myVPNGroup.GET("/get_client_config", GetClientConfigHandler)
+	myVPNGroup.GET("/get_client_config", GetClientConfigHandler) //prepare online
 	myVPNGroup.GET("/get_server_config", GetServerConfigHandler)
 	myVPNGroup.PUT("/client_heartbeat", ClientHeartbeatHandler)
 	myVPNGroup.GET("/get_vpn_user", GetVPNUserHandler)
@@ -86,17 +86,37 @@ func DeleteVPNTunnelHandler(c *gin.Context) {
 
 func GetClientConfigHandler(c *gin.Context) {
 	var resp proto.GenerateResp
+	user := RequestGetUserInfo(c)
 	requestID, _ := c.Get("request_id")
 	resp.RequestID = requestID.(string)
+	serverID := c.Query("server_id")
+	if serverID == "" {
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid parameter: server_id is required"
+	} else {
+		err := service.GetClientConfigService(&user, &resp, serverID)
+		if err != nil {
+			log.Println("[ERROR] GetClientConfigHandler:", err)
+			resp.Message = "获取失败"
+			resp.Code = proto.OperationFailed
+		}
+	}
 
 	c.JSON(http.StatusOK, resp)
 }
 
 func GetSupportVPNServerHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
 	var resp proto.GenerateResp
 	requestID, _ := c.Get("request_id")
 	resp.RequestID = requestID.(string)
 
+	err := service.GetSupportVPNServerList(&user, &resp)
+	if err != nil {
+		log.Println("[ERROR] GetSupportVPNServerHandler:", err)
+		resp.Message = "获取失败"
+		resp.Code = proto.OperationFailed
+	}
 	c.JSON(http.StatusOK, resp)
 }
 

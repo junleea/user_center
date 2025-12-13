@@ -60,11 +60,12 @@ type UserIDBindIP struct {
 }
 
 type AddressPool struct {
-	StartIP string         `json:"start_ip" form:"start_ip"`
-	EndIP   string         `json:"end_ip" form:"end_ip"`
-	Prefix  int            `json:"prefix" form:"prefix"`
-	DNSIP   []StringValue  `json:"dns_ip" form:"dns_ip"`
-	IPBind  []UserIDBindIP `json:"ip_bind" form:"ip_bind"`
+	StartIP   string         `json:"start_ip" form:"start_ip"`
+	EndIP     string         `json:"end_ip" form:"end_ip"`
+	Prefix    int            `json:"prefix" form:"prefix"`
+	DNSIP     []StringValue  `json:"dns_ip" form:"dns_ip"`
+	IPBind    []UserIDBindIP `json:"ip_bind" form:"ip_bind"`
+	IPBindMap map[int]int    `json:"-" form:"-"`
 }
 
 type AddressPoolConfig struct {
@@ -155,4 +156,41 @@ type MyVPNServerConfig struct {
 	Type  int    `json:"type" form:"type"`   /*config type*/
 	Attr  string `json:"attr" form:"attr"`   /*config attr, different, server:server_id, Pool: pool name,Tunnel: tunnel name*/
 	Value string `json:"value" form:"value"` /*config value, json format*/
+}
+
+type SupportVPNServer struct {
+	ServerID   string `json:"server_id" form:"server_id"`
+	ServerIP   string `json:"server_ip" form:"server_ip"`
+	ServerInfo string `json:"server_info" form:"server_info"`
+}
+
+type VPNAuthUserDPInfo struct {
+	UserID      uint   `json:"user_id" form:"user_id"`
+	UserName    string `json:"user_name" form:"user_name"`
+	PrivateIPv4 string `json:"private_ipv4" form:"private_ipv4"`
+	PrivateIPv6 string `json:"private_ipv6" form:"private_ipv6"`
+	VPNDPSecret string `json:"vpn_dp_secret" form:"vpn_dp_secret"` /*dp secret*/
+	UUID        string `json:"uuid" form:"uuid"`
+}
+
+type GetClientConfigOnlineResponse struct {
+	ServerID    string `json:"server_id" form:"server_id"`
+	ServerIP    string `json:"server_ip" form:"server_ip"`
+	UDPPort     int    `json:"udp_port" form:"udp_port"` /*dp, udp port*/
+	TCPPort     int    `json:"tcp_port" form:"tcp_port"` /*dp, tcp port*/
+	Protocol    int    `json:"protocol" form:"protocol"` /* 1: tcp, 2: udp */
+	IPType      int    `json:"ip_type" form:"ip_type"`   /* 4, 6, 46 */
+	PrivateIPv4 string `json:"private_ipv4" form:"private_ipv4"`
+	PrivateIPv6 string `json:"private_ipv6" form:"private_ipv6"`
+	IPv4MTU     int    `json:"ipv4_mtu" form:"ipv4_mtu"`
+	IPv6MTU     int    `json:"ipv6_mtu" form:"ipv6_mtu"`
+
+	UploadLimit   int    `json:"upload_limit" form:"upload_limit"`     /*上传限速，Kbps, 默认：1024Kbps*/
+	DownloadLimit int    `json:"download_limit" form:"download_limit"` /*下载限速，Kbps, 默认：1024Kbps*/
+	VPNDPSecret   string `json:"vpn_dp_secret" form:"vpn_dp_secret"`   /*dp secret*/
+
+	Encryption string      `json:"encryption" form:"encryption"` /*加密算法：aes-128-gcm, aes-192-gcm, aes-256-gcm, SM4-GCM*/
+	Hash       string      `json:"hash" form:"hash"`             /*摘要算法：sha256, sha512, md5, sm3*/
+	IPv4Router []VPNRouter `json:"ipv4_router" form:"ipv4_router"`
+	IPv6Router []VPNRouter `json:"ipv6_router" form:"ipv6_router"`
 }
