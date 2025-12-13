@@ -334,11 +334,11 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	GlobalVPNServerConfigMap.mutex.Lock()
 	defer GlobalVPNServerConfigMap.mutex.Unlock()
 	vpnOnlineServer := GlobalVPNServerConfigMap.ServerConfigMap[serverID]
-	//if vpnOnlineServer == nil {
-	//	resp.Code = proto.VPNServerStatusError
-	//	resp.Message = "VPN服务器状态不可用"
-	//	return nil
-	//}
+	if vpnOnlineServer == nil {
+		resp.Code = proto.VPNServerStatusError
+		resp.Message = "VPN服务器未找到在线信息"
+		return nil
+	}
 	//if vpnOnlineServer.Status != proto.VPNDPServerOnlineStatus {
 	//	resp.Code = proto.VPNServerStatusError
 	//	resp.Message = "VPN服务器状态不可用"

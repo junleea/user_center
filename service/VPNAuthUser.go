@@ -89,6 +89,7 @@ func UpdateServerConfigToOnlineInfo(serverConfig proto.ServerConfig) (err error)
 
 	GlobalVPNServerConfigMap.mutex.Lock()
 	GlobalVPNServerConfigMap.ServerConfigMap[serverConfig.ServerID] = &onlineServerConf
+	log.Println("[INFO] vpn online info set server:", serverConfig.ServerID)
 	GlobalVPNServerConfigMap.mutex.Unlock()
 	return nil
 }
