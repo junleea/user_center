@@ -131,7 +131,9 @@ func ServerRegisterHandler(c *gin.Context) {
 		resp.Message = "invalid parameter: " + err.Error()
 	} else {
 		resp.Code, err = service.RegisterMyVPNServerConfigService(&user, &req)
-		resp.Message = err.Error()
+		if err != nil {
+			resp.Message = err.Error()
+		}
 	}
 
 	c.JSON(http.StatusOK, resp)

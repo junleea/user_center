@@ -56,14 +56,12 @@ func GetMyVPNServerConfigService(user *dao.User) (code int, res []proto.ServerCo
 	serverConf, err := dao.GetMyVPNServerConfig()
 	for conf, _ := range serverConf {
 		var serverConfig proto.ServerConfig
-		if serverConf[conf].Type == proto.VPNServerConfigTypeServer {
-			err = json.Unmarshal([]byte(serverConf[conf].Value), &serverConfig)
-			if err != nil {
-				log.Println("[ERROR] GetMyVPNServerConfigService:", err)
-				continue
-			}
-			res = append(res, serverConfig)
+		err = json.Unmarshal([]byte(serverConf[conf].Value), &serverConfig)
+		if err != nil {
+			log.Println("[ERROR] GetMyVPNServerConfigService:", err)
+			continue
 		}
+		res = append(res, serverConfig)
 	}
 	return proto.SuccessCode, res, nil
 }
