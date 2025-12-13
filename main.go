@@ -61,12 +61,24 @@ func main() {
 	c.Start()
 	//读取配置文件，设置系统
 	ReadConfigToSetSystem()
+	initVPNConfig()
+	r.Run(":" + proto.Config.SERVER_PORT) // listen and serve on 0.0.0.0:8083
+}
+
+func initVPNConfig() {
+	var err error
+
 	err = service.InitVPNDPServerConfig()
 	if err != nil {
 		log.Panic("[ERROR] init vpn dp server config err:", err)
 		return
 	}
-	r.Run(":" + proto.Config.SERVER_PORT) // listen and serve on 0.0.0.0:8083
+
+	err = service.InitAddressPoolToMap()
+	if err != nil {
+		log.Panic("[ERROR] init ip address pool config err:", err)
+		return
+	}
 }
 func init() {
 	// 创建cid的目录

@@ -256,6 +256,8 @@ func SetMyVPNAddressPoolService(user *dao.User, req *proto.AddressPoolRequest, r
 		err = dao.CreateMyVPNServerConfig(proto.VPNServerConfigTypeAddressPool, req.PoolName, configStr)
 	}
 
+	err = UpdateIPAddressPoolToMap(req.PoolName, req.Config)
+
 	if err != nil {
 		log.Println("[ERROR] SetMyVPNAddressPoolService:", err)
 		resp.Code = proto.OperationFailed

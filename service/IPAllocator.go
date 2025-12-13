@@ -1,11 +1,13 @@
 package service
 
 import (
+	"encoding/json"
 	"log"
 	"math"
 	"net"
 	"strconv"
 	"sync"
+	"user_center/dao"
 	"user_center/proto"
 )
 
@@ -30,6 +32,33 @@ type IPAllocator struct {
 	ipv4Bitmap []byte
 	ipv6Bitmap []byte
 	mutex      sync.Mutex
+}
+
+func InitAddressPoolToMap() (err error) {
+	//获取地址池信息
+	poolConf := dao.GetMyVPNServerConfigByType(proto.VPNServerConfigTypeAddressPool)
+	for _, pool := range poolConf {
+		var poolConfig proto.AddressPoolConfig
+		err = json.Unmarshal([]byte(pool.Value), &poolConfig)
+		if err != nil {
+			log.Println("[ERROR] decode pool:", pool.Attr, " config:", pool.Value, ", err:", err.Error())
+			continue
+		}
+		err = UpdateIPAddressPoolToMap(pool.Attr, poolConfig)
+	}
+	return nil
+}
+
+func UpdateIPAddressPoolToMap(name string, poolConfig proto.AddressPoolConfig) (err error) {
+	ipAllocator, err2 := NewIPAllocator(&poolConfig.IPv4AddressPool, &poolConfig.IPv6AddressPool)
+	if err2 != nil {
+		log.Println("[ERROR] get ip allocator:", name, ", err:", err.Error())
+		return nil
+	}
+	GlobalAddressPoolAllocatorMap.mutex.Lock()
+	GlobalAddressPoolAllocatorMap.PoolMap[name] = ipAllocator
+	GlobalAddressPoolAllocatorMap.mutex.Unlock()
+	return nil
 }
 
 func NewIPAllocator(ipv4Pool, ipv6Pool *proto.AddressPool) (ipa *IPAllocator, err error) {
