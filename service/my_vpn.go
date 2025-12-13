@@ -53,7 +53,6 @@ func GetMyVPNServerConfigService(user *dao.User) (code int, res []proto.ServerCo
 	if user.Role != proto.USER_IS_ADMIN {
 		return proto.PermissionDenied, res, errors.New("permission denied")
 	}
-
 	serverConf, err := dao.GetMyVPNServerConfig()
 	for conf, _ := range serverConf {
 		var serverConfig proto.ServerConfig
@@ -333,6 +332,24 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	}
 
 	//查看VPN DP服务器状态，在线正常才可
+	GlobalVPNServerConfigMap.mutex.Lock()
+	defer GlobalVPNServerConfigMap.mutex.Unlock()
+	vpnOnlineServer := GlobalVPNServerConfigMap.ServerConfigMap[serverID]
+	if vpnOnlineServer == nil {
+		resp.Code = proto.VPNServerStatusError
+		resp.Message = "VPN服务器状态不可用"
+		return nil
+	}
+	if vpnOnlineServer.Status != proto.VPNDPServerOnlineStatus {
+		resp.Code = proto.VPNServerStatusError
+		resp.Message = "VPN服务器状态不可用"
+		return nil
+	}
+
+	//获取地址池
+	poolInfo := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeAddressPool, vpnOnlineServer.IPv6AddressPool)
+	var poolConfig proto.AddressPoolConfig
+	err = json.Unmarshal([]byte(poolInfo.Value), &poolConfig)
 
 	//客户端配置
 	res.IPv4Router = serverConfig.IPv4Router
@@ -362,15 +379,17 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 
 	//分配客户端IP， 根据ip类型
 	//根据地址池分配
-	GlobalAddressPoolMap.mutex.Lock()
-	defer GlobalAddressPoolMap.mutex.Unlock()
-	ipAllocator := GlobalAddressPoolMap.PoolMap[serverConfig.IPv4AddressPool]
+	//获取server地址池信息
+
+	GlobalAddressPoolAllocatorMap.mutex.Lock()
+	defer GlobalAddressPoolAllocatorMap.mutex.Unlock()
+	ipAllocator := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
 	if ipAllocator == nil {
 		resp.Code = proto.VPNAddressPoolNotExist
 		resp.Message = "vpn address pool not exist"
 		return nil
 	}
-	ipv4, ipv6, err := ipAllocator.AllocateIP(user.ID, nil, nil)
+	ipv4, ipv6, err := ipAllocator.AllocateIP(user.ID, &poolConfig.IPv4AddressPool, &poolConfig.IPv6AddressPool)
 	res.IPType = serverConfig.IPType
 	if ipv4 == nil {
 		resp.Code = proto.VPNNoAvailableIP
@@ -385,6 +404,16 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 		res.PrivateIPv6 = ipv6.String()
 		authUser.PrivateIPv6 = ipv6.String()
 	}
+	//将auth user 加入map进行管控
+	authUser.UUID = ""
+	GlobalVPNAuthUserMap.mutex.Lock()
+	var theUserList []proto.VPNAuthUserDPInfo
+	theUserList = GlobalVPNAuthUserMap.UserMap[user.ID]
+	theUserList = append(theUserList, authUser)
+
+	resp.Code = proto.SuccessCode
+	resp.Message = "success"
+	resp.Data = res
 
 	return nil
 }

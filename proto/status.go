@@ -112,6 +112,7 @@ const (
 	VPNServerNotExist      = 1102
 	VPNAddressPoolNotExist = 1103
 	VPNNoAvailableIP       = 1104
+	VPNServerStatusError   = 1105
 )
 
 const (

@@ -14,7 +14,7 @@ type AddressPoolMap struct {
 	mutex   sync.Mutex
 }
 
-var GlobalAddressPoolMap = AddressPoolMap{
+var GlobalAddressPoolAllocatorMap = AddressPoolMap{
 	PoolMap: make(map[string]*IPAllocator),
 }
 
@@ -130,6 +130,12 @@ func iv4pToOffsetBaseStartIP(ip, startIP net.IP) int {
 
 func (ipa *IPAllocator) AddUseIP(ipv4, ipv6 net.IP) {
 	ipv4Offset := iv4pToOffsetBaseStartIP(ipv4, ipa.ipv4Start)
+	ipa.ipv4Bitmap[ipv4Offset/8] |= 1 << (ipv4Offset % 8)
+}
+
+func (ipa *IPAllocator) AddUseIPByStr(ipv4, ipv6 string) {
+	ipv4_ := net.ParseIP(ipv4).To4()
+	ipv4Offset := iv4pToOffsetBaseStartIP(ipv4_, ipa.ipv4Start)
 	ipa.ipv4Bitmap[ipv4Offset/8] |= 1 << (ipv4Offset % 8)
 }
 

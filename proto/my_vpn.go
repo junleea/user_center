@@ -1,6 +1,21 @@
 package proto
 
-import "gorm.io/gorm"
+import (
+	"gorm.io/gorm"
+	"time"
+)
+
+const (
+	VPNProtocolTCP           = 1
+	VPNProtocolUDP           = 2
+	IPTypeV4                 = 4
+	IPTypeV6                 = 6
+	IPTypeV46                = 46
+	DefaultDurationTime      = 30
+	VPNDPServerInitStatus    = 0
+	VPNDPServerOnlineStatus  = 1
+	VPNDPServerOfflineStatus = 2
+)
 
 type VPNRouter struct {
 	Type int    `json:"type" form:"type"` /*4,6,46*/
@@ -11,6 +26,14 @@ type VPNRouter struct {
 
 type StringValue struct {
 	Value string `json:"value" form:"value"`
+}
+
+type DPServerOnlineConfig struct {
+	ServerConfig
+	IPv4Address     string    `json:"ipv4_address" form:"ipv4_address"`
+	IPv6Address     string    `json:"ipv6_address" form:"ipv6_address"`
+	Status          int       `json:"status" form:"status"`
+	LastServerCheck time.Time `json:"last_server_check" form:"last_server_check"`
 }
 
 type ServerConfig struct {
@@ -165,12 +188,13 @@ type SupportVPNServer struct {
 }
 
 type VPNAuthUserDPInfo struct {
-	UserID      uint   `json:"user_id" form:"user_id"`
-	UserName    string `json:"user_name" form:"user_name"`
-	PrivateIPv4 string `json:"private_ipv4" form:"private_ipv4"`
-	PrivateIPv6 string `json:"private_ipv6" form:"private_ipv6"`
-	VPNDPSecret string `json:"vpn_dp_secret" form:"vpn_dp_secret"` /*dp secret*/
-	UUID        string `json:"uuid" form:"uuid"`
+	UserID         uint          `json:"user_id" form:"user_id"`
+	UserName       string        `json:"user_name" form:"user_name"`
+	PrivateIPv4    string        `json:"private_ipv4" form:"private_ipv4"`
+	PrivateIPv6    string        `json:"private_ipv6" form:"private_ipv6"`
+	VPNDPSecret    string        `json:"vpn_dp_secret" form:"vpn_dp_secret"` /*dp secret*/
+	UUID           string        `json:"uuid" form:"uuid"`
+	LastUpdateTime time.Duration `json:"last_update_time" form:"last_update_time"`
 }
 
 type GetClientConfigOnlineResponse struct {
