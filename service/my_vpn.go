@@ -467,10 +467,19 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 			authUserMap.UserMap[user.ID] = theUserAuthList
 		}
 	} else {
-		authUserMap_ := VPNAuthUserMap{}
-		var theUserList []proto.VPNAuthUserDPInfo
-		theUserList = append(theUserList, authUser)
-		authUserMap_.UserMap[user.ID] = theUserList
+		// 确保全局 ServerUserMap 已初始化（可能为 nil）
+		if GlobalVPNServerAuthUserMap.ServerUserMap == nil {
+			GlobalVPNServerAuthUserMap.ServerUserMap = make(map[string]*VPNAuthUserMap)
+		}
+
+		// 初始化新的 VPNAuthUserMap，并初始化其内部的 UserMap
+		authUserMap_ := VPNAuthUserMap{
+			UserMap: make(map[uint][]proto.VPNAuthUserDPInfo),
+		}
+
+		// 直接赋值单元素切片
+		authUserMap_.UserMap[user.ID] = []proto.VPNAuthUserDPInfo{authUser}
+
 		GlobalVPNServerAuthUserMap.ServerUserMap[serverID] = &authUserMap_
 	}
 
