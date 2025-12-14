@@ -44,15 +44,14 @@ func UpdateServerConfigToOnlineInfo(serverConfig proto.ServerConfig) (err error)
 		return nil
 	}
 	//获取tunnel信息
-	tunnelConf := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeTunnel, serverConfig.Tunnel)
-	var tunnelConfig proto.TunnelConfig
-	err = json.Unmarshal([]byte(tunnelConf.Value), &poolConfig)
-	if err != nil {
-		log.Println("[ERROR] decode pool:", poolConf.Attr, " config:", poolConf.Value, ", err:", err.Error())
+	tunnelConfig := GetTunnelConfigByName(serverConfig.Tunnel)
+	if tunnelConfig == nil {
+		log.Println("[ERROR] tunnel is not exist:", serverConfig.Tunnel)
 		return nil
 	}
+
 	//设置分配IP
-	if tunnelConfig.AutoIPv4 {
+	if tunnelConfig.AutoIPv4 == true {
 		ipv4, ipv6, err2 := ipAllocator.AllocateIP(0, &poolConfig.IPv4AddressPool, &poolConfig.IPv6AddressPool)
 		if err2 != nil {
 			log.Println("[ERROR] allocate ip err:", err2)
@@ -111,4 +110,61 @@ func InitVPNDPServerConfig() (err error) {
 	}
 
 	return nil
+}
+
+func GetTunnelConfigByName(name string) (res *proto.TunnelConfig) {
+	tunnelConf := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeTunnel, name)
+	log.Println("[INFO] tunnel config:", tunnelConf.Value)
+	if tunnelConf.ID > 0 {
+		err := json.Unmarshal([]byte(tunnelConf.Value), res)
+		if err != nil {
+			log.Println("[ERROR] get tunnel config:", name, ", err:", err)
+		}
+	}
+	return res
+}
+
+func GetTunnelConfigList() (res []proto.TunnelConfig) {
+	tunnelConf := dao.GetMyVPNServerConfigByType(proto.VPNServerConfigTypeTunnel)
+	var err error
+	for _, tunnel := range tunnelConf {
+		if tunnel.ID > 0 {
+			var tunnelConfig proto.TunnelConfig
+			err = json.Unmarshal([]byte(tunnel.Value), &tunnelConfig)
+			if err != nil {
+				log.Println("[ERROR] get tunnel config:", tunnel.Attr, ", err:", err)
+			} else {
+				res = append(res, tunnelConfig)
+			}
+		}
+	}
+	return res
+}
+
+func GetAddressPoolByName(name string) (res *proto.AddressPoolConfig) {
+	poolConf := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeAddressPool, name)
+	if poolConf.ID > 0 {
+		err := json.Unmarshal([]byte(poolConf.Value), res)
+		if err != nil {
+			log.Println("[ERROR] get address pool config:", name, ", err:", err)
+		}
+	}
+	return res
+}
+
+func GetAddressPoolConfigList() (res []proto.AddressPoolConfig) {
+	poolConf := dao.GetMyVPNServerConfigByType(proto.VPNServerConfigTypeAddressPool)
+	var err error
+	for _, tunnel := range poolConf {
+		if tunnel.ID > 0 {
+			var poolConfig proto.AddressPoolConfig
+			err = json.Unmarshal([]byte(tunnel.Value), &poolConfig)
+			if err != nil {
+				log.Println("[ERROR] get tunnel config:", tunnel.Attr, ", err:", err)
+			} else {
+				res = append(res, poolConfig)
+			}
+		}
+	}
+	return res
 }
