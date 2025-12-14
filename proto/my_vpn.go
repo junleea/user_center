@@ -32,6 +32,10 @@ type DPServerOnlineConfig struct {
 	ServerConfig
 	IPv4Address     string    `json:"ipv4_address" form:"ipv4_address"`
 	IPv6Address     string    `json:"ipv6_address" form:"ipv6_address"`
+	IPv4MTU         int       `json:"ipv4_mtu" form:"ipv4_mtu"`
+	IPv6MTU         int       `json:"ipv6_mtu" form:"ipv6_mtu"`
+	UploadLimit     int       `json:"upload_limit" form:"upload_limit"`     /*上传限速，Kbps, 默认：1024Kbps*/
+	DownloadLimit   int       `json:"download_limit" form:"download_limit"` /*下载限速，Kbps, 默认：1024Kbps*/
 	Status          int       `json:"status" form:"status"`
 	LastServerCheck time.Time `json:"last_server_check" form:"last_server_check"`
 }

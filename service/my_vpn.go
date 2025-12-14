@@ -341,6 +341,58 @@ func GetSupportVPNServerList(user *dao.User, resp *proto.GenerateResp) error {
 	return nil
 }
 
+func GetClientConfigExistService(user *dao.User, resp *proto.GenerateResp, serverID, uuidStr string) {
+	var res proto.GetClientConfigOnlineResponse
+
+	GlobalVPNServerConfigMap.mutex.Lock()
+	defer GlobalVPNServerConfigMap.mutex.Unlock()
+	serverConf := GlobalVPNServerConfigMap.ServerConfigMap[serverID]
+	if serverConf == nil {
+		resp.Code = proto.VPNServerNotExist
+		resp.Message = "vpn服务器不存在"
+		return
+	}
+
+	res.IPv4Router = serverConf.IPv4Router
+	res.IPv6Router = serverConf.IPv6Router
+	res.IPv4MTU = serverConf.IPv4MTU
+	res.IPv6MTU = serverConf.IPv6MTU
+	res.Hash = serverConf.Hash
+	res.Encryption = serverConf.Encryption
+	res.Protocol = serverConf.Protocol
+	res.TCPPort = serverConf.TCPPort
+	res.UDPPort = serverConf.UDPPort
+	res.DownloadLimit = serverConf.DownloadLimit
+	res.UploadLimit = serverConf.UploadLimit
+
+	//将auth user 加入map进行管控
+	//查找该server的auth user map
+	GlobalVPNServerAuthUserMap.mutex.Lock()
+	defer GlobalVPNServerAuthUserMap.mutex.Unlock()
+
+	authUserMap := GlobalVPNServerAuthUserMap.ServerUserMap[serverID]
+	if authUserMap != nil {
+		authUserMap.mutex.Lock()
+		defer authUserMap.mutex.Unlock()
+
+		theUserAuthList := authUserMap.UserMap[user.ID]
+		if theUserAuthList != nil {
+			for _, auth := range theUserAuthList {
+				if auth.UUID == uuidStr {
+					res.PrivateIPv4 = auth.PrivateIPv4
+					res.PrivateIPv6 = auth.PrivateIPv6
+					res.VPNDPSecret = auth.VPNDPSecret
+				}
+			}
+
+		}
+	}
+
+	resp.Code = proto.SuccessCode
+	resp.Message = "success"
+	resp.Data = res
+}
+
 func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID string) (err error) {
 	var res proto.GetClientConfigOnlineResponse
 	var authUser proto.VPNAuthUserDPInfo

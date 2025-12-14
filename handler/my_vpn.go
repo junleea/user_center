@@ -100,15 +100,20 @@ func GetClientConfigHandler(c *gin.Context) {
 	requestID, _ := c.Get("request_id")
 	resp.RequestID = requestID.(string)
 	serverID := c.Query("server_id")
+	uuidStr := c.Query("uuid")
 	if serverID == "" {
 		resp.Code = proto.ParameterError
 		resp.Message = "invalid parameter: server_id is required"
 	} else {
-		err := service.GetClientConfigService(&user, &resp, serverID)
-		if err != nil {
-			log.Println("[ERROR] GetClientConfigHandler:", err)
-			resp.Message = "获取失败"
-			resp.Code = proto.OperationFailed
+		if uuidStr == "" {
+			err := service.GetClientConfigService(&user, &resp, serverID)
+			if err != nil {
+				log.Println("[ERROR] GetClientConfigHandler:", err)
+				resp.Message = "获取失败"
+				resp.Code = proto.OperationFailed
+			}
+		} else {
+			service.GetClientConfigExistService(&user, &resp, serverID, uuidStr)
 		}
 	}
 
