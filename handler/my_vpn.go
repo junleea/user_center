@@ -18,6 +18,7 @@ func SetUpMyVPNGroup(router *gin.Engine) {
 	myVPNGroup.GET("/get_vpn_user", GetVPNUserHandler)
 	myVPNGroup.POST("/set_vpn_server_config", SetVPNServerConfigHandler)
 	myVPNGroup.GET("/get_vpn_server_config", GetVPNServerConfigHandler)
+	myVPNGroup.GET("/get_server_online", GetVPNServerOnlineListHandler)
 	myVPNGroup.DELETE("/delete_vpn_server", DeleteVPNServerHandler)
 	myVPNGroup.POST("/set_vpn_ip_pool", SetVPNPoolHandler)
 	myVPNGroup.GET("/get_vpn_ip_pool", GetVPNAddressPoolHandler)
@@ -25,6 +26,15 @@ func SetUpMyVPNGroup(router *gin.Engine) {
 	myVPNGroup.POST("/set_vpn_tunnel", SetVPNTunnelHandler)
 	myVPNGroup.DELETE("/delete_vpn_tunnel", DeleteVPNTunnelHandler)
 	myVPNGroup.GET("/get_vpn_tunnel_config", GetVPNTunnelConfigHandler)
+}
+
+func GetVPNServerOnlineListHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	service.GetVPNServerOnlineList(&user, &resp)
+	c.JSON(http.StatusOK, resp)
 }
 
 func SetVPNTunnelHandler(c *gin.Context) {

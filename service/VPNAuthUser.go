@@ -26,6 +26,26 @@ var GlobalVPNServerConfigMap = VPNServerConfigMap{
 	ServerConfigMap: make(map[string]*proto.DPServerOnlineConfig),
 }
 
+func GetVPNServerOnlineList(user *dao.User, resp *proto.GenerateResp) {
+	if user.Role != proto.USER_IS_ADMIN {
+		resp.Code = proto.PermissionDenied
+		resp.Message = "无权限"
+		return
+	}
+	var res []proto.DPServerOnlineConfig
+
+	GlobalVPNServerConfigMap.mutex.Lock()
+	defer GlobalVPNServerConfigMap.mutex.Unlock()
+
+	for _, onlineConfig := range GlobalVPNServerConfigMap.ServerConfigMap {
+		res = append(res, *onlineConfig)
+	}
+
+	resp.Code = proto.SuccessCode
+	resp.Message = "success"
+	resp.Data = res
+}
+
 func UpdateServerConfigToOnlineInfo(serverConfig proto.ServerConfig) (err error) {
 	var onlineServerConf proto.DPServerOnlineConfig
 	//获取地址池信息
