@@ -100,6 +100,7 @@ func UpdateServerConfigToOnlineInfo(serverConfig proto.ServerConfig) (err error)
 		onlineServerConf.IPv4Address = tunnelConfig.IPv4Address
 	}
 
+	onlineServerConf.UserMaxDevice = serverConfig.UserMaxDevice
 	onlineServerConf.ServerIP = serverConfig.ServerIP
 	onlineServerConf.ServerID = serverConfig.ServerID
 	onlineServerConf.DNSServer = serverConfig.DNSServer
