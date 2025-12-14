@@ -459,7 +459,7 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 
 		theUserAuthList := authUserMap.UserMap[user.ID]
 		if theUserAuthList == nil {
-			var theUserList []proto.VPNAuthUserDPInfo
+			theUserList := make([]proto.VPNAuthUserDPInfo, 2)
 			theUserList = append(theUserList, authUser)
 			authUserMap.UserMap[user.ID] = theUserList
 		} else {
@@ -467,7 +467,7 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 			authUserMap.UserMap[user.ID] = theUserAuthList
 		}
 	} else {
-		var authUserMap_ VPNAuthUserMap
+		authUserMap_ := VPNAuthUserMap{}
 		var theUserList []proto.VPNAuthUserDPInfo
 		theUserList = append(theUserList, authUser)
 		authUserMap_.UserMap[user.ID] = theUserList
