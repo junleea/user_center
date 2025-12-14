@@ -235,6 +235,47 @@ func SetMyVPNTunnelService(user *dao.User, req *proto.TunnelRequestAndResponse, 
 	return nil
 }
 
+func GetVPNOnlineServerConfigWithAuthUser(user *dao.User, resp *proto.GenerateResp, serverID string) {
+	//权限
+	if user.Role != proto.USER_IS_ADMIN && user.Role != proto.ROLE_VPN_SERVER {
+		resp.Code = proto.PermissionDenied
+		resp.Message = "permission denied"
+		return
+	}
+	var res proto.GetOnlineServerWithAuthUser
+
+	GlobalVPNServerConfigMap.mutex.Lock()
+	defer GlobalVPNServerConfigMap.mutex.Unlock()
+	if GlobalVPNServerConfigMap.ServerConfigMap[serverID] == nil {
+		resp.Code = proto.OperationFailed
+		resp.Message = "server id not exist"
+		return
+	}
+	res.ServerConfig = *GlobalVPNServerConfigMap.ServerConfigMap[serverID]
+
+	//查找该server的auth user map
+	GlobalVPNServerAuthUserMap.mutex.Lock()
+	defer GlobalVPNServerConfigMap.mutex.Lock()
+
+	authUserMap := GlobalVPNServerAuthUserMap.ServerUserMap[serverID]
+	if authUserMap != nil {
+		authUserMap.mutex.Lock()
+		defer authUserMap.mutex.Unlock()
+		for userID, v := range authUserMap.UserMap {
+			var authUser proto.VPNAuthUserDPInfoList
+			authUser.UserID = userID
+			for _, v1 := range v {
+				authUser.AuthUser = append(authUser.AuthUser, v1)
+			}
+			res.AuthUser = append(res.AuthUser, authUser)
+		}
+	}
+
+	resp.Code = proto.SuccessCode
+	resp.Message = "success"
+	resp.Data = res
+}
+
 func SetMyVPNAddressPoolService(user *dao.User, req *proto.AddressPoolRequest, resp *proto.GenerateResp) error {
 	//权限
 	if user.Role != proto.USER_IS_ADMIN {
@@ -406,11 +447,32 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 		authUser.PrivateIPv6 = ipv6.String()
 	}
 	//将auth user 加入map进行管控
-	authUser.UUID = ""
-	GlobalVPNAuthUserMap.mutex.Lock()
-	var theUserList []proto.VPNAuthUserDPInfo
-	theUserList = GlobalVPNAuthUserMap.UserMap[user.ID]
-	theUserList = append(theUserList, authUser)
+	//查找该server的auth user map
+	GlobalVPNServerAuthUserMap.mutex.Lock()
+	defer GlobalVPNServerConfigMap.mutex.Lock()
+
+	authUserMap := GlobalVPNServerAuthUserMap.ServerUserMap[serverID]
+	if authUserMap != nil {
+		authUserMap.mutex.Lock()
+		defer authUserMap.mutex.Unlock()
+		authUser.UUID = ""
+
+		theUserAuthList := authUserMap.UserMap[user.ID]
+		if theUserAuthList == nil {
+			var theUserList []proto.VPNAuthUserDPInfo
+			theUserList = append(theUserList, authUser)
+			authUserMap.UserMap[user.ID] = theUserList
+		} else {
+			theUserAuthList = append(theUserAuthList, authUser)
+			authUserMap.UserMap[user.ID] = theUserAuthList
+		}
+	} else {
+		var authUserMap_ VPNAuthUserMap
+		var theUserList []proto.VPNAuthUserDPInfo
+		theUserList = append(theUserList, authUser)
+		authUserMap_.UserMap[user.ID] = theUserList
+		GlobalVPNServerAuthUserMap.ServerUserMap[serverID] = &authUserMap_
+	}
 
 	resp.Code = proto.SuccessCode
 	resp.Message = "success"

@@ -150,10 +150,17 @@ func ServerRegisterHandler(c *gin.Context) {
 }
 
 func GetServerConfigHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
 	var resp proto.GenerateResp
 	requestID, _ := c.Get("request_id")
 	resp.RequestID = requestID.(string)
-
+	serverID := c.Query("server_id")
+	if serverID == "" {
+		resp.Code = proto.ParameterError
+		resp.Message = "server id is null"
+	} else {
+		service.GetVPNOnlineServerConfigWithAuthUser(&user, &resp, serverID)
+	}
 	c.JSON(http.StatusOK, resp)
 }
 

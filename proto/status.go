@@ -116,7 +116,8 @@ const (
 )
 
 const (
-	USER_IS_ADMIN = "admin"
+	USER_IS_ADMIN   = "admin"
+	ROLE_VPN_SERVER = "vpn_server"
 )
 
 // 文件类型（文本、图片）

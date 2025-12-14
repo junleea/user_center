@@ -218,3 +218,13 @@ type GetClientConfigOnlineResponse struct {
 	IPv4Router []VPNRouter `json:"ipv4_router" form:"ipv4_router"`
 	IPv6Router []VPNRouter `json:"ipv6_router" form:"ipv6_router"`
 }
+
+type GetOnlineServerWithAuthUser struct {
+	ServerConfig DPServerOnlineConfig    `json:"server_config"`
+	AuthUser     []VPNAuthUserDPInfoList `json:"auth_user"`
+}
+
+type VPNAuthUserDPInfoList struct {
+	UserID   uint                `json:"user_id"`
+	AuthUser []VPNAuthUserDPInfo `json:"auth_user"`
+}

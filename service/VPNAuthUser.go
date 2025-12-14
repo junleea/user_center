@@ -17,6 +17,15 @@ var GlobalVPNAuthUserMap = VPNAuthUserMap{
 	UserMap: make(map[uint][]proto.VPNAuthUserDPInfo),
 }
 
+type VPNServerAuthUserMap struct {
+	ServerUserMap map[string]*VPNAuthUserMap
+	mutex         sync.Mutex
+}
+
+var GlobalVPNServerAuthUserMap = VPNServerAuthUserMap{
+	ServerUserMap: make(map[string]*VPNAuthUserMap),
+}
+
 type VPNServerConfigMap struct {
 	ServerConfigMap map[string]*proto.DPServerOnlineConfig
 	mutex           sync.Mutex
