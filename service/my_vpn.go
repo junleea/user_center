@@ -207,6 +207,41 @@ func DeleteMyVPNTunnelService(user *dao.User, req *proto.TunnelRequestAndRespons
 	return nil
 }
 
+func SetClientStatusService(user *dao.User, req *proto.SetVPNClientStatusReq, resp *proto.GenerateResp) {
+	GlobalVPNServerConfigMap.mutex.Lock()
+	defer GlobalVPNServerConfigMap.mutex.Unlock()
+	if GlobalVPNServerConfigMap.ServerConfigMap[req.ServerID] == nil {
+		resp.Code = proto.OperationFailed
+		resp.Message = "server id not exist"
+		return
+	}
+	//查找该server的auth user map
+	GlobalVPNServerAuthUserMap.mutex.Lock()
+	defer GlobalVPNServerAuthUserMap.mutex.Unlock()
+
+	authUserMap := GlobalVPNServerAuthUserMap.ServerUserMap[req.ServerID]
+	exist := false
+	if authUserMap != nil {
+		authUserMap.mutex.Lock()
+		defer authUserMap.mutex.Unlock()
+		authList := authUserMap.UserMap[user.ID]
+		if authList != nil {
+			for i, _ := range authList {
+				authList[i].LastUpdateTime = time.Now().Unix()
+				exist = true
+			}
+		}
+	}
+	if exist {
+		resp.Code = proto.SuccessCode
+		resp.Message = "success"
+	} else {
+		resp.Code = proto.OperationFailed
+		resp.Message = "the client uuid is not exist"
+	}
+
+}
+
 func SetMyVPNTunnelService(user *dao.User, req *proto.TunnelRequestAndResponse, resp *proto.GenerateResp) error {
 	//权限
 	if user.Role != proto.USER_IS_ADMIN {

@@ -232,3 +232,8 @@ type VPNAuthUserDPInfoList struct {
 	UserID   uint                `json:"user_id"`
 	AuthUser []VPNAuthUserDPInfo `json:"auth_user"`
 }
+
+type SetVPNClientStatusReq struct {
+	UUID     string `json:"uuid" form:"uuid" required:"true"`
+	ServerID string `json:"server_id" form:"server_id" required:"true"`
+}
