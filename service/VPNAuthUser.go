@@ -116,6 +116,7 @@ func GetTunnelConfigByName(name string) (res *proto.TunnelConfig) {
 	tunnelConf := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeTunnel, name)
 	log.Println("[INFO] tunnel config:", tunnelConf.Value)
 	if tunnelConf.ID > 0 {
+		res = new(proto.TunnelConfig)
 		err := json.Unmarshal([]byte(tunnelConf.Value), res)
 		if err != nil {
 			log.Println("[ERROR] get tunnel config:", name, ", err:", err)
@@ -144,6 +145,7 @@ func GetTunnelConfigList() (res []proto.TunnelConfig) {
 func GetAddressPoolByName(name string) (res *proto.AddressPoolConfig) {
 	poolConf := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeAddressPool, name)
 	if poolConf.ID > 0 {
+		res = new(proto.AddressPoolConfig)
 		err := json.Unmarshal([]byte(poolConf.Value), res)
 		if err != nil {
 			log.Println("[ERROR] get address pool config:", name, ", err:", err)
