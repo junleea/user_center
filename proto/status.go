@@ -113,6 +113,7 @@ const (
 	VPNAddressPoolNotExist = 1103
 	VPNNoAvailableIP       = 1104
 	VPNServerStatusError   = 1105
+	VPNServerMaxUserDevice = 1106
 )
 
 const (

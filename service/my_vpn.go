@@ -533,6 +533,11 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 			theUserList = append(theUserList, authUser)
 			authUserMap.UserMap[user.ID] = theUserList
 		} else {
+			if len(theUserAuthList) >= vpnOnlineServer.UserMaxDevice {
+				resp.Code = proto.VPNServerMaxUserDevice
+				resp.Message = "超出用户最大登录设备限制"
+				return
+			}
 			theUserAuthList = append(theUserAuthList, authUser)
 			authUserMap.UserMap[user.ID] = theUserAuthList
 		}
