@@ -438,6 +438,8 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 		resp.Message = "VPN服务器未找到在线信息"
 		return nil
 	}
+	res.Encryption = vpnOnlineServer.Encryption
+	res.Hash = vpnOnlineServer.Hash
 	//if vpnOnlineServer.Status != proto.VPNDPServerOnlineStatus {
 	//	resp.Code = proto.VPNServerStatusError
 	//	resp.Message = "VPN服务器状态不可用"
@@ -511,6 +513,8 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	}
 	authUser.VPNDPSecret = keyStr
 	authUser.LastUpdateTime = time.Now().Unix()
+
+	res.VPNDPSecret = authUser.VPNDPSecret
 
 	//将auth user 加入map进行管控
 	//查找该server的auth user map
