@@ -364,6 +364,9 @@ func GetClientConfigExistService(user *dao.User, resp *proto.GenerateResp, serve
 	res.UDPPort = serverConf.UDPPort
 	res.DownloadLimit = serverConf.DownloadLimit
 	res.UploadLimit = serverConf.UploadLimit
+	res.ServerID = serverID
+	res.ServerIP = serverConf.ServerIP
+	res.IPType = serverConf.IPType
 
 	//将auth user 加入map进行管控
 	//查找该server的auth user map

@@ -66,8 +66,9 @@ func UpdateServerConfigToOnlineInfo(serverConfig proto.ServerConfig) (err error)
 		return nil
 	}
 	GlobalAddressPoolAllocatorMap.mutex.Lock()
+	defer GlobalAddressPoolAllocatorMap.mutex.Unlock()
 	ipAllocator := GlobalAddressPoolAllocatorMap.PoolMap[poolConf.Attr]
-	GlobalAddressPoolAllocatorMap.mutex.Unlock()
+
 	if ipAllocator == nil {
 		log.Println("[ERROR] decode pool:", poolConf.Attr, " pool map is not exist")
 		return nil
@@ -114,11 +115,15 @@ func UpdateServerConfigToOnlineInfo(serverConfig proto.ServerConfig) (err error)
 	onlineServerConf.TCPPort = serverConfig.TCPPort
 	onlineServerConf.Hash = serverConfig.Hash
 	onlineServerConf.Status = proto.VPNDPServerInitStatus
-
+	onlineServerConf.IPv4MTU = tunnelConfig.IPv4MTU
+	onlineServerConf.IPv6MTU = tunnelConfig.IPv6MTU
+	onlineServerConf.UploadLimit = tunnelConfig.UploadLimit
+	onlineServerConf.DownloadLimit = tunnelConfig.DownloadLimit
 	GlobalVPNServerConfigMap.mutex.Lock()
+	defer GlobalVPNServerConfigMap.mutex.Unlock()
 	GlobalVPNServerConfigMap.ServerConfigMap[serverConfig.ServerID] = &onlineServerConf
 	log.Println("[INFO] vpn online info set server:", serverConfig.ServerID)
-	GlobalVPNServerConfigMap.mutex.Unlock()
+
 	return nil
 }
 
