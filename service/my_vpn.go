@@ -255,7 +255,7 @@ func GetVPNOnlineServerConfigWithAuthUser(user *dao.User, resp *proto.GenerateRe
 
 	//查找该server的auth user map
 	GlobalVPNServerAuthUserMap.mutex.Lock()
-	defer GlobalVPNServerConfigMap.mutex.Unlock()
+	defer GlobalVPNServerAuthUserMap.mutex.Unlock()
 
 	authUserMap := GlobalVPNServerAuthUserMap.ServerUserMap[serverID]
 	if authUserMap != nil {
@@ -449,7 +449,7 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	//将auth user 加入map进行管控
 	//查找该server的auth user map
 	GlobalVPNServerAuthUserMap.mutex.Lock()
-	defer GlobalVPNServerConfigMap.mutex.Unlock()
+	defer GlobalVPNServerAuthUserMap.mutex.Unlock()
 
 	authUserMap := GlobalVPNServerAuthUserMap.ServerUserMap[serverID]
 	if authUserMap != nil {
