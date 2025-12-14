@@ -188,13 +188,13 @@ type SupportVPNServer struct {
 }
 
 type VPNAuthUserDPInfo struct {
-	UserID         uint          `json:"user_id" form:"user_id"`
-	UserName       string        `json:"user_name" form:"user_name"`
-	PrivateIPv4    string        `json:"private_ipv4" form:"private_ipv4"`
-	PrivateIPv6    string        `json:"private_ipv6" form:"private_ipv6"`
-	VPNDPSecret    string        `json:"vpn_dp_secret" form:"vpn_dp_secret"` /*dp secret*/
-	UUID           string        `json:"uuid" form:"uuid"`
-	LastUpdateTime time.Duration `json:"last_update_time" form:"last_update_time"`
+	UserID         uint   `json:"user_id" form:"user_id"`
+	UserName       string `json:"user_name" form:"user_name"`
+	PrivateIPv4    string `json:"private_ipv4" form:"private_ipv4"`
+	PrivateIPv6    string `json:"private_ipv6" form:"private_ipv6"`
+	VPNDPSecret    string `json:"vpn_dp_secret" form:"vpn_dp_secret"` /*dp secret*/
+	UUID           string `json:"uuid" form:"uuid"`
+	LastUpdateTime int64  `json:"last_update_time" form:"last_update_time"`
 }
 
 type GetClientConfigOnlineResponse struct {

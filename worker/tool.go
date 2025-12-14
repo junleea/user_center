@@ -23,6 +23,20 @@ func GetRandomString(l int) string {
 	return string(result)
 }
 
+func Generate32ByteKey() ([]byte, string, error) {
+	// 初始化32字节的切片
+	key := make([]byte, 32)
+
+	_, err := rand.Read(key)
+	if err != nil {
+		return nil, "", fmt.Errorf("生成密钥失败: %w", err)
+	}
+
+	// 转换为十六进制字符串（可选，便于展示/存储）
+	keyHex := hex.EncodeToString(key)
+	return key, keyHex, nil
+}
+
 func GetCurrentTimestamp() int64 {
 	// 获取当前时间戳
 	return time.Now().Unix()

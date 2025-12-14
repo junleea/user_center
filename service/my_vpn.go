@@ -3,9 +3,12 @@ package service
 import (
 	"encoding/json"
 	"errors"
+	"github.com/google/uuid"
 	"log"
+	"time"
 	"user_center/dao"
 	"user_center/proto"
+	"user_center/worker"
 )
 
 func RegisterMyVPNServerConfigService(user *dao.User, req *proto.SetServerConfigRequest) (code int, err error) {
@@ -343,6 +346,7 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	var authUser proto.VPNAuthUserDPInfo
 	authUser.UserID = user.ID
 	authUser.UserName = user.Name
+	authUser.UUID = uuid.New().String()
 
 	server := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeServer, serverID)
 	if server.ID == 0 {
@@ -446,6 +450,16 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 		res.PrivateIPv6 = ipv6.String()
 		authUser.PrivateIPv6 = ipv6.String()
 	}
+
+	key, keyStr, keyErr := worker.Generate32ByteKey()
+	if keyErr != nil {
+		log.Println("[ERROR] user:", user.ID, ", uuid:", authUser.UUID, ", generate dp secret key err:", keyErr, ", key:", string(key))
+		resp.Code = proto.OperationFailed
+		resp.Message = "生成加密密钥失败"
+	}
+	authUser.VPNDPSecret = keyStr
+	authUser.LastUpdateTime = time.Now().Unix()
+
 	//将auth user 加入map进行管控
 	//查找该server的auth user map
 	GlobalVPNServerAuthUserMap.mutex.Lock()
