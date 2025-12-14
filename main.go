@@ -68,15 +68,15 @@ func main() {
 func initVPNConfig() {
 	var err error
 
-	err = service.InitVPNDPServerConfig()
-	if err != nil {
-		log.Panic("[ERROR] init vpn dp server config err:", err)
-		return
-	}
-
 	err = service.InitAddressPoolToMap()
 	if err != nil {
 		log.Panic("[ERROR] init ip address pool config err:", err)
+		return
+	}
+
+	err = service.InitVPNDPServerConfig()
+	if err != nil {
+		log.Panic("[ERROR] init vpn dp server config err:", err)
 		return
 	}
 }
