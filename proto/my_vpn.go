@@ -2,7 +2,6 @@ package proto
 
 import (
 	"gorm.io/gorm"
-	"time"
 )
 
 const (
@@ -15,6 +14,9 @@ const (
 	VPNDPServerInitStatus    = 0
 	VPNDPServerOnlineStatus  = 1
 	VPNDPServerOfflineStatus = 2
+
+	VPNDPServerMaxCheckTime = 10 //超过10秒未收到则转为离线
+	VPNAuthUserMaxCheckTime = 20 //秒超时未收到则踢出
 )
 
 type VPNRouter struct {
@@ -30,14 +32,14 @@ type StringValue struct {
 
 type DPServerOnlineConfig struct {
 	ServerConfig
-	IPv4Address     string    `json:"ipv4_address" form:"ipv4_address"`
-	IPv6Address     string    `json:"ipv6_address" form:"ipv6_address"`
-	IPv4MTU         int       `json:"ipv4_mtu" form:"ipv4_mtu"`
-	IPv6MTU         int       `json:"ipv6_mtu" form:"ipv6_mtu"`
-	UploadLimit     int       `json:"upload_limit" form:"upload_limit"`     /*上传限速，Kbps, 默认：1024Kbps*/
-	DownloadLimit   int       `json:"download_limit" form:"download_limit"` /*下载限速，Kbps, 默认：1024Kbps*/
-	Status          int       `json:"status" form:"status"`
-	LastServerCheck time.Time `json:"last_server_check" form:"last_server_check"`
+	IPv4Address     string `json:"ipv4_address" form:"ipv4_address"`
+	IPv6Address     string `json:"ipv6_address" form:"ipv6_address"`
+	IPv4MTU         int    `json:"ipv4_mtu" form:"ipv4_mtu"`
+	IPv6MTU         int    `json:"ipv6_mtu" form:"ipv6_mtu"`
+	UploadLimit     int    `json:"upload_limit" form:"upload_limit"`     /*上传限速，Kbps, 默认：1024Kbps*/
+	DownloadLimit   int    `json:"download_limit" form:"download_limit"` /*下载限速，Kbps, 默认：1024Kbps*/
+	Status          int    `json:"status" form:"status"`
+	LastServerCheck int64  `json:"last_server_check" form:"last_server_check"`
 }
 
 type ServerConfig struct {
@@ -57,7 +59,7 @@ type ServerConfig struct {
 	Encryption      string      `json:"encryption" form:"encryption"` /*加密算法：aes-128-gcm, aes-192-gcm, aes-256-gcm, SM4-GCM*/
 	Hash            string      `json:"hash" form:"hash"`             /*摘要算法：sha256, sha512, md5, sm3*/
 	UserMaxDevice   int         `json:"user_max_device" form:"user_max_device"`
-	DurationTime    int         `json:"duration_time" form:"duration_time"` /*空闲时长，分钟*/
+	DurationTime    int         `json:"duration_time" form:"duration_time"` /*空闲时长，秒*/
 	IPv4Router      []VPNRouter `json:"ipv4_router" form:"ipv4_router"`
 	IPv6Router      []VPNRouter `json:"ipv6_router" form:"ipv6_router"`
 }
@@ -234,6 +236,11 @@ type VPNAuthUserDPInfoList struct {
 }
 
 type SetVPNClientStatusReq struct {
-	UUID     string `json:"uuid" form:"uuid" required:"true"`
+	UUID     string `json:"uuid" form:"uuid" required:"true"` //会话id
 	ServerID string `json:"server_id" form:"server_id" required:"true"`
+}
+
+type SetVPNServerStatusReq struct {
+	ServerID string `json:"server_id" form:"server_id" required:"true"`
+	Status   int    `json:"status" form:"status" required:"true"`
 }

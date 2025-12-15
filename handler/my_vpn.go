@@ -13,6 +13,7 @@ func SetUpMyVPNGroup(router *gin.Engine) {
 	myVPNGroup.POST("/server_register", ServerRegisterHandler)
 	myVPNGroup.GET("/get_support_vpn_server", GetSupportVPNServerHandler)
 	myVPNGroup.POST("/update_client_status", UpdateClientStatusHandler)
+	myVPNGroup.POST("/update_server_status", UpdateServerStatusHandler)
 	myVPNGroup.GET("/get_client_config", GetClientConfigHandler) //prepare online
 	myVPNGroup.GET("/get_server_config", GetServerConfigHandler)
 	myVPNGroup.PUT("/client_heartbeat", ClientHeartbeatHandler)
@@ -27,6 +28,21 @@ func SetUpMyVPNGroup(router *gin.Engine) {
 	myVPNGroup.POST("/set_vpn_tunnel", SetVPNTunnelHandler)
 	myVPNGroup.DELETE("/delete_vpn_tunnel", DeleteVPNTunnelHandler)
 	myVPNGroup.GET("/get_vpn_tunnel_config", GetVPNTunnelConfigHandler)
+}
+
+func UpdateServerStatusHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	var req proto.SetVPNServerStatusReq
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid parameter: " + err.Error()
+	} else {
+		service.SetServerStatusService(&user, &req, &resp)
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func UpdateClientStatusHandler(c *gin.Context) {

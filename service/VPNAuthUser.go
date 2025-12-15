@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"sync"
+	"time"
 	"user_center/dao"
 	"user_center/proto"
 )
@@ -11,10 +12,6 @@ import (
 type VPNAuthUserMap struct {
 	UserMap map[uint][]proto.VPNAuthUserDPInfo
 	mutex   sync.Mutex
-}
-
-var GlobalVPNAuthUserMap = VPNAuthUserMap{
-	UserMap: make(map[uint][]proto.VPNAuthUserDPInfo),
 }
 
 type VPNServerAuthUserMap struct {
@@ -33,6 +30,46 @@ type VPNServerConfigMap struct {
 
 var GlobalVPNServerConfigMap = VPNServerConfigMap{
 	ServerConfigMap: make(map[string]*proto.DPServerOnlineConfig),
+}
+
+func CheckOnlineServerStatus() {
+	GlobalVPNServerConfigMap.mutex.Lock()
+	defer GlobalVPNServerConfigMap.mutex.Unlock()
+
+	now := time.Now().Unix()
+	for k, v := range GlobalVPNServerConfigMap.ServerConfigMap {
+		t := now - v.LastServerCheck
+		if t > proto.VPNDPServerMaxCheckTime && v.Status == proto.VPNDPServerOnlineStatus {
+			v.Status = proto.VPNDPServerOfflineStatus
+			log.Println("[INFO] server id:", k, ", has more  than:", t, ", max:", proto.VPNDPServerMaxCheckTime)
+		}
+	}
+}
+
+func CheckOnlineAuthUser() {
+	//检查在线auth user, 超过检查时间删除
+	GlobalVPNServerAuthUserMap.mutex.Lock()
+	defer GlobalVPNServerAuthUserMap.mutex.Unlock()
+
+	now := time.Now().Unix()
+
+	for _, userMap := range GlobalVPNServerAuthUserMap.ServerUserMap {
+		//查看服务器配置
+		userMap.mutex.Lock()
+		for userID, theUserList := range userMap.UserMap {
+			endList := make([]proto.VPNAuthUserDPInfo, 1)
+			for _, v := range theUserList {
+				t := now - v.LastUpdateTime
+				if t < proto.VPNAuthUserMaxCheckTime {
+					endList = append(endList, v)
+					continue
+				}
+				log.Println("[INFO] user id:", userID, ", session id:", v.UUID, ", more than:", t, ", max:", proto.VPNAuthUserMaxCheckTime)
+			}
+			userMap.UserMap[userID] = endList
+		}
+		userMap.mutex.Unlock()
+	}
 }
 
 func GetVPNServerOnlineList(user *dao.User, resp *proto.GenerateResp) {

@@ -306,6 +306,12 @@ func myTask() {
 	initConfig(proto.ReadConfigPath)
 	//设置密钥信息
 	SecretInfoSetting()
+
+	//检查dp server
+	service.CheckOnlineServerStatus()
+
+	//检查vpn在线用户
+	service.CheckOnlineAuthUser()
 }
 
 func ReadConfigToSetSystem() {

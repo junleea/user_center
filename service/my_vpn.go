@@ -207,6 +207,30 @@ func DeleteMyVPNTunnelService(user *dao.User, req *proto.TunnelRequestAndRespons
 	return nil
 }
 
+func SetServerStatusService(user *dao.User, req *proto.SetVPNServerStatusReq, resp *proto.GenerateResp) {
+
+	if user.Role != proto.USER_IS_ADMIN && user.Role != proto.ROLE_VPN_SERVER {
+		resp.Code = proto.PermissionDenied
+		resp.Message = "no permissions"
+		return
+	}
+
+	GlobalVPNServerConfigMap.mutex.Lock()
+	defer GlobalVPNServerConfigMap.mutex.Unlock()
+	serverConfig := GlobalVPNServerConfigMap.ServerConfigMap[req.ServerID]
+	if serverConfig == nil {
+		resp.Code = proto.OperationFailed
+		resp.Message = "server id not exist"
+		return
+	}
+
+	serverConfig.LastServerCheck = time.Now().Unix()
+	serverConfig.Status = req.Status
+
+	resp.Code = proto.SuccessCode
+	resp.Message = "success"
+}
+
 func SetClientStatusService(user *dao.User, req *proto.SetVPNClientStatusReq, resp *proto.GenerateResp) {
 	GlobalVPNServerConfigMap.mutex.Lock()
 	defer GlobalVPNServerConfigMap.mutex.Unlock()
@@ -237,7 +261,7 @@ func SetClientStatusService(user *dao.User, req *proto.SetVPNClientStatusReq, re
 		resp.Message = "success"
 	} else {
 		resp.Code = proto.OperationFailed
-		resp.Message = "the client uuid is not exist"
+		resp.Message = "the client session is not exist"
 	}
 
 }
