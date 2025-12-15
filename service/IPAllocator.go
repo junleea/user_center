@@ -221,7 +221,7 @@ func (ipa *IPAllocator) AddUseIPByStr(ipv4, ipv6 string) {
 func (ipa *IPAllocator) ReleaseIP(ipv4 net.IP, ipv6 net.IP) {
 	ipv4Offset, err := iv4pToOffsetBaseStartIP(ipv4, ipa.ipv4Start)
 	if err != nil {
-		log.Println("[WARN] ReleaseIP invalid ipv4:", ipv4, " err:", err)
+		log.Println("[WARN] ReleaseIP invalid ipv4:", ipv4.String(), " err:", err)
 		return
 	}
 	if ipv4Offset < 0 || ipv4Offset/8 >= len(ipa.ipv4Bitmap) {

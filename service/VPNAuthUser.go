@@ -71,7 +71,7 @@ func CheckOnlineAuthUser() {
 				//释放IP
 				GlobalAddressPoolAllocatorMap.mutex.Lock()
 				ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
-				ipa.ReleaseIP(net.IP(v.PrivateIPv4), net.IP(v.PrivateIPv6))
+				ipa.ReleaseIP(net.ParseIP(v.PrivateIPv4).To4(), nil)
 				GlobalAddressPoolAllocatorMap.mutex.Unlock()
 
 				log.Println("[INFO] user id:", userID, ", session id:", v.UUID, "release private ip:", v.PrivateIPv4, ", more than:", t, ", max:", proto.VPNAuthUserMaxCheckTime)
