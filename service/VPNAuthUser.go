@@ -76,7 +76,11 @@ func CheckOnlineAuthUser() {
 
 				log.Println("[INFO] user id:", userID, ", session id:", v.UUID, "release private ip:", v.PrivateIPv4, ", more than:", t, ", max:", proto.VPNAuthUserMaxCheckTime)
 			}
-			userMap.UserMap[userID] = endList
+			if len(endList) > 0 {
+				userMap.UserMap[userID] = endList
+			} else {
+				delete(userMap.UserMap, userID)
+			}
 		}
 		userMap.mutex.Unlock()
 	}
