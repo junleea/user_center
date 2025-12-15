@@ -566,6 +566,7 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 		res.PrivateIPv6 = ipv6.String()
 		authUser.PrivateIPv6 = ipv6.String()
 	}
+	authUser.UUID = uuid.NewString()
 
 	key, keyStr, keyErr := worker.Generate32ByteKey()
 	if keyErr != nil {
@@ -575,6 +576,7 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	}
 	authUser.VPNDPSecret = keyStr
 	authUser.LastUpdateTime = time.Now().Unix()
+	res.SessionID = authUser.UUID
 
 	res.VPNDPSecret = authUser.VPNDPSecret
 
@@ -587,7 +589,6 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	if authUserMap != nil {
 		authUserMap.mutex.Lock()
 		defer authUserMap.mutex.Unlock()
-		authUser.UUID = ""
 
 		theUserAuthList := authUserMap.UserMap[user.ID]
 		if theUserAuthList == nil {
