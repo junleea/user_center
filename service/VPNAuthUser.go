@@ -57,7 +57,7 @@ func CheckOnlineAuthUser() {
 		//查看服务器配置
 		userMap.mutex.Lock()
 		for userID, theUserList := range userMap.UserMap {
-			endList := make([]proto.VPNAuthUserDPInfo, 1)
+			var endList []proto.VPNAuthUserDPInfo
 			for _, v := range theUserList {
 				t := now - v.LastUpdateTime
 				if t < proto.VPNAuthUserMaxCheckTime {
