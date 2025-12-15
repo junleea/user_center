@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"log"
+	"net"
 	"sync"
 	"time"
 	"user_center/dao"
@@ -53,7 +54,10 @@ func CheckOnlineAuthUser() {
 
 	now := time.Now().Unix()
 
-	for _, userMap := range GlobalVPNServerAuthUserMap.ServerUserMap {
+	for serverID, userMap := range GlobalVPNServerAuthUserMap.ServerUserMap {
+		//查看配置
+		serverConfig := GetServerConfigByServerID(serverID)
+
 		//查看服务器配置
 		userMap.mutex.Lock()
 		for userID, theUserList := range userMap.UserMap {
@@ -64,7 +68,13 @@ func CheckOnlineAuthUser() {
 					endList = append(endList, v)
 					continue
 				}
-				log.Println("[INFO] user id:", userID, ", session id:", v.UUID, ", more than:", t, ", max:", proto.VPNAuthUserMaxCheckTime)
+				//释放IP
+				GlobalAddressPoolAllocatorMap.mutex.Lock()
+				ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
+				ipa.ReleaseIP(net.IP(v.PrivateIPv4), net.IP(v.PrivateIPv6))
+				GlobalAddressPoolAllocatorMap.mutex.Unlock()
+
+				log.Println("[INFO] user id:", userID, ", session id:", v.UUID, "release private ip:", v.PrivateIPv4, ", more than:", t, ", max:", proto.VPNAuthUserMaxCheckTime)
 			}
 			userMap.UserMap[userID] = endList
 		}
@@ -192,6 +202,18 @@ func GetTunnelConfigByName(name string) (res *proto.TunnelConfig) {
 		err := json.Unmarshal([]byte(tunnelConf.Value), res)
 		if err != nil {
 			log.Println("[ERROR] get tunnel config:", name, ", err:", err)
+		}
+	}
+	return res
+}
+
+func GetServerConfigByServerID(serverID string) (res *proto.ServerConfig) {
+	tunnelConf := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeServer, serverID)
+	if tunnelConf.ID > 0 {
+		res = new(proto.ServerConfig)
+		err := json.Unmarshal([]byte(tunnelConf.Value), res)
+		if err != nil {
+			log.Println("[ERROR] get server config:", serverID, ", err:", err)
 		}
 	}
 	return res
