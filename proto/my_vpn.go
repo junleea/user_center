@@ -65,7 +65,7 @@ type ServerConfig struct {
 }
 
 type SetServerConfigRequest struct {
-	ServerID   string       `json:"server_id" form:"server_id"`
+	ServerID   string       `json:"server_id" form:"server_id" required:"true"`
 	ServerIP   string       `json:"server_ip" form:"server_ip"`
 	ServerInfo string       `json:"server_info" form:"server_info"`
 	Config     ServerConfig `json:"config" form:"config"`
