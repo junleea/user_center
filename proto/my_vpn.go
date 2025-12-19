@@ -115,12 +115,14 @@ type TunnelRequestAndResponse struct {
 }
 
 type UserClientRequestVPNOnlineResponse struct {
-	ServerID string `json:"server_id" form:"server_id"`
-	ServerIP string `json:"server_ip" form:"server_ip"`
-	UDPPort  int    `json:"udp_port" form:"udp_port"` /*udp port*/
-	TCPPort  int    `json:"tcp_port" form:"tcp_port"`
-	Protocol int    `json:"protocol" form:"protocol"` /* 1: tcp, 2: udp */
-	IPType   int    `json:"ip_type" form:"ip_type"`   /* 4, 6, 46 */
+	ServerID     string `json:"server_id" form:"server_id"`
+	ServerIP     string `json:"server_ip" form:"server_ip"`
+	ServerIPV6   string `json:"server_ipv6" form:"server_ipv6"`
+	ServerIPType string `json:"server_ip_type" form:"server_ip_type"`
+	UDPPort      int    `json:"udp_port" form:"udp_port"` /*udp port*/
+	TCPPort      int    `json:"tcp_port" form:"tcp_port"`
+	Protocol     int    `json:"protocol" form:"protocol"` /* 1: tcp, 2: udp */
+	IPType       int    `json:"ip_type" form:"ip_type"`   /* 4, 6, 46 */
 
 	/* for client pricate ip */
 	ClientIPv4    string `json:"client_ipv4" form:"client_ipv4"`
@@ -206,17 +208,19 @@ type VPNAuthUserDPInfo struct {
 }
 
 type GetClientConfigOnlineResponse struct {
-	ServerID    string `json:"server_id" form:"server_id"`
-	ServerIP    string `json:"server_ip" form:"server_ip"`
-	UDPPort     int    `json:"udp_port" form:"udp_port"` /*dp, udp port*/
-	TCPPort     int    `json:"tcp_port" form:"tcp_port"` /*dp, tcp port*/
-	Protocol    int    `json:"protocol" form:"protocol"` /* 1: tcp, 2: udp */
-	IPType      int    `json:"ip_type" form:"ip_type"`   /* 4, 6, 46 */
-	PrivateIPv4 string `json:"private_ipv4" form:"private_ipv4"`
-	PrivateIPv6 string `json:"private_ipv6" form:"private_ipv6"`
-	IPv4MTU     int    `json:"ipv4_mtu" form:"ipv4_mtu"`
-	IPv6MTU     int    `json:"ipv6_mtu" form:"ipv6_mtu"`
-	SessionID   string `json:"session_id" form:"session_id"`
+	ServerID     string `json:"server_id" form:"server_id"`
+	ServerIP     string `json:"server_ip" form:"server_ip"`
+	ServerIPV6   string `json:"server_ipv6" form:"server_ipv6"`
+	ServerIPType string `json:"server_ip_type" form:"server_ip_type"`
+	UDPPort      int    `json:"udp_port" form:"udp_port"` /*dp, udp port*/
+	TCPPort      int    `json:"tcp_port" form:"tcp_port"` /*dp, tcp port*/
+	Protocol     int    `json:"protocol" form:"protocol"` /* 1: tcp, 2: udp */
+	IPType       int    `json:"ip_type" form:"ip_type"`   /* 4, 6, 46 */
+	PrivateIPv4  string `json:"private_ipv4" form:"private_ipv4"`
+	PrivateIPv6  string `json:"private_ipv6" form:"private_ipv6"`
+	IPv4MTU      int    `json:"ipv4_mtu" form:"ipv4_mtu"`
+	IPv6MTU      int    `json:"ipv6_mtu" form:"ipv6_mtu"`
+	SessionID    string `json:"session_id" form:"session_id"`
 
 	UploadLimit   int    `json:"upload_limit" form:"upload_limit"`     /*上传限速，Kbps, 默认：1024Kbps*/
 	DownloadLimit int    `json:"download_limit" form:"download_limit"` /*下载限速，Kbps, 默认：1024Kbps*/

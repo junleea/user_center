@@ -426,6 +426,8 @@ func GetClientConfigExistService(user *dao.User, resp *proto.GenerateResp, serve
 	res.ServerID = serverID
 	res.ServerIP = serverConf.ServerIP
 	res.IPType = serverConf.IPType
+	res.ServerIPV6 = serverConf.ServerIPV6
+	res.ServerIPType = serverConf.ServerIPType
 
 	//将auth user 加入map进行管控
 	//查找该server的auth user map
