@@ -63,9 +63,10 @@ func UpdateClientStatusHandler(c *gin.Context) {
 func GetVPNServerOnlineListHandler(c *gin.Context) {
 	user := RequestGetUserInfo(c)
 	var resp proto.GenerateResp
+	serverId := c.Query("server_id")
 	requestID, _ := c.Get("request_id")
 	resp.RequestID = requestID.(string)
-	service.GetVPNServerOnlineList(&user, &resp)
+	service.GetVPNServerOnlineList(&user, serverId, &resp)
 	c.JSON(http.StatusOK, resp)
 }
 

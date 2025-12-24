@@ -86,7 +86,7 @@ func CheckOnlineAuthUser() {
 	}
 }
 
-func GetVPNServerOnlineList(user *dao.User, resp *proto.GenerateResp) {
+func GetVPNServerOnlineList(user *dao.User, serverID string, resp *proto.GenerateResp) {
 	if user.Role != proto.USER_IS_ADMIN {
 		resp.Code = proto.PermissionDenied
 		resp.Message = "无权限"
@@ -97,8 +97,15 @@ func GetVPNServerOnlineList(user *dao.User, resp *proto.GenerateResp) {
 	GlobalVPNServerConfigMap.mutex.Lock()
 	defer GlobalVPNServerConfigMap.mutex.Unlock()
 
-	for _, onlineConfig := range GlobalVPNServerConfigMap.ServerConfigMap {
-		res = append(res, *onlineConfig)
+	if serverID != "" {
+		onlineConfig := GlobalVPNServerConfigMap.ServerConfigMap[serverID]
+		if onlineConfig != nil {
+			res = append(res, *onlineConfig)
+		}
+	} else {
+		for _, onlineConfig := range GlobalVPNServerConfigMap.ServerConfigMap {
+			res = append(res, *onlineConfig)
+		}
 	}
 
 	resp.Code = proto.SuccessCode
