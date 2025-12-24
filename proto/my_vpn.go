@@ -47,7 +47,7 @@ type ServerConfig struct {
 	ServerID        string      `json:"server_id" form:"server_id"`
 	ServerIP        string      `json:"server_ip" form:"server_ip"`
 	ServerIPV6      string      `json:"server_ipv6" form:"server_ipv6"`
-	ServerIPType    string      `json:"server_ip_type" form:"server_ip_type"`
+	ServerIPType    int         `json:"server_ip_type" form:"server_ip_type"`
 	ServerInfo      string      `json:"server_info" form:"server_info"`
 	UDPPort         int         `json:"udp_port" form:"udp_port"` /*udp port*/
 	TCPPort         int         `json:"tcp_port" form:"tcp_port"`
