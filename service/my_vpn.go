@@ -12,7 +12,7 @@ import (
 )
 
 func RegisterMyVPNServerConfigService(user *dao.User, req *proto.SetServerConfigRequest) (code int, err error) {
-	if user.Role != proto.USER_IS_ADMIN {
+	if user.Role != proto.USER_IS_ADMIN && user.Role != proto.ROLE_VPN_SERVER {
 		code = proto.PermissionDenied
 		err = errors.New("permission denied")
 		return code, err
