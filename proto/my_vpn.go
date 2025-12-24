@@ -118,7 +118,7 @@ type UserClientRequestVPNOnlineResponse struct {
 	ServerID     string `json:"server_id" form:"server_id"`
 	ServerIP     string `json:"server_ip" form:"server_ip"`
 	ServerIPV6   string `json:"server_ipv6" form:"server_ipv6"`
-	ServerIPType string `json:"server_ip_type" form:"server_ip_type"`
+	ServerIPType int    `json:"server_ip_type" form:"server_ip_type"`
 	UDPPort      int    `json:"udp_port" form:"udp_port"` /*udp port*/
 	TCPPort      int    `json:"tcp_port" form:"tcp_port"`
 	Protocol     int    `json:"protocol" form:"protocol"` /* 1: tcp, 2: udp */
@@ -211,7 +211,7 @@ type GetClientConfigOnlineResponse struct {
 	ServerID     string `json:"server_id" form:"server_id"`
 	ServerIP     string `json:"server_ip" form:"server_ip"`
 	ServerIPV6   string `json:"server_ipv6" form:"server_ipv6"`
-	ServerIPType string `json:"server_ip_type" form:"server_ip_type"`
+	ServerIPType int    `json:"server_ip_type" form:"server_ip_type"`
 	UDPPort      int    `json:"udp_port" form:"udp_port"` /*dp, udp port*/
 	TCPPort      int    `json:"tcp_port" form:"tcp_port"` /*dp, tcp port*/
 	Protocol     int    `json:"protocol" form:"protocol"` /* 1: tcp, 2: udp */
