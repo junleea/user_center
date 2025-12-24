@@ -22,6 +22,12 @@ func RegisterMyVPNServerConfigService(user *dao.User, req *proto.SetServerConfig
 		return proto.MyVPNServerExist, errors.New("vpn server config already exists")
 	}
 	var configStr string
+	req.Config.ServerID = req.ServerID
+	if len(req.ServerID) > 10 {
+		req.Config.Name = req.ServerID[:10]
+	} else {
+		req.Config.Name = req.ServerID
+	}
 	configByte, _ := json.Marshal(req.Config)
 	configStr = string(configByte)
 	err = dao.CreateMyVPNServerConfig(proto.VPNServerConfigTypeServer, req.ServerID, configStr)
