@@ -476,6 +476,7 @@ func GetClientConfigExistService(user *dao.User, resp *proto.GenerateResp, serve
 					res.PrivateIPv4 = auth.PrivateIPv4
 					res.PrivateIPv6 = auth.PrivateIPv6
 					res.VPNDPSecret = auth.VPNDPSecret
+					res.ID = auth.ID
 				}
 			}
 
