@@ -79,6 +79,7 @@ func initVPNConfig() {
 		log.Panic("[ERROR] init vpn dp server config err:", err)
 		return
 	}
+	service.MyVPNSecretID.SetID(1024) /*设置初始值1024*/
 }
 func init() {
 	// 创建cid的目录
@@ -134,7 +135,6 @@ func initConfig(configPath string) {
 	if err != nil {
 		panic("failed to read config file:" + err.Error())
 	}
-	service.MyVPNSecretID.SetID(1024) /*设置初始值1024*/
 }
 
 func SecretInfoSetting() {
