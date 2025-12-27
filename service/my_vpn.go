@@ -13,7 +13,7 @@ import (
 )
 
 type VPNSecretID struct {
-	id    uint /*初始ID*/
+	id    uint
 	mutex sync.Mutex
 }
 
@@ -22,6 +22,7 @@ func (vs *VPNSecretID) GetID() uint {
 	vs.mutex.Lock()
 	id = vs.id
 	vs.id++
+	log.Println("secret id(next):", vs.id)
 	vs.mutex.Unlock()
 	return id
 }
