@@ -492,6 +492,7 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	var res proto.GetClientConfigOnlineResponse
 	var authUser proto.VPNAuthUserDPInfo
 	authUser.ID = MyVPNSecretID.GetID()
+	log.Println("[INFO] user:", user.ID, ", name:", user.Name, ", vpn id:", authUser.ID)
 
 	authUser.UserID = user.ID
 	authUser.UserName = user.Name
