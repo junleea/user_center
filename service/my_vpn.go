@@ -5,11 +5,34 @@ import (
 	"errors"
 	"github.com/google/uuid"
 	"log"
+	"sync"
 	"time"
 	"user_center/dao"
 	"user_center/proto"
 	"user_center/worker"
 )
+
+type VPNSecretID struct {
+	id    uint /*初始ID*/
+	mutex sync.Mutex
+}
+
+func (vs *VPNSecretID) GetID() uint {
+	var id uint
+	vs.mutex.Lock()
+	id = vs.id
+	vs.id++
+	vs.mutex.Unlock()
+	return id
+}
+
+func (vs *VPNSecretID) SetID(id uint) {
+	vs.mutex.Lock()
+	vs.id = id
+	vs.mutex.Unlock()
+}
+
+var MyVPNSecretID VPNSecretID
 
 func RegisterMyVPNServerConfigService(user *dao.User, req *proto.SetServerConfigRequest) (code int, err error) {
 	if user.Role != proto.USER_IS_ADMIN && user.Role != proto.ROLE_VPN_SERVER {
@@ -467,6 +490,8 @@ func GetClientConfigExistService(user *dao.User, resp *proto.GenerateResp, serve
 func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID string) (err error) {
 	var res proto.GetClientConfigOnlineResponse
 	var authUser proto.VPNAuthUserDPInfo
+	authUser.ID = MyVPNSecretID.GetID()
+
 	authUser.UserID = user.ID
 	authUser.UserName = user.Name
 	authUser.UUID = uuid.New().String()

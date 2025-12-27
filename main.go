@@ -134,6 +134,7 @@ func initConfig(configPath string) {
 	if err != nil {
 		panic("failed to read config file:" + err.Error())
 	}
+	service.MyVPNSecretID.SetID(1024) /*设置初始值1024*/
 }
 
 func SecretInfoSetting() {

@@ -198,6 +198,7 @@ type SupportVPNServer struct {
 }
 
 type VPNAuthUserDPInfo struct {
+	ID             uint   `json:"id" form:"id"` /*连接id,区分每个连接*/
 	UserID         uint   `json:"user_id" form:"user_id"`
 	UserName       string `json:"user_name" form:"user_name"`
 	PrivateIPv4    string `json:"private_ipv4" form:"private_ipv4"`
