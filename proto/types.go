@@ -626,3 +626,9 @@ type UserNetworkAreaResp struct {
 	AreaInfo   string              `json:"area_info" form:"area_info"`
 	AreaDetail []NetworkAreaDetail `json:"area_detail" form:"area_detail"` //json array NetworkAreaDetail
 }
+
+type GenerateUserTokenReq struct {
+	UserID          uint  `json:"user_id" form:"user_id" binding:"required"`
+	ExpireIn        int64 `json:"expire_in" form:"expire_in" binding:"required"`                 // 过期时间，单位秒
+	RefreshExpireIn int64 `json:"refresh_expire_in" form:"refresh_expire_in" binding:"required"` // 刷新令牌过期时间，单位秒
+}

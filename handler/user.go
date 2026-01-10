@@ -55,6 +55,47 @@ func SetUpUserGroup(router *gin.Engine) {
 	userGroup.GET("/get_all_default_users", GetAllDefaultUsers)
 	userGroup.POST("/admin_add_user", AdminAddUserHandle)
 	userGroup.GET("/get_my_vpn_server_config", GetMyVPNServerConfig)
+	userGroup.POST("/gen_user_token", GenerateUserTokenHandler)
+}
+
+func GenerateUserTokenHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	var req proto.GenerateUserTokenReq
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	if user.Role != proto.USER_IS_ADMIN {
+		resp.Code, resp.Message = proto.PermissionDenied, "no permission"
+	} else {
+		var err error
+		if err = c.ShouldBind(&req); err != nil {
+			log.Println("[ERROR] request id:", resp.RequestID, ", GenerateUserTokenHandler req err:", err.Error())
+			resp.Code, resp.Data = proto.ParameterError, "解析参数失败"
+		} else {
+			targetUser := service.GetUserByIDWithCache(int(req.UserID))
+			if targetUser.ID == 0 {
+				resp.Code, resp.Message = proto.OperationFailed, "user not found"
+			} else {
+				accessToken, refreshToken, err2 := service.GenerateAuthTokensWithExpire(user, req.ExpireIn, req.RefreshExpireIn)
+				if err2 != nil {
+					log.Println("[ERROR] request id:", resp.RequestID, ", GenerateUserTokenHandler generate tokens err:", err2.Error())
+					resp.Code, resp.Data = proto.TokenGenerationError, "Failed to generate tokens"
+				} else {
+					authResponse := proto.AuthResponse{
+						AccessToken:  accessToken,
+						RefreshToken: refreshToken,
+						UserID:       user.ID,
+						ExpireIn:     time.Now().Add(time.Duration(req.ExpireIn) * time.Second).Unix(), // 令牌过期时间
+						Username:     user.Name,
+						Email:        user.Email,
+					}
+					resp.Code, resp.Message = proto.SuccessCode, "success"
+					resp.Data = authResponse
+				}
+			}
+		}
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func GetMyVPNServerConfig(c *gin.Context) {

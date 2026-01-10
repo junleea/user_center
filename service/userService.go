@@ -363,6 +363,45 @@ func CalculateUserTokenAndSetCache(user dao.User) (string, error) {
 }
 
 // GenerateAuthTokens creates new access and refresh tokens for a user
+func GenerateAuthTokensWithExpire(user dao.User, ExpireIn, RefreshExpireIn int64) (accessTokenString string, refreshTokenString string, err error) {
+	if user.ID == 0 {
+		return "", "", fmt.Errorf("invalid user")
+	}
+
+	expire := time.Duration(ExpireIn) * time.Second
+	// Generate Access Token
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"username": user.Name,
+		"id":       user.ID,
+		"type":     "access",
+		"exp":      time.Now().Add(expire).Unix(),
+	})
+	accessTokenString, err = accessToken.SignedString(proto.SigningKey)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to sign access token: %w", err)
+	}
+
+	// Generate Refresh Token
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"id":   user.ID,
+		"type": "refresh",
+		"exp":  time.Now().Add(time.Duration(RefreshExpireIn) * time.Second).Unix(),
+	})
+	refreshTokenString, err = refreshToken.SignedString(proto.SigningKey)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to sign refresh token: %w", err)
+	}
+
+	// Store Refresh Token in Redis
+	redisKey := fmt.Sprintf("refresh_token:%d:%s", user.ID, refreshTokenString)
+	if !worker.SetRedisWithExpire(redisKey, "active", proto.RefreshTokenDuration) { // Value can be simple, e.g., "active" or user.ID
+		return "", "", fmt.Errorf("failed to store refresh token in Redis")
+	}
+
+	return accessTokenString, refreshTokenString, nil
+}
+
+// GenerateAuthTokens creates new access and refresh tokens for a user
 func GenerateAuthTokens(user dao.User) (accessTokenString string, refreshTokenString string, err error) {
 	if user.ID == 0 {
 		return "", "", fmt.Errorf("invalid user")
