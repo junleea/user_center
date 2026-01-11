@@ -33,7 +33,9 @@ type StringValue struct {
 type DPServerOnlineConfig struct {
 	ServerConfig
 	IPv4Address     string `json:"ipv4_address" form:"ipv4_address"`
+	IPv4Prefix      int    `json:"ipv4_prefix" form:"ipv4_prefix"`
 	IPv6Address     string `json:"ipv6_address" form:"ipv6_address"`
+	IPv6Prefix      int    `json:"ipv6_prefix" form:"ipv6_prefix"`
 	IPv4MTU         int    `json:"ipv4_mtu" form:"ipv4_mtu"`
 	IPv6MTU         int    `json:"ipv6_mtu" form:"ipv6_mtu"`
 	UploadLimit     int    `json:"upload_limit" form:"upload_limit"`     /*上传限速，Kbps, 默认：1024Kbps*/
@@ -219,7 +221,9 @@ type GetClientConfigOnlineResponse struct {
 	Protocol     int    `json:"protocol" form:"protocol"` /* 1: tcp, 2: udp */
 	IPType       int    `json:"ip_type" form:"ip_type"`   /* 4, 6, 46 */
 	PrivateIPv4  string `json:"private_ipv4" form:"private_ipv4"`
+	IPv4Prefix   int    `json:"ipv4_prefix" form:"ipv4_prefix"`
 	PrivateIPv6  string `json:"private_ipv6" form:"private_ipv6"`
+	IPv6Prefix   int    `json:"ipv6_prefix" form:"ipv6_prefix"`
 	IPv4MTU      int    `json:"ipv4_mtu" form:"ipv4_mtu"`
 	IPv6MTU      int    `json:"ipv6_mtu" form:"ipv6_mtu"`
 	SessionID    string `json:"session_id" form:"session_id"`
