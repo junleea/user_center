@@ -228,6 +228,7 @@ type GetClientConfigOnlineResponse struct {
 	IPv6MTU      int    `json:"ipv6_mtu" form:"ipv6_mtu"`
 	SessionID    string `json:"session_id" form:"session_id"`
 	TunnelIP     string `json:"tunnel_ip" form:"tunnel_ip"`
+	Gateway      string `json:"gateway" form:"gateway"`
 
 	UploadLimit   int    `json:"upload_limit" form:"upload_limit"`     /*上传限速，Kbps, 默认：1024Kbps*/
 	DownloadLimit int    `json:"download_limit" form:"download_limit"` /*下载限速，Kbps, 默认：1024Kbps*/

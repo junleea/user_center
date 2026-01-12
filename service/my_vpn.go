@@ -539,6 +539,7 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	res.Hash = vpnOnlineServer.Hash
 	res.IPv4Prefix = vpnOnlineServer.IPv4Prefix
 	res.IPv6Prefix = vpnOnlineServer.IPv6Prefix
+	res.Gateway = vpnOnlineServer.IPv4Address
 	//if vpnOnlineServer.Status != proto.VPNDPServerOnlineStatus {
 	//	resp.Code = proto.VPNServerStatusError
 	//	resp.Message = "VPN服务器状态不可用"
