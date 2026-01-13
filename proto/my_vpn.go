@@ -19,6 +19,17 @@ const (
 	VPNAuthUserMaxCheckTime = 20 //秒超时未收到则踢出
 )
 
+const (
+	EncryptionAES128GCM    = "aes-128-gcm"
+	EncryptionAES128GCMLen = 16
+	EncryptionAES192GCM    = "aes-192-gcm"
+	EncryptionAES192GCMLen = 24
+	EncryptionAES256GCM    = "aes-256-gcm"
+	EncryptionAES256GCMLen = 32
+	EncryptionSM4GCM       = "sm4-gcm"
+	EncryptionSM4GCMLen    = 16
+)
+
 type VPNRouter struct {
 	Type int    `json:"type" form:"type"` /*4,6,46*/
 	IP   string `json:"ip" form:"ip"`

@@ -11,6 +11,7 @@ import (
 	"io"
 	mrand "math/rand"
 	"time"
+	"user_center/proto"
 )
 
 func GetRandomString(l int) string {
@@ -104,4 +105,29 @@ func GenerateMD5(secretKey string) string {
 	hasher := md5.New()
 	hasher.Write([]byte(secretKey))
 	return hex.EncodeToString(hasher.Sum(nil)) // 将二进制数据转换为十六进制字符串
+}
+
+func GenerateDPEncryptionKey(keyType string) ([]byte, string, error) {
+	keySize := 0
+	switch keyType {
+	case proto.EncryptionAES128GCM:
+		keySize = proto.EncryptionAES128GCMLen
+	case proto.EncryptionAES192GCM:
+		keySize = proto.EncryptionAES192GCMLen
+	case proto.EncryptionAES256GCM:
+		keySize = proto.EncryptionAES256GCMLen
+	case proto.EncryptionSM4GCM:
+		keySize = proto.EncryptionSM4GCMLen
+	default:
+		return nil, "", fmt.Errorf("invalid encrypt type: %s", keyType)
+	}
+
+	// 生成密码学安全的随机密钥（核心：使用crypto/rand，而非math/rand）
+	key := make([]byte, keySize)
+	_, err := rand.Read(key)
+	if err != nil {
+		return nil, "", fmt.Errorf("生成密钥失败：%w", err)
+	}
+
+	return key, string(key), nil
 }

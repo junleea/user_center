@@ -606,7 +606,7 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	}
 	authUser.UUID = uuid.NewString()
 
-	key, keyStr, keyErr := worker.Generate32ByteKey()
+	key, keyStr, keyErr := worker.GenerateDPEncryptionKey(serverConfig.Encryption)
 	if keyErr != nil {
 		log.Println("[ERROR] user:", user.ID, ", uuid:", authUser.UUID, ", generate dp secret key err:", keyErr, ", key:", string(key))
 		resp.Code = proto.OperationFailed
