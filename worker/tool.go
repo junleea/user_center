@@ -128,6 +128,6 @@ func GenerateDPEncryptionKey(keyType string) ([]byte, string, error) {
 	if err != nil {
 		return nil, "", fmt.Errorf("生成密钥失败：%w", err)
 	}
-
-	return key, string(key), nil
+	keyStr := hex.EncodeToString(key)
+	return key, keyStr, nil
 }
