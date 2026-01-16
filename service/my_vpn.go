@@ -668,3 +668,20 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 
 	return nil
 }
+
+func GetDPServerOnlineUsers(serverID string, resp *proto.GenerateResp) {
+	GlobalVPNServerAuthUserMap.mutex.Lock()
+	defer GlobalVPNServerAuthUserMap.mutex.Unlock()
+	authUserMap := GlobalVPNServerAuthUserMap.ServerUserMap[serverID]
+	var respUsers []proto.VPNAuthUserDPInfo
+	authUserMap.mutex.Lock()
+	defer authUserMap.mutex.Unlock()
+	for _, users := range authUserMap.UserMap {
+		for _, user := range users {
+			respUsers = append(respUsers, user)
+		}
+	}
+	resp.Data = respUsers
+	resp.Code = proto.SuccessCode
+	resp.Message = "success"
+}

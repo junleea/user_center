@@ -28,6 +28,27 @@ func SetUpMyVPNGroup(router *gin.Engine) {
 	myVPNGroup.POST("/set_vpn_tunnel", SetVPNTunnelHandler)
 	myVPNGroup.DELETE("/delete_vpn_tunnel", DeleteVPNTunnelHandler)
 	myVPNGroup.GET("/get_vpn_tunnel_config", GetVPNTunnelConfigHandler)
+	myVPNGroup.GET("/get_client_online_users", GetClientOnlineUsers)
+}
+
+func GetClientOnlineUsers(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	serverID := c.Query("server_id")
+	if user.Role != proto.USER_IS_ADMIN {
+		resp.Code = proto.PermissionDenied
+		resp.Message = "无权限"
+	} else {
+		if serverID == "" {
+			resp.Code = proto.ParameterError
+			resp.Message = "server id不能为空"
+		} else {
+			service.GetDPServerOnlineUsers(serverID, &resp)
+		}
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func UpdateServerStatusHandler(c *gin.Context) {
