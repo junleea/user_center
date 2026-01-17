@@ -205,9 +205,14 @@ type MyVPNServerConfig struct {
 }
 
 type SupportVPNServer struct {
+	Name       string `json:"name"`
 	ServerID   string `json:"server_id" form:"server_id"`
 	ServerIP   string `json:"server_ip" form:"server_ip"`
 	ServerInfo string `json:"server_info" form:"server_info"`
+	ServerIPV6 string `json:"server_ipv6"`
+	UDPPort    int    `json:"udp_port" form:"udp_port"` /*udp port*/
+	TCPPort    int    `json:"tcp_port" form:"tcp_port"`
+	Protocol   int    `json:"protocol" form:"protocol"` /* 1: tcp, 2: udp */
 }
 
 type VPNAuthUserDPInfo struct {

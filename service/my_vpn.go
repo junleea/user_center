@@ -113,6 +113,10 @@ func DeleteMyVPNServerConfigService(user *dao.User, req *proto.SetServerConfigRe
 		err = errors.New("delete vpn server config failed")
 		return code, err
 	}
+	//删除在线服务器信息
+	GlobalVPNServerConfigMap.mutex.Lock()
+	defer GlobalVPNServerConfigMap.mutex.Unlock()
+	delete(GlobalVPNServerConfigMap.ServerConfigMap, req.ServerID)
 	return proto.SuccessCode, nil
 }
 
@@ -420,6 +424,11 @@ func GetSupportVPNServerList(user *dao.User, resp *proto.GenerateResp) error {
 				supportServer.ServerID = server.Attr
 				supportServer.ServerIP = serverConfig.ServerIP
 				supportServer.ServerInfo = serverConfig.ServerInfo
+				supportServer.ServerIPV6 = serverConfig.ServerIPV6
+				supportServer.Name = serverConfig.Name
+				supportServer.Protocol = serverConfig.Protocol
+				supportServer.UDPPort = serverConfig.UDPPort
+				supportServer.TCPPort = serverConfig.TCPPort
 				res = append(res, supportServer)
 			}
 		}
