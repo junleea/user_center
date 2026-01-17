@@ -633,7 +633,7 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 
 		theUserAuthList := authUserMap.UserMap[user.ID]
 		if theUserAuthList == nil {
-			theUserList := make([]proto.VPNAuthUserDPInfo, 2)
+			var theUserList []proto.VPNAuthUserDPInfo
 			theUserList = append(theUserList, authUser)
 			authUserMap.UserMap[user.ID] = theUserList
 		} else {
@@ -680,6 +680,10 @@ func GetDPServerOnlineUsers(serverID string, resp *proto.GenerateResp) {
 		for _, user := range users {
 			respUsers = append(respUsers, user)
 		}
+	}
+	//不返回密钥信息
+	for i, _ := range respUsers {
+		respUsers[i].VPNDPSecret = ""
 	}
 	resp.Data = respUsers
 	resp.Code = proto.SuccessCode
