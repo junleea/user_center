@@ -19,6 +19,11 @@ type GenerateResp struct {
 	RequestID string `json:"request_id,omitempty"`
 }
 
+type ClientDownloadUrl struct {
+	Platform    string `json:"platform"`
+	DownloadUrl string `json:"download_url"`
+}
+
 type ResponseOAuth struct {
 	ID    uint   `json:"id" form:"id"`
 	Name  string `json:"name" form:"name"`

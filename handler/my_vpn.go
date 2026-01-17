@@ -29,6 +29,15 @@ func SetUpMyVPNGroup(router *gin.Engine) {
 	myVPNGroup.DELETE("/delete_vpn_tunnel", DeleteVPNTunnelHandler)
 	myVPNGroup.GET("/get_vpn_tunnel_config", GetVPNTunnelConfigHandler)
 	myVPNGroup.GET("/get_client_online_users", GetClientOnlineUsers)
+	myVPNGroup.GET("/clients_url", GetMyVPNClientUrl)
+}
+
+func GetMyVPNClientUrl(c *gin.Context) {
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	resp.Data = proto.Config.MyVPNClientDownloadURL
+	c.JSON(http.StatusOK, resp)
 }
 
 func GetClientOnlineUsers(c *gin.Context) {

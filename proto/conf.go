@@ -126,6 +126,8 @@ type ConfigStruct struct {
 	SMTP_SERVER_LIST          []SMTPServerInfo `json:"smtp_server_list"`            //smtp服务列表
 	TX_LOCATION_SERVER_KEY    string           `json:"tx_location_server_key"`      // 腾讯地址服务
 	PASSWORD_NEED_SECOND_AUTH bool             `json:"password_need_second_auth"`   //密码登录需二次认证
+
+	MyVPNClientDownloadURL []ClientDownloadUrl `json:"my_vpn_client_download_url"` //客户端下载url
 }
 
 type KBaseServer struct {
