@@ -35,6 +35,8 @@ func SetUpMyVPNGroup(router *gin.Engine) {
 func GetMyVPNClientUrl(c *gin.Context) {
 	var resp proto.GenerateResp
 	requestID, _ := c.Get("request_id")
+	resp.Code = proto.SuccessCode
+	resp.Message = "success"
 	resp.RequestID = requestID.(string)
 	resp.Data = proto.Config.MyVPNClientDownloadURL
 	c.JSON(http.StatusOK, resp)
