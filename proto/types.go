@@ -646,5 +646,5 @@ type SessionID struct {
 type KickOutUserRequest struct {
 	Type     uint        `json:"type" form:"type"` //all--1, some-0 default,
 	ServerID string      `json:"server_id" form:"server_id" binding:"required"`
-	Sessions []SessionID `json:"sessions" form:"session"`
+	Sessions []SessionID `json:"sessions" form:"sessions"`
 }
