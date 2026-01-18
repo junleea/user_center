@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/google/uuid"
 	"log"
+	"net"
 	"sync"
 	"time"
 	"user_center/dao"
@@ -741,11 +742,17 @@ func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, resp *pro
 
 	authUserMap.mutex.Lock()
 	defer authUserMap.mutex.Unlock()
+	serverConfig := GetServerConfigByServerID(req.ServerID)
 	for userID, users := range authUserMap.UserMap {
 		var newUsers []proto.VPNAuthUserDPInfo
 		for _, user_ := range users {
 			if _, ok := delSessionMap[user_.UUID]; ok {
 				count++
+				//释放IP
+				GlobalAddressPoolAllocatorMap.mutex.Lock()
+				ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
+				ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4(), nil)
+				GlobalAddressPoolAllocatorMap.mutex.Unlock()
 			} else {
 				newUsers = append(newUsers, user_)
 			}
