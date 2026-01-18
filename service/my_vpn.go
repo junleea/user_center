@@ -684,7 +684,12 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 func GetDPServerOnlineUsers(serverID string, resp *proto.GenerateResp) {
 	GlobalVPNServerAuthUserMap.mutex.Lock()
 	defer GlobalVPNServerAuthUserMap.mutex.Unlock()
-	authUserMap := GlobalVPNServerAuthUserMap.ServerUserMap[serverID]
+	authUserMap, exist := GlobalVPNServerAuthUserMap.ServerUserMap[serverID]
+	if exist == false {
+		resp.Code = proto.SuccessCode
+		resp.Message = "no users"
+		return
+	}
 	var respUsers []proto.VPNAuthUserDPInfo
 	authUserMap.mutex.Lock()
 	defer authUserMap.mutex.Unlock()
@@ -700,4 +705,57 @@ func GetDPServerOnlineUsers(serverID string, resp *proto.GenerateResp) {
 	resp.Data = respUsers
 	resp.Code = proto.SuccessCode
 	resp.Message = "success"
+}
+
+func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, resp *proto.GenerateResp) {
+	if user.Role != proto.USER_IS_ADMIN {
+		resp.Code = proto.PermissionDenied
+		resp.Message = "permission denied"
+		return
+	}
+
+	GlobalVPNServerAuthUserMap.mutex.Lock()
+	defer GlobalVPNServerAuthUserMap.mutex.Unlock()
+	authUserMap, exist := GlobalVPNServerAuthUserMap.ServerUserMap[req.ServerID]
+	if exist == false {
+		resp.Code = proto.SuccessCode
+		resp.Message = "the server no users"
+		return
+	}
+
+	if req.Type > 0 {
+		authUserMap.mutex.Lock()
+		resp.Data = len(authUserMap.UserMap)
+		authUserMap.UserMap = make(map[uint][]proto.VPNAuthUserDPInfo)
+		authUserMap.mutex.Unlock()
+		resp.Code = proto.SuccessCode
+		resp.Message = "success"
+		return
+	}
+
+	var delSessionMap map[string]bool
+	for _, session := range req.Sessions {
+		delSessionMap[session.Session] = true
+	}
+	count := 0
+
+	authUserMap.mutex.Lock()
+	defer authUserMap.mutex.Unlock()
+	for userID, users := range authUserMap.UserMap {
+		var newUsers []proto.VPNAuthUserDPInfo
+		for _, user_ := range users {
+			if ok := delSessionMap[user_.UUID]; ok {
+				count++
+			} else {
+				newUsers = append(newUsers, user_)
+			}
+		}
+		if len(newUsers) > 0 {
+			authUserMap.UserMap[userID] = newUsers
+		}
+	}
+	resp.Code = proto.SuccessCode
+	resp.Message = "success"
+	resp.Data = count
+
 }

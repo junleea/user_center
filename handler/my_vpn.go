@@ -30,6 +30,25 @@ func SetUpMyVPNGroup(router *gin.Engine) {
 	myVPNGroup.GET("/get_vpn_tunnel_config", GetVPNTunnelConfigHandler)
 	myVPNGroup.GET("/get_client_online_users", GetClientOnlineUsers)
 	myVPNGroup.GET("/clients_url", GetMyVPNClientUrl)
+	myVPNGroup.POST("/kick_out_user", KickOutUser)
+}
+
+func KickOutUser(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.Code = proto.SuccessCode
+	resp.Message = "success"
+	resp.RequestID = requestID.(string)
+	var req proto.KickOutUserRequest
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid parameter: " + err.Error()
+	} else {
+		service.KickOutUserService(&req, &user, &resp)
+	}
+
+	c.JSON(http.StatusOK, resp)
 }
 
 func GetMyVPNClientUrl(c *gin.Context) {

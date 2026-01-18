@@ -637,3 +637,14 @@ type GenerateUserTokenReq struct {
 	ExpireIn        int64 `json:"expire_in" form:"expire_in" binding:"required"`                 // 过期时间，单位秒
 	RefreshExpireIn int64 `json:"refresh_expire_in" form:"refresh_expire_in" binding:"required"` // 刷新令牌过期时间，单位秒
 }
+
+type SessionID struct {
+	Session string `json:"session" form:"session" binding:"required"`
+	UserID  uint   `json:"user_id" form:"user_id" binding:"required"`
+}
+
+type KickOutUserRequest struct {
+	Type     uint        `json:"type" form:"type"` //all--1, some-0 default,
+	ServerID string      `json:"server_id" form:"server_id" binding:"required"`
+	Sessions []SessionID `json:"sessions" form:"session"`
+}
