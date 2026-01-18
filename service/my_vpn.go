@@ -744,7 +744,7 @@ func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, resp *pro
 	for userID, users := range authUserMap.UserMap {
 		var newUsers []proto.VPNAuthUserDPInfo
 		for _, user_ := range users {
-			if ok := delSessionMap[user_.UUID]; ok {
+			if _, ok := delSessionMap[user_.UUID]; ok {
 				count++
 			} else {
 				newUsers = append(newUsers, user_)
