@@ -733,7 +733,7 @@ func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, resp *pro
 		return
 	}
 
-	var delSessionMap map[string]bool
+	var delSessionMap = make(map[string]bool)
 	for _, session := range req.Sessions {
 		delSessionMap[session.Session] = true
 	}
