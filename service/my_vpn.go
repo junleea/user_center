@@ -723,12 +723,24 @@ func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, resp *pro
 		resp.Message = "the server no users"
 		return
 	}
+	count := 0
+	serverConfig := GetServerConfigByServerID(req.ServerID)
+	authUserMap.mutex.Lock()
+	defer authUserMap.mutex.Unlock()
 
 	if req.Type > 0 {
-		authUserMap.mutex.Lock()
+		for _, users := range authUserMap.UserMap {
+			for _, user_ := range users {
+				count++
+				//释放IP
+				GlobalAddressPoolAllocatorMap.mutex.Lock()
+				ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
+				ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4(), nil)
+				GlobalAddressPoolAllocatorMap.mutex.Unlock()
+			}
+		}
 		resp.Data = len(authUserMap.UserMap)
 		authUserMap.UserMap = make(map[uint][]proto.VPNAuthUserDPInfo)
-		authUserMap.mutex.Unlock()
 		resp.Code = proto.SuccessCode
 		resp.Message = "success"
 		return
@@ -738,11 +750,7 @@ func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, resp *pro
 	for _, session := range req.Sessions {
 		delSessionMap[session.Session] = true
 	}
-	count := 0
 
-	authUserMap.mutex.Lock()
-	defer authUserMap.mutex.Unlock()
-	serverConfig := GetServerConfigByServerID(req.ServerID)
 	for userID, users := range authUserMap.UserMap {
 		var newUsers []proto.VPNAuthUserDPInfo
 		for _, user_ := range users {
