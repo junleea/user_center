@@ -285,8 +285,11 @@ func SetClientStatusService(user *dao.User, req *proto.SetVPNClientStatusReq, re
 		authList := authUserMap.UserMap[user.ID]
 		if authList != nil {
 			for i, _ := range authList {
-				authList[i].LastUpdateTime = time.Now().Unix()
-				exist = true
+				if authList[i].UUID == req.UUID {
+					authList[i].LastUpdateTime = time.Now().Unix()
+					exist = true
+					break
+				}
 			}
 		}
 	}
