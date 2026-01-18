@@ -752,6 +752,8 @@ func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, resp *pro
 		}
 		if len(newUsers) > 0 {
 			authUserMap.UserMap[userID] = newUsers
+		} else {
+			delete(authUserMap.UserMap, userID)
 		}
 	}
 	resp.Code = proto.SuccessCode
