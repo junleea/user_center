@@ -9,6 +9,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log"
+	"math/big"
 	mrand "math/rand"
 	"time"
 	"user_center/proto"
@@ -130,4 +132,14 @@ func GenerateDPEncryptionKey(keyType string) ([]byte, string, error) {
 	}
 	keyStr := hex.EncodeToString(key)
 	return key, keyStr, nil
+}
+
+func SecureRandomInt(maxValue int64) uint {
+	max_ := big.NewInt(maxValue)
+	n, err := rand.Int(rand.Reader, max_)
+	if err != nil {
+		log.Println("random int error:", err)
+		return 0
+	}
+	return uint(n.Int64())
 }

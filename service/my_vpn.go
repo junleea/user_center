@@ -22,7 +22,7 @@ func (vs *VPNSecretID) GetID() uint {
 	var id uint
 	vs.mutex.Lock()
 	id = vs.id
-	vs.id++
+	vs.id += worker.SecureRandomInt(128)
 	log.Println("secret id(next):", vs.id)
 	vs.mutex.Unlock()
 	return id

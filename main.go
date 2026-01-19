@@ -13,6 +13,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 	"user_center/dao"
 	"user_center/handler"
 	"user_center/proto"
@@ -79,7 +80,7 @@ func initVPNConfig() {
 		log.Panic("[ERROR] init vpn dp server config err:", err)
 		return
 	}
-	service.MyVPNSecretID.SetID(1024) /*设置初始值1024*/
+	service.MyVPNSecretID.SetID(worker.SecureRandomInt(time.Now().Unix() / 1000)) /*设置初始值1024*/
 }
 func init() {
 	// 创建cid的目录
