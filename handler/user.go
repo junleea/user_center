@@ -76,7 +76,7 @@ func GenerateUserTokenHandler(c *gin.Context) {
 			if targetUser.ID == 0 {
 				resp.Code, resp.Message = proto.OperationFailed, "user not found"
 			} else {
-				accessToken, refreshToken, err2 := service.GenerateAuthTokensWithExpire(user, req.ExpireIn, req.RefreshExpireIn)
+				accessToken, refreshToken, err2 := service.GenerateAuthTokensWithExpire(targetUser, req.ExpireIn, req.RefreshExpireIn)
 				if err2 != nil {
 					log.Println("[ERROR] request id:", resp.RequestID, ", GenerateUserTokenHandler generate tokens err:", err2.Error())
 					resp.Code, resp.Data = proto.TokenGenerationError, "Failed to generate tokens"
