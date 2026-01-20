@@ -507,6 +507,7 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	var authUser proto.VPNAuthUserDPInfo
 
 	authUser.UserID = user.ID
+	res.UserID = user.ID
 	authUser.UserName = user.Name
 	authUser.UUID = uuid.New().String()
 

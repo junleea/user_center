@@ -228,6 +228,7 @@ type VPNAuthUserDPInfo struct {
 
 type GetClientConfigOnlineResponse struct {
 	ID           uint   `json:"id" form:"id"`
+	UserID       uint   `json:"user_id" form:"user_id"`
 	ServerID     string `json:"server_id" form:"server_id"`
 	ServerIP     string `json:"server_ip" form:"server_ip"`
 	ServerIPV6   string `json:"server_ipv6" form:"server_ipv6"`
