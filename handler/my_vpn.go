@@ -244,11 +244,18 @@ func GetServerConfigHandler(c *gin.Context) {
 	requestID, _ := c.Get("request_id")
 	resp.RequestID = requestID.(string)
 	serverID := c.Query("server_id")
+	restart := c.Query("restart")
 	if serverID == "" {
 		resp.Code = proto.ParameterError
 		resp.Message = "server id is null"
 	} else {
-		service.GetVPNOnlineServerConfigWithAuthUser(&user, &resp, serverID)
+		if restart != "" {
+			//重启通知服务器踢出所有用户
+			service.KickOutAllUserService(&user, serverID, &resp)
+			service.GetVPNOnlineServerConfigWithAuthUser(&user, &resp, serverID)
+		} else {
+			service.GetVPNOnlineServerConfigWithAuthUser(&user, &resp, serverID)
+		}
 	}
 	c.JSON(http.StatusOK, resp)
 }

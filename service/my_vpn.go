@@ -709,6 +709,42 @@ func GetDPServerOnlineUsers(serverID string, resp *proto.GenerateResp) {
 	resp.Message = "success"
 }
 
+func KickOutAllUserService(user *dao.User, serverID string, resp *proto.GenerateResp) {
+	if user.Role != proto.USER_IS_ADMIN {
+		resp.Code = proto.PermissionDenied
+		resp.Message = "permission denied"
+		return
+	}
+	GlobalVPNServerAuthUserMap.mutex.Lock()
+	defer GlobalVPNServerAuthUserMap.mutex.Unlock()
+	authUserMap, exist := GlobalVPNServerAuthUserMap.ServerUserMap[serverID]
+	if exist == false {
+		resp.Code = proto.SuccessCode
+		resp.Message = "the server no users"
+		return
+	}
+	count := 0
+	serverConfig := GetServerConfigByServerID(serverID)
+	authUserMap.mutex.Lock()
+	defer authUserMap.mutex.Unlock()
+
+	for _, users := range authUserMap.UserMap {
+		for _, user_ := range users {
+			count++
+			//释放IP
+			GlobalAddressPoolAllocatorMap.mutex.Lock()
+			ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
+			ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4(), nil)
+			GlobalAddressPoolAllocatorMap.mutex.Unlock()
+		}
+	}
+	resp.Data = len(authUserMap.UserMap)
+	authUserMap.UserMap = make(map[uint][]proto.VPNAuthUserDPInfo)
+	resp.Code = proto.SuccessCode
+	resp.Message = "success"
+	return
+}
+
 func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, resp *proto.GenerateResp) {
 	if user.Role != proto.USER_IS_ADMIN {
 		resp.Code = proto.PermissionDenied
