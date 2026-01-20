@@ -97,3 +97,34 @@ func GetMyVPNServerIPPoolConfigByName(name string) (proto.MyVPNServerConfig, err
 	res := db.Where("type = ? AND attr = ?", proto.VPNServerConfigTypeAddressPool, name).First(&config)
 	return config, res.Error
 }
+
+func CreateVPNPolicy(policy *proto.VPNPolicy) error {
+	db := GetDB()
+	res := db.Create(policy)
+	return res.Error
+}
+
+func DeleteVPNPolicyByID(id uint) error {
+	db := GetDB()
+	res := db.Where("id = ?", id).Delete(&proto.VPNPolicy{})
+	return res.Error
+}
+
+func DeleteVPNPolicyByServerID(serverID string) error {
+	db := GetDB()
+	res := db.Where("server_id = ?", serverID).Delete(&proto.VPNPolicy{})
+	return res.Error
+}
+
+func UpdateVPNPolicy(id uint, policy *proto.VPNPolicy) error {
+	db := GetDB()
+	res := db.Model(&proto.VPNPolicy{}).Where("id = ?", id).Updates(policy)
+	return res.Error
+}
+
+func GetVPNPolicyByServerID(serverID string) ([]proto.VPNPolicy, error) {
+	db := GetDB()
+	var policies []proto.VPNPolicy
+	res := db.Where("server_id = ?", serverID).Find(&policies)
+	return policies, res.Error
+}

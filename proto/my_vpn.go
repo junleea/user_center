@@ -276,3 +276,29 @@ type SetVPNServerStatusReq struct {
 	ServerID string `json:"server_id" form:"server_id" required:"true"`
 	Status   int    `json:"status" form:"status" required:"true"`
 }
+
+type VPNPolicyBase struct {
+	ServerID  string `json:"server_id" form:"server_id"  required:"true"`
+	IPType    int    `json:"ip_type" form:"ip_type"  required:"true"`   // 4, 6
+	SrcType   int    `json:"src_type" form:"src_type"  required:"true"` // 0-ip,1-network, 2-userID, 3-groupID
+	SrcIP     string `json:"src_ip" form:"src_ip"`                      //type 1, set 0.0.0.0/0 is all
+	SrcUserID string `json:"src_user_id" form:"src_user_id"`            // 0-all, more than 0, user
+	DstType   int    `json:"dst_type" form:"dst_type"  required:"true"` // 0-ip,1-network, 2-userID, 3-groupID
+	DstIP     string `json:"dst_ip" form:"dst_ip"`
+	DstUserID string `json:"dst_user_id" form:"dst_user_id"`
+	//协议
+	Protocol int `json:"protocol" form:"protocol" required:"true"` //0:is all, 1-ICMP, 17-UDP etc.
+	//操作
+	Action int    `json:"action" form:"action" required:"true"` // 0-deny, 1-permit
+	Info   string `json:"info" form:"info"`
+}
+
+type VPNPolicy struct {
+	gorm.Model
+	VPNPolicyBase
+}
+
+type VPNPolicyRequest struct {
+	ID uint `json:"id" form:"id"`
+	VPNPolicyBase
+}
