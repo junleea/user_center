@@ -225,12 +225,12 @@ type SupportVPNServer struct {
 type VPNAuthUserDPInfo struct {
 	ID             uint   `json:"id" form:"id"` /*连接id,区分每个连接*/
 	UserID         uint   `json:"user_id" form:"user_id"`
-	UserName       string `json:"user_name" form:"user_name"`
-	PrivateIPv4    string `json:"private_ipv4" form:"private_ipv4"`
-	PrivateIPv6    string `json:"private_ipv6" form:"private_ipv6"`
-	VPNDPSecret    string `json:"vpn_dp_secret" form:"vpn_dp_secret"` /*dp secret*/
-	UUID           string `json:"uuid" form:"uuid"`
-	LastUpdateTime int64  `json:"last_update_time" form:"last_update_time"`
+	UserName       string `json:"user_name,omitempty" form:"user_name"`
+	PrivateIPv4    string `json:"private_ipv4,omitempty" form:"private_ipv4"`
+	PrivateIPv6    string `json:"private_ipv6,omitempty" form:"private_ipv6"`
+	VPNDPSecret    string `json:"vpn_dp_secret,omitempty" form:"vpn_dp_secret"` /*dp secret*/
+	UUID           string `json:"uuid,omitempty" form:"uuid"`
+	LastUpdateTime int64  `json:"last_update_time,omitempty" form:"last_update_time"`
 }
 
 type GetClientConfigOnlineResponse struct {
@@ -285,19 +285,19 @@ type SetVPNServerStatusReq struct {
 }
 
 type VPNPolicyBase struct {
-	ServerID  string `json:"server_id" form:"server_id"  required:"true"`
+	ServerID  string `json:"server_id,omitempty" form:"server_id"  required:"true"`
 	IPType    uint   `json:"ip_type" form:"ip_type"  required:"true"`   // 4, 6
 	SrcType   uint   `json:"src_type" form:"src_type"  required:"true"` // 0-ip,1-network, 2-userID, 3-groupID
-	SrcIP     string `json:"src_ip" form:"src_ip"`                      //type 1, set 0.0.0.0/0 is all
-	SrcUserID string `json:"src_user_id" form:"src_user_id"`            // 0-all, more than 0, user
+	SrcIP     string `json:"src_ip,omitempty" form:"src_ip"`            //type 1, set 0.0.0.0/0 is all
+	SrcUserID int    `json:"src_user_id" form:"src_user_id"`            // 0-all, more than 0, user
 	DstType   uint   `json:"dst_type" form:"dst_type"  required:"true"` // 0-ip,1-network, 2-userID, 3-groupID
-	DstIP     string `json:"dst_ip" form:"dst_ip"`
-	DstUserID string `json:"dst_user_id" form:"dst_user_id"`
+	DstIP     string `json:"dst_ip,omitempty" form:"dst_ip"`
+	DstUserID int    `json:"dst_user_id" form:"dst_user_id"`
 	//协议
 	Protocol uint `json:"protocol" form:"protocol" required:"true"` //0:is all, 1-ICMP, 17-UDP etc.
 	//操作
 	Action uint   `json:"action" form:"action" required:"true"` // 0-deny, 1-permit
-	Info   string `json:"info" form:"info"`
+	Info   string `json:"info,omitempty" form:"info"`
 }
 
 type VPNPolicy struct {
@@ -308,4 +308,12 @@ type VPNPolicy struct {
 type VPNPolicyRequest struct {
 	ID uint `json:"id" form:"id"`
 	VPNPolicyBase
+}
+
+type VPNDPServerEvent struct {
+	MsgType      int                   `json:"msg_type" required:"true"`
+	OpCode       int                   `json:"op_code" required:"true"`
+	AuthUser     *VPNAuthUserDPInfo    `json:"auth_user,omitempty"`
+	ServerConfig *DPServerOnlineConfig `json:"server_config,omitempty"`
+	VPNPolicy    *VPNPolicy            `json:"vpn_policy,omitempty"`
 }

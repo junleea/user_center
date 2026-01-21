@@ -25,6 +25,9 @@ func GetMyVPNPolicyByServerID(user *dao.User, resp *proto.GenerateResp, serverID
 }
 
 func CheckVPNPolicyUpdateParam(resp *proto.GenerateResp, req *proto.VPNPolicyRequest) error {
+	if req.ServerID == "" {
+		return errors.New("server id is null")
+	}
 	// 检查 Src 部分
 	if req.SrcType == proto.VPNPolicyTypeIP {
 		ip := net.ParseIP(req.SrcIP)
