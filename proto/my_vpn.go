@@ -37,6 +37,23 @@ const (
 	VPNPolicyTypeGroupID = 3 //用户组ID
 )
 
+const (
+	DPMsgAuthUserType     = 1
+	DPMsgPolicyType       = 2
+	DPMsyServerConfigType = 3
+
+	DPOpCodeAuthUserAdd    = 1
+	DPOpCodeAuthUserDel    = 2
+	DPOpCodeAuthUserDelAll = 3
+	DPOpCodeAuthUserUpdate = 4
+	DPOpCodePolicyAdd      = 5
+	DPOpCodePolicyUpdate   = 6
+	DPOpCodePolicyDel      = 7
+
+	DPOpCodeConfigUpdate = 10
+	DPOpCodeServerDel    = 11
+)
+
 type VPNRouter struct {
 	Type int    `json:"type" form:"type"` /*4,6,46*/
 	IP   string `json:"ip" form:"ip"`
