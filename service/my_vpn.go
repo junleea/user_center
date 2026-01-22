@@ -741,6 +741,7 @@ func KickOutAllUserService(user *dao.User, serverID string, resp *proto.Generate
 	}
 	resp.Data = len(authUserMap.UserMap)
 	authUserMap.UserMap = make(map[uint][]proto.VPNAuthUserDPInfo)
+	SendVPNAuthUserMsgToDPServer(proto.DPOpCodeAuthUserDelAll, serverID, nil)
 	resp.Code = proto.SuccessCode
 	resp.Message = "success"
 	return
@@ -779,6 +780,7 @@ func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, resp *pro
 		}
 		resp.Data = len(authUserMap.UserMap)
 		authUserMap.UserMap = make(map[uint][]proto.VPNAuthUserDPInfo)
+		SendVPNAuthUserMsgToDPServer(proto.DPOpCodeAuthUserDelAll, req.ServerID, nil)
 		resp.Code = proto.SuccessCode
 		resp.Message = "success"
 		return
@@ -799,6 +801,7 @@ func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, resp *pro
 				ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
 				ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4(), nil)
 				GlobalAddressPoolAllocatorMap.mutex.Unlock()
+				SendVPNAuthUserMsgToDPServer(proto.DPOpCodeAuthUserDel, req.ServerID, &user_)
 			} else {
 				newUsers = append(newUsers, user_)
 			}
