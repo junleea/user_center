@@ -679,6 +679,7 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	resp.Code = proto.SuccessCode
 	resp.Message = "success"
 	resp.Data = res
+	SendVPNAuthUserMsgToDPServer(proto.DPOpCodeAuthUserAdd, serverID, &authUser)
 
 	return nil
 }

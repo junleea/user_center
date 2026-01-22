@@ -68,6 +68,7 @@ func CheckOnlineAuthUser() {
 					endList = append(endList, v)
 					continue
 				}
+				SendVPNAuthUserMsgToDPServer(proto.DPOpCodeAuthUserDel, serverID, &v)
 				//释放IP
 				GlobalAddressPoolAllocatorMap.mutex.Lock()
 				ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]

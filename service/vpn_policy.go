@@ -1,11 +1,14 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 	"net"
+	"time"
 	"user_center/dao"
 	"user_center/proto"
+	"user_center/worker"
 )
 
 func GetMyVPNPolicyByServerID(user *dao.User, resp *proto.GenerateResp, serverID string) {
@@ -86,6 +89,7 @@ func CreateMyVPNPolicy(user *dao.User, resp *proto.GenerateResp, req *proto.VPNP
 			resp.Code = proto.InternalServerError
 			resp.Message = "failed to create policy"
 		} else {
+			SendVPNPolicyMsgToDPServer(proto.DPOpCodePolicyAdd, req.ServerID, policy)
 			resp.Code = proto.SuccessCode
 			resp.Message = "success"
 		}
@@ -113,6 +117,7 @@ func UpdateMyVPNPolicy(user *dao.User, resp *proto.GenerateResp, req *proto.VPNP
 			resp.Code = proto.InternalServerError
 			resp.Message = "failed to update policy"
 		} else {
+			SendVPNPolicyMsgToDPServer(proto.DPOpCodePolicyUpdate, req.ServerID, policy)
 			resp.Code = proto.SuccessCode
 			resp.Message = "success"
 		}
@@ -135,8 +140,48 @@ func DeleteMyVPNPolicy(user *dao.User, resp *proto.GenerateResp, policyID uint, 
 			resp.Code = proto.InternalServerError
 			resp.Message = "failed to delete policy"
 		} else {
+			policy := proto.VPNPolicy{}
+			policy.ID = policyID
+
+			SendVPNPolicyMsgToDPServer(proto.DPOpCodePolicyDel, serverID, &policy)
 			resp.Code = proto.SuccessCode
 			resp.Message = "success"
 		}
 	}
+}
+
+func SendVPNAuthUserMsgToDPServer(opCode int, serverID string, authUser *proto.VPNAuthUserDPInfo) {
+	var event proto.VPNDPServerEvent
+	event.MsgType = proto.DPMsgAuthUserType
+	event.OpCode = opCode
+	event.AuthUser = authUser
+	//加入消息队列
+	key := "vpn_dp_event_" + serverID
+
+	msg, err := json.Marshal(&event)
+
+	if err != nil {
+		log.Println("server id:", serverID, " auth user event to dp server encode err:", err)
+		return
+	}
+
+	worker.Publish(key, string(msg), time.Second*10)
+}
+
+func SendVPNPolicyMsgToDPServer(opCode int, serverID string, policy *proto.VPNPolicy) {
+	var event proto.VPNDPServerEvent
+	event.MsgType = proto.DPMsgAuthUserType
+	event.OpCode = opCode
+	event.VPNPolicy = policy
+	//加入消息队列
+	key := "vpn_dp_event_" + serverID
+
+	msg, err := json.Marshal(&event)
+
+	if err != nil {
+		log.Println("server id:", serverID, " vpn policy event to dp server encode err:", err)
+		return
+	}
+
+	worker.Publish(key, string(msg), time.Second*10)
 }
