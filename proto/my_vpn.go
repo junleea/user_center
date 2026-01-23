@@ -98,7 +98,8 @@ type ServerConfig struct {
 	Encryption      string      `json:"encryption" form:"encryption"` /*加密算法：aes-128-gcm, aes-192-gcm, aes-256-gcm, SM4-GCM*/
 	Hash            string      `json:"hash" form:"hash"`             /*摘要算法：sha256, sha512, md5, sm3*/
 	UserMaxDevice   int         `json:"user_max_device" form:"user_max_device"`
-	DurationTime    int         `json:"duration_time" form:"duration_time"` /*空闲时长，秒*/
+	DurationTime    int         `json:"duration_time" form:"duration_time"`       /*空闲时长，秒*/
+	NoPolicyAction  int         `json:"no_policy_action" form:"no_policy_action"` //策略匹配失败时的动作，0-deny,1-permit
 	IPv4Router      []VPNRouter `json:"ipv4_router" form:"ipv4_router"`
 	IPv6Router      []VPNRouter `json:"ipv6_router" form:"ipv6_router"`
 }
