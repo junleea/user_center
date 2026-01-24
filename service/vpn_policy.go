@@ -68,6 +68,100 @@ func CheckVPNPolicyUpdateParam(resp *proto.GenerateResp, req *proto.VPNPolicyReq
 	return nil
 }
 
+func MatchMyVPNPolicy(user *dao.User, req *proto.VPNPolicyRequest, resp *proto.GenerateResp) {
+	if user.Role != proto.USER_IS_ADMIN {
+		resp.Message = "no permission"
+		resp.Code = proto.PermissionDenied
+	} else {
+		err := CheckVPNPolicyUpdateParam(resp, req)
+		if err != nil {
+			resp.Code = proto.ParameterError
+			resp.Message = err.Error()
+			return
+		}
+
+		policies, err := dao.GetVPNPolicyByServerID(req.ServerID)
+		if err != nil {
+			resp.Code = proto.OperationFailed
+			resp.Message = "the server id is error"
+			log.Println("[ERROR] request id:", resp.RequestID, " user:", user.ID, " get vpn policy dao err:", err)
+			return
+		}
+		exist := false
+		for _, policy := range policies {
+			if MatchPolicy(req, &policy) == true {
+				exist = true
+				resp.Data = policy
+				break
+			}
+		}
+
+		if exist == false {
+			//获取服务器配置
+			resp.Data = 0 //默认无数据，匹配默认
+		}
+		resp.Code = proto.SuccessCode
+		resp.Message = "success"
+	}
+}
+
+func MatchPolicySrc(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy) bool {
+	switch policy.SrcType {
+	case proto.VPNPolicyTypeIP:
+		if policy.DstIP != req.DstIP {
+			return false
+		}
+	case proto.VPNPolicyTypeNetwork:
+		_, area, _ := net.ParseCIDR(policy.DstIP)
+		if area.Contains(net.IP(req.DstIP)) == false {
+			return false
+		}
+	case proto.VPNPolicyTypeUserID:
+		if req.SrcUserID != req.SrcUserID {
+			return false
+		}
+	case proto.VPNPolicyTypeGroupID:
+		return false
+	default:
+		return false
+	}
+
+	return true
+}
+
+func MatchPolicyDst(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy) bool {
+	switch policy.DstType {
+	case proto.VPNPolicyTypeIP:
+		if policy.DstIP != req.DstIP {
+			return false
+		}
+	case proto.VPNPolicyTypeNetwork:
+		_, area, _ := net.ParseCIDR(policy.DstIP)
+		if area.Contains(net.IP(req.DstIP)) == false {
+			return false
+		}
+	case proto.VPNPolicyTypeUserID:
+		if req.DstUserID != req.DstUserID {
+			return false
+		}
+	case proto.VPNPolicyTypeGroupID:
+		return false
+	default:
+		return false
+	}
+	return true
+}
+
+func MatchPolicy(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy) bool {
+	if MatchPolicySrc(req, policy) == false {
+		return false
+	}
+	if MatchPolicyDst(req, policy) == false {
+		return false
+	}
+	return true
+}
+
 func CreateMyVPNPolicy(user *dao.User, resp *proto.GenerateResp, req *proto.VPNPolicyRequest) {
 	if user.Role != proto.USER_IS_ADMIN {
 		resp.Message = "no permission"

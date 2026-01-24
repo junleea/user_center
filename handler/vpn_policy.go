@@ -29,6 +29,24 @@ func SetUpMyVPNPolicyGroup(router *gin.Engine) {
 	myVPNPolicyGroup.POST("/create", CreateMyVPNPolicyHandler)
 	myVPNPolicyGroup.POST("/update", UpdateMyVPNPolicyHandler)
 	myVPNPolicyGroup.DELETE("/delete", DeleteMyVPNPolicyHandler)
+	myVPNPolicyGroup.POST("/match", MatchMyVPNPolicyHandler)
+}
+func MatchMyVPNPolicyHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.Code = proto.SuccessCode
+	resp.Message = "success"
+	resp.RequestID = requestID.(string)
+
+	var req proto.VPNPolicyRequest
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid request parameters"
+	} else {
+		service.MatchMyVPNPolicy(&user, &req, &resp)
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func GetMyVPNPolicyHandler(c *gin.Context) {
