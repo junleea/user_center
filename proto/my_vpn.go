@@ -303,6 +303,7 @@ type SetVPNServerStatusReq struct {
 }
 
 type VPNPolicyBase struct {
+	Name      string `json:"name" form:"name" required:"true"`
 	ServerID  string `json:"server_id,omitempty" form:"server_id"  required:"true"`
 	IPType    uint   `json:"ip_type" form:"ip_type"  required:"true"`   // 4, 6
 	SrcType   uint   `json:"src_type" form:"src_type"  required:"true"` // 0-ip,1-network, 2-userID, 3-groupID
