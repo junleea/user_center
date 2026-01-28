@@ -108,16 +108,19 @@ func MatchMyVPNPolicy(user *dao.User, req *proto.VPNPolicyRequest, resp *proto.G
 func MatchPolicySrc(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy) bool {
 	switch policy.SrcType {
 	case proto.VPNPolicyTypeIP:
-		if policy.DstIP != req.DstIP {
+		if policy.SrcIP != req.SrcIP {
 			return false
 		}
 	case proto.VPNPolicyTypeNetwork:
-		_, area, _ := net.ParseCIDR(policy.DstIP)
-		if area.Contains(net.IP(req.DstIP)) == false {
+		_, area, err := net.ParseCIDR(policy.SrcIP)
+		if err != nil || area == nil {
+			return false
+		}
+		if area.Contains(net.IP(req.SrcIP)) == false {
 			return false
 		}
 	case proto.VPNPolicyTypeUserID:
-		if req.SrcUserID != req.SrcUserID {
+		if policy.SrcUserID != req.SrcUserID {
 			return false
 		}
 	case proto.VPNPolicyTypeGroupID:
@@ -136,12 +139,15 @@ func MatchPolicyDst(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy) bool {
 			return false
 		}
 	case proto.VPNPolicyTypeNetwork:
-		_, area, _ := net.ParseCIDR(policy.DstIP)
+		_, area, err := net.ParseCIDR(policy.DstIP)
+		if err != nil || area == nil {
+			return false
+		}
 		if area.Contains(net.IP(req.DstIP)) == false {
 			return false
 		}
 	case proto.VPNPolicyTypeUserID:
-		if req.DstUserID != req.DstUserID {
+		if policy.DstUserID != req.DstUserID {
 			return false
 		}
 	case proto.VPNPolicyTypeGroupID:
