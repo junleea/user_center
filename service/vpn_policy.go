@@ -12,7 +12,7 @@ import (
 )
 
 func GetMyVPNPolicyByServerID(user *dao.User, resp *proto.GenerateResp, serverID string) {
-	if user.Role != proto.USER_IS_ADMIN {
+	if user.Role != proto.USER_IS_ADMIN && user.Role != proto.ROLE_VPN_SERVER {
 		resp.Message = "no permission"
 		resp.Code = proto.PermissionDenied
 	} else {
