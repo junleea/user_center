@@ -176,6 +176,7 @@ func UpdateServerConfigToOnlineInfo(serverConfig proto.ServerConfig) (err error)
 	onlineServerConf.UDPPort = serverConfig.UDPPort
 	onlineServerConf.TCPPort = serverConfig.TCPPort
 	onlineServerConf.Hash = serverConfig.Hash
+	onlineServerConf.NoPolicyAction = serverConfig.NoPolicyAction
 	onlineServerConf.Status = proto.VPNDPServerInitStatus
 	onlineServerConf.IPv4MTU = tunnelConfig.IPv4MTU
 	onlineServerConf.IPv6MTU = tunnelConfig.IPv6MTU
