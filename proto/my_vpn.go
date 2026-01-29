@@ -49,6 +49,7 @@ const (
 	DPOpCodePolicyAdd      = 5
 	DPOpCodePolicyUpdate   = 6
 	DPOpCodePolicyDel      = 7
+	DPOpCodePolicyDelAll   = 8
 
 	DPOpCodeConfigUpdate = 10
 	DPOpCodeServerDel    = 11

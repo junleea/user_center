@@ -239,10 +239,13 @@ func DeleteMyVPNPolicy(user *dao.User, resp *proto.GenerateResp, policyID uint, 
 			log.Println("[ERROR] request id:", resp.RequestID, " user:", user.ID, "server id", serverID, " delete vpn policy dao err:", err)
 			resp.Code = proto.InternalServerError
 			resp.Message = "failed to delete policy"
+		} else if serverID != "" {
+			SendVPNPolicyMsgToDPServer(proto.DPOpCodePolicyDelAll, serverID, nil)
+			resp.Code = proto.SuccessCode
+			resp.Message = "success"
 		} else {
 			policy := proto.VPNPolicy{}
 			policy.ID = policyID
-
 			SendVPNPolicyMsgToDPServer(proto.DPOpCodePolicyDel, serverID, &policy)
 			resp.Code = proto.SuccessCode
 			resp.Message = "success"
