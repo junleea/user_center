@@ -270,7 +270,7 @@ func SendVPNAuthUserMsgToDPServer(opCode int, serverID string, authUser *proto.V
 
 func SendVPNPolicyMsgToDPServer(opCode int, serverID string, policy *proto.VPNPolicy) {
 	var event proto.VPNDPServerEvent
-	event.MsgType = proto.DPMsgAuthUserType
+	event.MsgType = proto.DPMsgPolicyType
 	event.OpCode = opCode
 	event.VPNPolicy = policy
 	//加入消息队列
