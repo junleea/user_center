@@ -776,6 +776,7 @@ func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, resp *pro
 				ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
 				ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4(), nil)
 				GlobalAddressPoolAllocatorMap.mutex.Unlock()
+				SendVPNAuthUserMsgToClient(proto.VPNClientOpCodeKickOut, req.ServerID, &user_)
 			}
 		}
 		resp.Data = len(authUserMap.UserMap)
