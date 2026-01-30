@@ -228,9 +228,10 @@ func VPNClientConnectWSHandler(c *gin.Context) {
 	}
 
 	//检查key ID真实性
-	if service.CheckVPNClientKeyID(&user, &req) {
+	if service.CheckVPNClientKeyID(&user, &req) == false {
 		resp.Code = proto.ParameterError
 		resp.Message = "invalid server id or key id"
+		log.Println("invalid server id or key id, req server id:", req.ServerID, " session id:", req.UUID)
 		c.JSON(http.StatusOK, resp)
 		return
 	}
