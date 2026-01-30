@@ -33,6 +33,7 @@ func SetUpMyVPNGroup(router *gin.Engine) {
 	myVPNGroup.POST("/kick_out_user", KickOutUser)
 
 	myVPNGroup.GET("/server_ws", DPServerConnectWSHandler) //vpn dp服务器与控制服务器实时通信使用
+	myVPNGroup.GET("/client_ws", VPNClientConnectWSHandler)
 }
 
 func KickOutUser(c *gin.Context) {

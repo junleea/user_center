@@ -8,6 +8,7 @@ import (
 	"time"
 	"user_center/dao"
 	"user_center/proto"
+	"user_center/worker"
 )
 
 type VPNAuthUserMap struct {
@@ -69,6 +70,7 @@ func CheckOnlineAuthUser() {
 					continue
 				}
 				SendVPNAuthUserMsgToDPServer(proto.DPOpCodeAuthUserDel, serverID, &v)
+				SendVPNAuthUserMsgToClient(proto.VPNClientOpCodeKickOut, serverID, &v)
 				//释放IP
 				GlobalAddressPoolAllocatorMap.mutex.Lock()
 				ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
@@ -278,4 +280,83 @@ func GetAddressPoolConfigList() (res []proto.AddressPoolConfig) {
 		}
 	}
 	return res
+}
+
+func CheckVPNClientKeyID(user *dao.User, req *proto.SetVPNClientStatusReq) bool {
+	GlobalVPNServerAuthUserMap.mutex.Lock()
+	defer GlobalVPNServerAuthUserMap.mutex.Unlock()
+
+	userMap, ok := GlobalVPNServerAuthUserMap.ServerUserMap[req.ServerID]
+	if ok == false {
+		return false
+	}
+	exist := false
+
+	userList, ok2 := userMap.UserMap[user.ID]
+	if ok2 == false {
+		return false
+	}
+
+	for _, v := range userList {
+		if v.UUID == req.UUID {
+			exist = true
+			break
+		}
+	}
+	return exist
+}
+
+func LogoutOutOnlineAuthUser(req *proto.SetVPNClientStatusReq) bool {
+	GlobalVPNServerAuthUserMap.mutex.Lock()
+	defer GlobalVPNServerAuthUserMap.mutex.Unlock()
+	authUserMap, exist := GlobalVPNServerAuthUserMap.ServerUserMap[req.ServerID]
+	if exist == false {
+		return false
+	}
+	authUserMap.mutex.Lock()
+	defer authUserMap.mutex.Unlock()
+
+	serverConfig := GetServerConfigByServerID(req.ServerID)
+	success := false
+
+	for userID, users := range authUserMap.UserMap {
+		var newUsers []proto.VPNAuthUserDPInfo
+		for _, user_ := range users {
+			if user_.UUID == req.UUID {
+				//释放IP
+				GlobalAddressPoolAllocatorMap.mutex.Lock()
+				ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
+				ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4(), nil)
+				GlobalAddressPoolAllocatorMap.mutex.Unlock()
+				SendVPNAuthUserMsgToDPServer(proto.DPOpCodeAuthUserDel, req.ServerID, &user_)
+				success = true
+			} else {
+				newUsers = append(newUsers, user_)
+			}
+		}
+		if len(newUsers) > 0 {
+			authUserMap.UserMap[userID] = newUsers
+		} else {
+			delete(authUserMap.UserMap, userID)
+		}
+	}
+
+	return success
+}
+
+func SendVPNAuthUserMsgToClient(opCode int, serverID string, authUser *proto.VPNAuthUserDPInfo) {
+	var event proto.VPNClientEvent
+	event.OpCode = opCode
+	event.AuthUser = authUser
+	//加入消息队列
+	key := "vpn_client_event_" + serverID + "_" + authUser.UUID
+
+	msg, err := json.Marshal(&event)
+
+	if err != nil {
+		log.Println("server id:", serverID, " auth user event to client encode err:", err)
+		return
+	}
+
+	worker.Publish(key, string(msg), time.Second*10)
 }

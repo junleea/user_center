@@ -215,3 +215,113 @@ func handleReceiveDPServerMessage(msg []byte, user *dao.User) {
 		return
 	}
 }
+
+func VPNClientConnectWSHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	var req proto.SetVPNClientStatusReq
+	if err := c.ShouldBindQuery(&req); err != nil {
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid request parameters"
+		c.JSON(http.StatusBadRequest, resp)
+		return
+	}
+
+	//检查key ID真实性
+	if service.CheckVPNClientKeyID(&user, &req) {
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid server id or key id"
+		c.JSON(http.StatusOK, resp)
+		return
+	}
+
+	// 升级HTTP连接为WebSocket连接
+	ws, err1 := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err1 != nil {
+		log.Println("升级为WebSocket时发生错误:", err1)
+		resp.Code = proto.InternalServerError
+		resp.Message = err1.Error()
+		c.JSON(http.StatusOK, resp)
+		return
+	}
+
+	handleVPNClientMessage(ws, &user, &req)
+
+}
+
+func handleVPNClientMessage(ws *websocket.Conn, user *dao.User, req *proto.SetVPNClientStatusReq) {
+	ctx := context.Background()
+	channel := "vpn_client_event_" + req.ServerID + "_" + req.UUID
+	pubSub := worker.RedisClient.Subscribe(ctx, channel)
+
+	stop := false
+
+	defer func() {
+		err := pubSub.Close()
+		if err != nil {
+			log.Println("server id:", req.ServerID, " user name:", user.Name, " key id:", req.UUID, " close sub err:", err)
+		}
+		err = ws.Close()
+		if err != nil {
+			log.Println("server id:", req.ServerID, " user name:", user.Name, " key id:", req.UUID, " close ws err:", err)
+		}
+	}()
+
+	// 从 pubSub 获取消息并发送到客户端
+	go func() {
+		for {
+			if stop {
+				break
+			}
+			msg, err := pubSub.ReceiveMessage(ctx)
+			if err != nil {
+				log.Println("server id:", req.ServerID, " user name:", user.Name, " key id:", req.UUID, " receive pubSub message err:", err)
+				break
+			}
+			err = ws.WriteMessage(websocket.TextMessage, []byte(msg.Payload))
+			if err != nil {
+				log.Println("server id:", req.ServerID, " user name:", user.Name, " key id:", req.UUID, " write to ws err:", err)
+				stop = true
+				break
+			}
+		}
+	}()
+
+	// 接收客户端消息并处理
+	for {
+		if stop {
+			break
+		}
+		_, message, err := ws.ReadMessage()
+		if err != nil {
+			log.Println("server id:", req.ServerID, " user name:", user.Name, " key id:", req.UUID, " read from ws err:", err)
+			break
+		}
+		// 根据需要处理客户端消息
+		go handleReceiveClientMessage(message, user, req, &stop)
+	}
+}
+
+func handleReceiveClientMessage(msg []byte, user *dao.User, info *proto.SetVPNClientStatusReq, stop *bool) {
+	var req proto.VPNClientEvent
+	err := json.Unmarshal(msg, &req)
+	if err != nil {
+		log.Println("receive dp server msg decode err:", err)
+		return
+	}
+	switch req.OpCode {
+	case proto.VPNClientEventOpCodePing:
+		log.Println("vpn server id:", info.ServerID, " user name:", user.Name, " key id:", info.UUID, " receive ping")
+		var resp proto.GenerateResp
+		service.SetClientStatusService(user, info, &resp)
+		if resp.Code != proto.SuccessCode {
+			log.Println("vpn server id:", info.ServerID, " user name:", user.Name, " key id:", info.UUID, " set client status err:", resp.Message)
+		}
+	case proto.VPNClientOpCodeLogout:
+		// 客户端主动退出
+		log.Println("vpn server id:", info.ServerID, " user name:", user.Name, " key id:", info.UUID, " receive logout")
+		if service.LogoutOutOnlineAuthUser(info) {
+			*stop = true
+		}
+	}
+}

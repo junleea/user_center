@@ -55,6 +55,12 @@ const (
 	DPOpCodeServerDel    = 11
 )
 
+const (
+	VPNClientOpCodeLogout    = 1 //用户注销登录
+	VPNClientOpCodeKickOut   = 2 //用户被踢出
+	VPNClientEventOpCodePing = 3 //ping
+)
+
 type VPNRouter struct {
 	Type int    `json:"type" form:"type"` /*4,6,46*/
 	IP   string `json:"ip" form:"ip"`
@@ -336,4 +342,14 @@ type VPNDPServerEvent struct {
 	AuthUser     *VPNAuthUserDPInfo    `json:"auth_user,omitempty"`
 	ServerConfig *DPServerOnlineConfig `json:"server_config,omitempty"`
 	VPNPolicy    *VPNPolicy            `json:"vpn_policy,omitempty"`
+}
+
+type ClientWsRequest struct {
+	ServerID string `json:"server_id" form:"server_id" required:"true"`
+	KeyID    uint   `json:"key_id" form:"key_id" required:"true"`
+}
+
+type VPNClientEvent struct {
+	OpCode   int                `json:"op_code" required:"true"`
+	AuthUser *VPNAuthUserDPInfo `json:"auth_user,omitempty"` //更新auth User
 }
