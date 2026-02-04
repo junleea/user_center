@@ -86,6 +86,18 @@ func NewIPAllocator(ipv4Pool, ipv6Pool *proto.AddressPool) (ipa *IPAllocator, er
 	return ipa, nil
 }
 
+func (ipa *IPAllocator) IsIPv4BindOtherUser(userID uint, ipv4Pool *proto.AddressPool, ip net.IP) bool {
+	ret := false
+	for _, bindIP := range ipv4Pool.IPBind {
+		ipv4_ := net.ParseIP(bindIP.BindIP).To4()
+		if ipv4_.Equal(ip) && uint(bindIP.UserID) != userID {
+			ret = true
+			break
+		}
+	}
+	return ret
+}
+
 func (ipa *IPAllocator) AllocateIP(userID uint, ipv4Pool, ipv6Pool *proto.AddressPool) (ipv4 net.IP, ipv6 net.IP, err error) {
 	ipa.mutex.Lock()
 	defer ipa.mutex.Unlock()
@@ -135,6 +147,9 @@ func (ipa *IPAllocator) AllocateIP(userID uint, ipv4Pool, ipv6Pool *proto.Addres
 					ipv4 = make(net.IP, 4)
 					for k := 0; k < 4; k++ {
 						ipv4[k] = ipa.ipv4Start[k] + byte((ipv4Offset>>(8*(3-k)))&0xFF)
+					}
+					if ipa.IsIPv4BindOtherUser(userID, ipv4Pool, ipv4) {
+						continue
 					}
 					//mark as used
 					ipa.ipv4Bitmap[i] |= 1 << j
