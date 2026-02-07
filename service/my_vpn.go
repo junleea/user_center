@@ -805,6 +805,7 @@ func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, resp *pro
 				ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4(), nil)
 				GlobalAddressPoolAllocatorMap.mutex.Unlock()
 				SendVPNAuthUserMsgToDPServer(proto.DPOpCodeAuthUserDel, req.ServerID, &user_)
+				SendVPNAuthUserMsgToClient(proto.VPNClientOpCodeKickOut, req.ServerID, &user_)
 			} else {
 				newUsers = append(newUsers, user_)
 			}
