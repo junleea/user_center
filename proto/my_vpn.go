@@ -86,6 +86,30 @@ type DPServerOnlineConfig struct {
 	LastServerCheck int64  `json:"last_server_check" form:"last_server_check"`
 }
 
+type ServerConfigBase struct {
+	Name            string      `json:"name" form:"name"`
+	ServerID        string      `json:"server_id" form:"server_id"`
+	ServerIP        string      `json:"server_ip" form:"server_ip"`
+	ServerIPV6      string      `json:"server_ipv6" form:"server_ipv6"`
+	ServerIPType    int         `json:"server_ip_type" form:"server_ip_type"`
+	ServerInfo      string      `json:"server_info" form:"server_info"`
+	UDPPort         int         `json:"udp_port" form:"udp_port"` /*udp port*/
+	TCPPort         int         `json:"tcp_port" form:"tcp_port"`
+	Protocol        int         `json:"protocol" form:"protocol"` /* 1: tcp, 2: udp */
+	IPType          int         `json:"ip_type" form:"ip_type"`   /* 4, 6, 46 */
+	IPv4AddressPool string      `json:"ipv4_address_pool" form:"ipv4_address_pool"`
+	IPv6AddressPool string      `json:"ipv6_address_pool" form:"ipv6_address_pool"`
+	DNSServer       string      `json:"dns_server" form:"dns_server"`
+	Tunnel          string      `json:"tunnel" form:"tunnel"`
+	Encryption      string      `json:"encryption" form:"encryption"` /*加密算法：aes-128-gcm, aes-192-gcm, aes-256-gcm, SM4-GCM*/
+	Hash            string      `json:"hash" form:"hash"`             /*摘要算法：sha256, sha512, md5, sm3*/
+	UserMaxDevice   int         `json:"user_max_device" form:"user_max_device"`
+	DurationTime    int         `json:"duration_time" form:"duration_time"`       /*空闲时长，秒*/
+	NoPolicyAction  int         `json:"no_policy_action" form:"no_policy_action"` //策略匹配失败时的动作，0-deny,1-permit
+	IPv4Router      []VPNRouter `json:"ipv4_router" form:"ipv4_router"`
+	IPv6Router      []VPNRouter `json:"ipv6_router" form:"ipv6_router"`
+}
+
 type ServerConfig struct {
 	Name            string      `json:"name" form:"name"`
 	ServerID        string      `json:"server_id" form:"server_id"`

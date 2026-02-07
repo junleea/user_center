@@ -161,29 +161,15 @@ func UpdateServerConfigToOnlineInfo(serverConfig proto.ServerConfig) (err error)
 		onlineServerConf.IPv4Address = tunnelConfig.IPv4Address
 	}
 
+	onlineServerConf.ServerConfig = serverConfig
+
 	onlineServerConf.IPv4Prefix = poolConfig.IPv4AddressPool.Prefix
 	onlineServerConf.IPv6Prefix = poolConfig.IPv6AddressPool.Prefix
-	onlineServerConf.UserMaxDevice = serverConfig.UserMaxDevice
-	onlineServerConf.ServerIP = serverConfig.ServerIP
-	onlineServerConf.ServerID = serverConfig.ServerID
-	onlineServerConf.DNSServer = serverConfig.DNSServer
-	onlineServerConf.IPType = serverConfig.IPType
-	onlineServerConf.Name = serverConfig.Name
-	onlineServerConf.IPv6Router = serverConfig.IPv6Router
-	onlineServerConf.IPv4Router = serverConfig.IPv4Router
-	onlineServerConf.AllowUserID = serverConfig.AllowUserID
-	onlineServerConf.DurationTime = serverConfig.DurationTime
-	onlineServerConf.Encryption = serverConfig.Encryption
-	onlineServerConf.Protocol = serverConfig.Protocol
-	onlineServerConf.UDPPort = serverConfig.UDPPort
-	onlineServerConf.TCPPort = serverConfig.TCPPort
-	onlineServerConf.Hash = serverConfig.Hash
-	onlineServerConf.NoPolicyAction = serverConfig.NoPolicyAction
-	onlineServerConf.Status = proto.VPNDPServerInitStatus
 	onlineServerConf.IPv4MTU = tunnelConfig.IPv4MTU
 	onlineServerConf.IPv6MTU = tunnelConfig.IPv6MTU
 	onlineServerConf.UploadLimit = tunnelConfig.UploadLimit
 	onlineServerConf.DownloadLimit = tunnelConfig.DownloadLimit
+	onlineServerConf.Status = proto.VPNDPServerInitStatus
 	GlobalVPNServerConfigMap.mutex.Lock()
 	defer GlobalVPNServerConfigMap.mutex.Unlock()
 	GlobalVPNServerConfigMap.ServerConfigMap[serverConfig.ServerID] = &onlineServerConf
