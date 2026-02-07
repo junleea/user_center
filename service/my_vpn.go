@@ -571,6 +571,7 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	res.ServerID = serverConfig.ServerID
 	res.ServerIP = serverConfig.ServerIP
 	res.ServerIPV6 = vpnOnlineServer.ServerIPV6
+	res.ServerIPType = serverConfig.ServerIPType
 	res.UDPPort = serverConfig.UDPPort
 	res.TCPPort = serverConfig.TCPPort
 	res.Protocol = serverConfig.Protocol
