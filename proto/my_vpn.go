@@ -1,6 +1,7 @@
 package proto
 
 import (
+	"github.com/shirou/gopsutil/v3/host"
 	"gorm.io/gorm"
 )
 
@@ -272,14 +273,15 @@ type SupportVPNServer struct {
 }
 
 type VPNAuthUserDPInfo struct {
-	ID             uint   `json:"id" form:"id"` /*连接id,区分每个连接*/
-	UserID         uint   `json:"user_id" form:"user_id"`
-	UserName       string `json:"user_name,omitempty" form:"user_name"`
-	PrivateIPv4    string `json:"private_ipv4,omitempty" form:"private_ipv4"`
-	PrivateIPv6    string `json:"private_ipv6,omitempty" form:"private_ipv6"`
-	VPNDPSecret    string `json:"vpn_dp_secret,omitempty" form:"vpn_dp_secret"` /*dp secret*/
-	UUID           string `json:"uuid,omitempty" form:"uuid"`
-	LastUpdateTime int64  `json:"last_update_time,omitempty" form:"last_update_time"`
+	ID             uint               `json:"id" form:"id"` /*连接id,区分每个连接*/
+	UserID         uint               `json:"user_id" form:"user_id"`
+	UserName       string             `json:"user_name,omitempty" form:"user_name"`
+	PrivateIPv4    string             `json:"private_ipv4,omitempty" form:"private_ipv4"`
+	PrivateIPv6    string             `json:"private_ipv6,omitempty" form:"private_ipv6"`
+	VPNDPSecret    string             `json:"vpn_dp_secret,omitempty" form:"vpn_dp_secret"` /*dp secret*/
+	UUID           string             `json:"uuid,omitempty" form:"uuid"`
+	LastUpdateTime int64              `json:"last_update_time,omitempty" form:"last_update_time"`
+	HostInfo       *VPNClientHostInfo `json:"host_info,omitempty" form:"host_info"`
 }
 
 type GetClientConfigOnlineResponse struct {
@@ -376,4 +378,14 @@ type ClientWsRequest struct {
 type VPNClientEvent struct {
 	OpCode   int                `json:"op_code" required:"true"`
 	AuthUser *VPNAuthUserDPInfo `json:"auth_user,omitempty"` //更新auth User
+}
+
+type VPNClientHostInfo struct {
+	host.InfoStat
+}
+
+type ConnectVPNRequest struct {
+	ServerID  string             `json:"server_id" form:"server_id" required:"true"`
+	SessionID string             `json:"session_id" form:"session_id"`
+	HostInfo  *VPNClientHostInfo `json:"host_info" form:"host_info" required:"true"`
 }

@@ -279,6 +279,10 @@ func handleVPNClientMessage(ws *websocket.Conn, user *dao.User, req *proto.SetVP
 				log.Println("server id:", req.ServerID, " user name:", user.Name, " key id:", req.UUID, " receive pubSub message err:", err)
 				break
 			}
+			if msg.Payload == "DONE" {
+				stop = true
+				break
+			}
 			err = ws.WriteMessage(websocket.TextMessage, []byte(msg.Payload))
 			if err != nil {
 				log.Println("server id:", req.ServerID, " user name:", user.Name, " key id:", req.UUID, " write to ws err:", err)

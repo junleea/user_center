@@ -502,7 +502,7 @@ func GetClientConfigExistService(user *dao.User, resp *proto.GenerateResp, serve
 	resp.Data = res
 }
 
-func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID string) (err error) {
+func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID string, hostInfo *proto.VPNClientHostInfo) (err error) {
 	var res proto.GetClientConfigOnlineResponse
 	var authUser proto.VPNAuthUserDPInfo
 
@@ -671,6 +671,10 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 		authUserMap_ := VPNAuthUserMap{
 			UserMap: make(map[uint][]proto.VPNAuthUserDPInfo),
 		}
+
+		hostInfo_ := proto.VPNClientHostInfo{}
+		hostInfo_ = *hostInfo
+		authUser.HostInfo = &hostInfo_
 
 		// 直接赋值单元素切片
 		authUserMap_.UserMap[user.ID] = []proto.VPNAuthUserDPInfo{authUser}
