@@ -187,6 +187,10 @@ func handleDPServerMessage(ws *websocket.Conn, user *dao.User, serverID string) 
 				log.Println("server id:", serverID, " receive pubSub message err:", err)
 				break
 			}
+			if msg.Payload == "DONE" {
+				log.Println("server id:", serverID, " receive pubSub message DONE")
+				break
+			}
 			err = ws.WriteMessage(websocket.TextMessage, []byte(msg.Payload))
 			if err != nil {
 				log.Println("server id:", serverID, " write to ws err:", err)
@@ -203,16 +207,31 @@ func handleDPServerMessage(ws *websocket.Conn, user *dao.User, serverID string) 
 			break
 		}
 		// 根据需要处理客户端消息
-		go handleReceiveDPServerMessage(message, user)
+		go handleReceiveDPServerMessage(message, user, serverID)
 	}
 }
 
-func handleReceiveDPServerMessage(msg []byte, user *dao.User) {
+func handleReceiveDPServerMessage(msg []byte, user *dao.User, serverID string) {
 	var req proto.VPNDPServerEvent
 	err := json.Unmarshal(msg, &req)
 	if err != nil {
 		log.Println("receive dp server msg decode err:", err)
 		return
+	}
+	switch req.MsgType {
+	case proto.DPMsgServerInfo:
+		handleReceiveDPServerInfo(&req, user, serverID)
+	default:
+		log.Println("receive dp server msg type err:", req.MsgType)
+	}
+}
+
+func handleReceiveDPServerInfo(req *proto.VPNDPServerEvent, user *dao.User, serverID string) {
+	switch req.OpCode {
+	case proto.DPOpCodeServerDataInfo:
+		service.HandleReceiveDPServerDataInfoService(req, user, serverID)
+	default:
+		log.Println("receive dp server msg op code err:", req.OpCode)
 	}
 }
 

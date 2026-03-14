@@ -3,6 +3,8 @@ package proto
 import (
 	"github.com/shirou/gopsutil/v3/host"
 	"gorm.io/gorm"
+	"sync"
+	"time"
 )
 
 const (
@@ -42,6 +44,7 @@ const (
 	DPMsgAuthUserType     = 1
 	DPMsgPolicyType       = 2
 	DPMsyServerConfigType = 3
+	DPMsgServerInfo       = 4
 
 	DPOpCodeAuthUserAdd    = 1
 	DPOpCodeAuthUserDel    = 2
@@ -51,6 +54,7 @@ const (
 	DPOpCodePolicyUpdate   = 6
 	DPOpCodePolicyDel      = 7
 	DPOpCodePolicyDelAll   = 8
+	DPOpCodeServerDataInfo = 9
 
 	DPOpCodeConfigUpdate = 10
 	DPOpCodeServerDel    = 11
@@ -75,16 +79,17 @@ type StringValue struct {
 
 type DPServerOnlineConfig struct {
 	ServerConfig
-	IPv4Address     string `json:"ipv4_address" form:"ipv4_address"`
-	IPv4Prefix      int    `json:"ipv4_prefix" form:"ipv4_prefix"`
-	IPv6Address     string `json:"ipv6_address" form:"ipv6_address"`
-	IPv6Prefix      int    `json:"ipv6_prefix" form:"ipv6_prefix"`
-	IPv4MTU         int    `json:"ipv4_mtu" form:"ipv4_mtu"`
-	IPv6MTU         int    `json:"ipv6_mtu" form:"ipv6_mtu"`
-	UploadLimit     int    `json:"upload_limit" form:"upload_limit"`     /*上传限速，Kbps, 默认：1024Kbps*/
-	DownloadLimit   int    `json:"download_limit" form:"download_limit"` /*下载限速，Kbps, 默认：1024Kbps*/
-	Status          int    `json:"status" form:"status"`
-	LastServerCheck int64  `json:"last_server_check" form:"last_server_check"`
+	IPv4Address     string            `json:"ipv4_address" form:"ipv4_address"`
+	IPv4Prefix      int               `json:"ipv4_prefix" form:"ipv4_prefix"`
+	IPv6Address     string            `json:"ipv6_address" form:"ipv6_address"`
+	IPv6Prefix      int               `json:"ipv6_prefix" form:"ipv6_prefix"`
+	IPv4MTU         int               `json:"ipv4_mtu" form:"ipv4_mtu"`
+	IPv6MTU         int               `json:"ipv6_mtu" form:"ipv6_mtu"`
+	UploadLimit     int               `json:"upload_limit" form:"upload_limit"`     /*上传限速，Kbps, 默认：1024Kbps*/
+	DownloadLimit   int               `json:"download_limit" form:"download_limit"` /*下载限速，Kbps, 默认：1024Kbps*/
+	Status          int               `json:"status" form:"status"`
+	LastServerCheck int64             `json:"last_server_check" form:"last_server_check"`
+	VPNStatus       VPNDPServerStatus `json:"vpn_status" form:"vpn_status"`
 }
 
 type ServerConfigBase struct {
@@ -363,11 +368,12 @@ type VPNPolicyRequest struct {
 }
 
 type VPNDPServerEvent struct {
-	MsgType      int                   `json:"msg_type" required:"true"`
-	OpCode       int                   `json:"op_code" required:"true"`
-	AuthUser     *VPNAuthUserDPInfo    `json:"auth_user,omitempty"`
-	ServerConfig *DPServerOnlineConfig `json:"server_config,omitempty"`
-	VPNPolicy    *VPNPolicy            `json:"vpn_policy,omitempty"`
+	MsgType        int                   `json:"msg_type" required:"true"`
+	OpCode         int                   `json:"op_code" required:"true"`
+	AuthUser       *VPNAuthUserDPInfo    `json:"auth_user,omitempty"`
+	ServerConfig   *DPServerOnlineConfig `json:"server_config,omitempty"`
+	VPNPolicy      *VPNPolicy            `json:"vpn_policy,omitempty"`
+	DPServerStatus *VPNDPServerStatus    `json:"dp_server_status,omitempty"`
 }
 
 type ClientWsRequest struct {
@@ -382,10 +388,92 @@ type VPNClientEvent struct {
 
 type VPNClientHostInfo struct {
 	host.InfoStat
+	ClientVersion string `json:"client_version" form:"client_version"`
 }
 
 type ConnectVPNRequest struct {
 	ServerID  string             `json:"server_id" form:"server_id" required:"true"`
 	SessionID string             `json:"session_id" form:"session_id"`
 	HostInfo  *VPNClientHostInfo `json:"host_info" form:"host_info" required:"true"`
+}
+
+type VPNDPServerStatus struct {
+	Status         int                   `json:"status" required:"true"`
+	ReceivePackets int                   `json:"receive_packets" required:"true"`
+	SendPackets    int                   `json:"send_packets" required:"true"`
+	ReceiveBytes   int                   `json:"receive_bytes" required:"true"`
+	SendBytes      int                   `json:"send_bytes" required:"true"`
+	LastUpdateTime int64                 `json:"last_update_time" required:"true"`
+	OnlineUserInfo []VPNServerOnlineUser `json:"online_user_info" required:"true"`
+	rw             sync.RWMutex
+}
+
+func (s *VPNDPServerStatus) SetReceiveInfo(receivePackets, receiveBytes int) {
+	s.rw.Lock()
+	defer s.rw.Unlock()
+	s.ReceivePackets = receivePackets
+	s.ReceiveBytes = receiveBytes
+	s.LastUpdateTime = time.Now().Unix()
+}
+
+func (s *VPNDPServerStatus) SetSendInfo(sendPackets, sendBytes int) {
+	s.rw.Lock()
+	defer s.rw.Unlock()
+	s.SendPackets = sendPackets
+	s.SendBytes = sendBytes
+	s.LastUpdateTime = time.Now().Unix()
+}
+
+func (s *VPNDPServerStatus) GetInfo() VPNDPServerStatus {
+	s.rw.RLock()
+	defer s.rw.RUnlock()
+	return VPNDPServerStatus{
+		Status:         s.Status,
+		ReceivePackets: s.ReceivePackets,
+		SendPackets:    s.SendPackets,
+		ReceiveBytes:   s.ReceiveBytes,
+		SendBytes:      s.SendBytes,
+		LastUpdateTime: s.LastUpdateTime,
+		OnlineUserInfo: s.OnlineUserInfo,
+	}
+}
+
+type VPNServerOnlineUser struct {
+	SessionID       string `json:"session_id" required:"true"`
+	UserID          uint   `json:"user_id" required:"true"`
+	UploadPackets   int    `json:"upload_packets" required:"true"`
+	DownloadPackets int    `json:"download_packets" required:"true"`
+	UploadBytes     int    `json:"upload_bytes" required:"true"`
+	DownloadBytes   int    `json:"download_bytes" required:"true"`
+	LastUpdateTime  int64  `json:"last_update_time" required:"true"`
+	rw              sync.RWMutex
+}
+
+func (u *VPNServerOnlineUser) SetUploadInfo(uploadPackets, uploadBytes int) {
+	u.rw.Lock()
+	defer u.rw.Unlock()
+	u.UploadPackets = uploadPackets
+	u.UploadBytes = uploadBytes
+	u.LastUpdateTime = time.Now().Unix()
+}
+func (u *VPNServerOnlineUser) SetDownloadInfo(downloadPackets, downloadBytes int) {
+	u.rw.Lock()
+	defer u.rw.Unlock()
+	u.DownloadPackets = downloadPackets
+	u.DownloadBytes = downloadBytes
+	u.LastUpdateTime = time.Now().Unix()
+}
+
+func (u *VPNServerOnlineUser) GetInfo() VPNServerOnlineUser {
+	u.rw.RLock()
+	defer u.rw.RUnlock()
+	return VPNServerOnlineUser{
+		SessionID:       u.SessionID,
+		UserID:          u.UserID,
+		UploadPackets:   u.UploadPackets,
+		DownloadPackets: u.DownloadPackets,
+		UploadBytes:     u.UploadBytes,
+		DownloadBytes:   u.DownloadBytes,
+		LastUpdateTime:  u.LastUpdateTime,
+	}
 }

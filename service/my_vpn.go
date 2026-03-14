@@ -825,3 +825,18 @@ func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, resp *pro
 	resp.Data = count
 
 }
+
+func HandleReceiveDPServerDataInfoService(req *proto.VPNDPServerEvent, user *dao.User, serverID string) {
+	GlobalVPNServerConfigMap.mutex.Lock()
+	defer GlobalVPNServerConfigMap.mutex.Unlock()
+	server, ok := GlobalVPNServerConfigMap.ServerConfigMap[serverID]
+	if ok == false || server == nil {
+		log.Println("[ERROR] server not found:", serverID)
+		return
+	}
+
+	if req.DPServerStatus == nil {
+		return
+	}
+	server.VPNStatus = req.DPServerStatus.GetInfo()
+}
