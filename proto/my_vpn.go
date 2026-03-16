@@ -3,8 +3,6 @@ package proto
 import (
 	"github.com/shirou/gopsutil/v3/host"
 	"gorm.io/gorm"
-	"sync"
-	"time"
 )
 
 const (
@@ -399,34 +397,15 @@ type ConnectVPNRequest struct {
 
 type VPNDPServerStatus struct {
 	Status         int                   `json:"status" required:"true"`
-	ReceivePackets int                   `json:"receive_packets" required:"true"`
-	SendPackets    int                   `json:"send_packets" required:"true"`
-	ReceiveBytes   int                   `json:"receive_bytes" required:"true"`
-	SendBytes      int                   `json:"send_bytes" required:"true"`
+	ReceivePackets int64                 `json:"receive_packets" required:"true"`
+	SendPackets    int64                 `json:"send_packets" required:"true"`
+	ReceiveBytes   int64                 `json:"receive_bytes" required:"true"`
+	SendBytes      int64                 `json:"send_bytes" required:"true"`
 	LastUpdateTime int64                 `json:"last_update_time" required:"true"`
 	OnlineUserInfo []VPNServerOnlineUser `json:"online_user_info" required:"true"`
-	rw             sync.RWMutex
-}
-
-func (s *VPNDPServerStatus) SetReceiveInfo(receivePackets, receiveBytes int) {
-	s.rw.Lock()
-	defer s.rw.Unlock()
-	s.ReceivePackets = receivePackets
-	s.ReceiveBytes = receiveBytes
-	s.LastUpdateTime = time.Now().Unix()
-}
-
-func (s *VPNDPServerStatus) SetSendInfo(sendPackets, sendBytes int) {
-	s.rw.Lock()
-	defer s.rw.Unlock()
-	s.SendPackets = sendPackets
-	s.SendBytes = sendBytes
-	s.LastUpdateTime = time.Now().Unix()
 }
 
 func (s *VPNDPServerStatus) GetInfo() VPNDPServerStatus {
-	s.rw.RLock()
-	defer s.rw.RUnlock()
 	return VPNDPServerStatus{
 		Status:         s.Status,
 		ReceivePackets: s.ReceivePackets,
@@ -441,32 +420,14 @@ func (s *VPNDPServerStatus) GetInfo() VPNDPServerStatus {
 type VPNServerOnlineUser struct {
 	SessionID       string `json:"session_id" required:"true"`
 	UserID          uint   `json:"user_id" required:"true"`
-	UploadPackets   int    `json:"upload_packets" required:"true"`
-	DownloadPackets int    `json:"download_packets" required:"true"`
-	UploadBytes     int    `json:"upload_bytes" required:"true"`
-	DownloadBytes   int    `json:"download_bytes" required:"true"`
+	UploadPackets   int64  `json:"upload_packets" required:"true"`
+	DownloadPackets int64  `json:"download_packets" required:"true"`
+	UploadBytes     int64  `json:"upload_bytes" required:"true"`
+	DownloadBytes   int64  `json:"download_bytes" required:"true"`
 	LastUpdateTime  int64  `json:"last_update_time" required:"true"`
-	rw              sync.RWMutex
-}
-
-func (u *VPNServerOnlineUser) SetUploadInfo(uploadPackets, uploadBytes int) {
-	u.rw.Lock()
-	defer u.rw.Unlock()
-	u.UploadPackets = uploadPackets
-	u.UploadBytes = uploadBytes
-	u.LastUpdateTime = time.Now().Unix()
-}
-func (u *VPNServerOnlineUser) SetDownloadInfo(downloadPackets, downloadBytes int) {
-	u.rw.Lock()
-	defer u.rw.Unlock()
-	u.DownloadPackets = downloadPackets
-	u.DownloadBytes = downloadBytes
-	u.LastUpdateTime = time.Now().Unix()
 }
 
 func (u *VPNServerOnlineUser) GetInfo() VPNServerOnlineUser {
-	u.rw.RLock()
-	defer u.rw.RUnlock()
 	return VPNServerOnlineUser{
 		SessionID:       u.SessionID,
 		UserID:          u.UserID,

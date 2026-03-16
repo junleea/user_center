@@ -837,6 +837,7 @@ func HandleReceiveDPServerDataInfoService(req *proto.VPNDPServerEvent, user *dao
 	}
 
 	if req.DPServerStatus == nil {
+		log.Println("[ERROR] server has no DPServerStatus")
 		return
 	}
 	server.VPNStatus = req.DPServerStatus.GetInfo()
