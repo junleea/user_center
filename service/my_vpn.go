@@ -3,7 +3,6 @@ package service
 import (
 	"encoding/json"
 	"errors"
-	"github.com/google/uuid"
 	"log"
 	"net"
 	"sync"
@@ -11,6 +10,8 @@ import (
 	"user_center/dao"
 	"user_center/proto"
 	"user_center/worker"
+
+	"github.com/google/uuid"
 )
 
 type VPNSecretID struct {
@@ -839,4 +840,5 @@ func HandleReceiveDPServerDataInfoService(req *proto.VPNDPServerEvent, user *dao
 		return
 	}
 	server.VPNStatus = req.DPServerStatus.GetInfo()
+	log.Println("[INFO] receive dp server msg op code:", req.OpCode, " update status success!")
 }
