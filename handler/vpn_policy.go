@@ -349,5 +349,9 @@ func handleReceiveClientMessage(msg []byte, user *dao.User, info *proto.SetVPNCl
 		if service.LogoutOutOnlineAuthUser(info) {
 			*stop = true
 		}
+	case proto.VPNClientEventOOpCodeHostInfo:
+		//更新客户端信息
+		log.Println("vpn server id:", info.ServerID, " user name:", user.Name, " key id:", info.UUID, " receive host info")
+		service.UpdateClientHostInfoOnlineAuthUser(&req, info.UUID, info.ServerID)
 	}
 }

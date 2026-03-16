@@ -59,9 +59,10 @@ const (
 )
 
 const (
-	VPNClientOpCodeLogout    = 1 //用户注销登录
-	VPNClientOpCodeKickOut   = 2 //用户被踢出
-	VPNClientEventOpCodePing = 3 //ping
+	VPNClientOpCodeLogout         = 1 //用户注销登录
+	VPNClientOpCodeKickOut        = 2 //用户被踢出
+	VPNClientEventOpCodePing      = 3 //ping
+	VPNClientEventOOpCodeHostInfo = 4 //host info upload
 )
 
 type VPNRouter struct {
@@ -382,6 +383,7 @@ type ClientWsRequest struct {
 type VPNClientEvent struct {
 	OpCode   int                `json:"op_code" required:"true"`
 	AuthUser *VPNAuthUserDPInfo `json:"auth_user,omitempty"` //更新auth User
+	HostInfo *VPNClientHostInfo `json:"host_info,omitempty"`
 }
 
 type VPNClientHostInfo struct {

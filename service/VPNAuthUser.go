@@ -330,6 +330,28 @@ func LogoutOutOnlineAuthUser(req *proto.SetVPNClientStatusReq) bool {
 	return success
 }
 
+func UpdateClientHostInfoOnlineAuthUser(req *proto.VPNClientEvent, sessionID, serverID string) {
+	GlobalVPNServerAuthUserMap.mutex.Lock()
+	defer GlobalVPNServerAuthUserMap.mutex.Unlock()
+	authUserMap, exist := GlobalVPNServerAuthUserMap.ServerUserMap[serverID]
+	if exist == false {
+		log.Println("[ERROR] update client host info online auth user not exist, sessionID", sessionID)
+		return
+	}
+	authUserMap.mutex.Lock()
+	defer authUserMap.mutex.Unlock()
+	for _, users := range authUserMap.UserMap {
+		for index, user_ := range users {
+			if user_.UUID == sessionID {
+				var hostInfo proto.VPNClientHostInfo
+				hostInfo = *req.HostInfo
+				users[index].HostInfo = &hostInfo
+				log.Println("[INFO] update client host info online auth user, sessionID", sessionID)
+				return
+			}
+		}
+	}
+}
 func SendVPNAuthUserMsgToClient(opCode int, serverID string, authUser *proto.VPNAuthUserDPInfo) {
 	var event proto.VPNClientEvent
 	event.OpCode = opCode
