@@ -3,8 +3,6 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
 	"strconv"
@@ -12,6 +10,9 @@ import (
 	"user_center/proto"
 	"user_center/service"
 	"user_center/worker"
+
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
 var upgrader = websocket.Upgrader{
@@ -206,6 +207,7 @@ func handleDPServerMessage(ws *websocket.Conn, user *dao.User, serverID string) 
 			log.Println("server id:", serverID, " read from ws err:", err)
 			break
 		}
+		log.Println("server id:", serverID, " receive message:", string(message))
 		// 根据需要处理客户端消息
 		go handleReceiveDPServerMessage(message, user, serverID)
 	}
