@@ -288,3 +288,26 @@ func SendVPNPolicyMsgToDPServer(opCode int, serverID string, policy *proto.VPNPo
 
 	worker.Publish(key, string(msg), time.Second*10)
 }
+
+func SendVPNTime(channel string, type_ string) {
+	if type_ == "DP" {
+		var dpEvent proto.VPNDPServerEvent
+		dpEvent.MsgType = proto.CPVPNTimeType
+		dpEvent.VPNTime = uint32(time.Now().Unix())
+		data, err := json.Marshal(&dpEvent)
+		if err != nil {
+			log.Println("server id:", channel, " vpn time event to dp server encode err:", err)
+		} else {
+			worker.Publish(channel, string(data), time.Second*10)
+		}
+	} else {
+		var clientEvent proto.VPNClientEvent
+		clientEvent.OpCode = proto.CPVPNTimeType
+		clientEvent.VPNTime = uint32(time.Now().Unix())
+		data, err := json.Marshal(&clientEvent)
+		if err != nil {
+			log.Println("server id:", channel, " vpn time event to dp server encode err:", err)
+		}
+		worker.Publish(channel, string(data), time.Second*10)
+	}
+}

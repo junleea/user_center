@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 	"user_center/dao"
 	"user_center/proto"
 	"user_center/service"
@@ -168,6 +169,7 @@ func handleDPServerMessage(ws *websocket.Conn, user *dao.User, serverID string) 
 	ctx := context.Background()
 	channel := "vpn_dp_event_" + serverID
 	pubSub := worker.RedisClient.Subscribe(ctx, channel)
+	stop := false
 
 	defer func() {
 		err := pubSub.Close()
@@ -200,6 +202,21 @@ func handleDPServerMessage(ws *websocket.Conn, user *dao.User, serverID string) 
 		}
 	}()
 
+	//发送VPN时间
+	go func() {
+		i := 0
+		for {
+			if stop == false {
+				break
+			}
+			if i%6 == 0 {
+				service.SendVPNTime(channel, "client")
+			}
+			time.Sleep(time.Second * 10)
+			i++
+		}
+	}()
+
 	// 接收客户端消息并处理
 	for {
 		_, message, err := ws.ReadMessage()
@@ -211,6 +228,7 @@ func handleDPServerMessage(ws *websocket.Conn, user *dao.User, serverID string) 
 		// 根据需要处理客户端消息
 		go handleReceiveDPServerMessage(message, user, serverID)
 	}
+	stop = true
 }
 
 func handleReceiveDPServerMessage(msg []byte, user *dao.User, serverID string) {
@@ -288,6 +306,20 @@ func handleVPNClientMessage(ws *websocket.Conn, user *dao.User, req *proto.SetVP
 			log.Println("server id:", req.ServerID, " user name:", user.Name, " key id:", req.UUID, " close ws err:", err)
 		}
 	}()
+	//发送VPN时间
+	go func() {
+		i := 0
+		for {
+			if stop == false {
+				break
+			}
+			if i%6 == 0 {
+				service.SendVPNTime(channel, "client")
+			}
+			time.Sleep(time.Second * 10)
+			i++
+		}
+	}()
 
 	// 从 pubSub 获取消息并发送到客户端
 	go func() {
@@ -326,6 +358,7 @@ func handleVPNClientMessage(ws *websocket.Conn, user *dao.User, req *proto.SetVP
 		// 根据需要处理客户端消息
 		go handleReceiveClientMessage(message, user, req, &stop)
 	}
+	stop = true
 }
 
 func handleReceiveClientMessage(msg []byte, user *dao.User, info *proto.SetVPNClientStatusReq, stop *bool) {

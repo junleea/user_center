@@ -43,6 +43,7 @@ const (
 	DPMsgPolicyType       = 2
 	DPMsyServerConfigType = 3
 	DPMsgServerInfo       = 4
+	CPVPNTimeType         = 5 //vpn time download
 
 	DPOpCodeAuthUserAdd    = 1
 	DPOpCodeAuthUserDel    = 2
@@ -373,6 +374,7 @@ type VPNDPServerEvent struct {
 	ServerConfig   *DPServerOnlineConfig `json:"server_config,omitempty"`
 	VPNPolicy      *VPNPolicy            `json:"vpn_policy,omitempty"`
 	DPServerStatus *VPNDPServerStatus    `json:"dp_server_status,omitempty"`
+	VPNTime        uint32                `json:"vpn_time,omitempty"`
 }
 
 type ClientWsRequest struct {
@@ -384,6 +386,7 @@ type VPNClientEvent struct {
 	OpCode   int                `json:"op_code" required:"true"`
 	AuthUser *VPNAuthUserDPInfo `json:"auth_user,omitempty"` //更新auth User
 	HostInfo *VPNClientHostInfo `json:"host_info,omitempty"`
+	VPNTime  uint32             `json:"vpn_time,omitempty"`
 }
 
 type VPNClientHostInfo struct {
