@@ -284,15 +284,11 @@ func SetClientStatusService(user *dao.User, req *proto.SetVPNClientStatusReq, re
 	if authUserMap != nil {
 		authUserMap.mutex.Lock()
 		defer authUserMap.mutex.Unlock()
-		authList := authUserMap.UserMap[user.ID]
-		if authList != nil {
-			for i, _ := range authList {
-				if authList[i].UUID == req.UUID {
-					authList[i].LastUpdateTime = time.Now().Unix()
-					exist = true
-					break
-				}
-			}
+		// 直接通过uuid查找用户
+		if authUser, ok := authUserMap.AuthUserMap[req.UUID]; ok {
+			authUser.LastUpdateTime = time.Now().Unix()
+			authUserMap.AuthUserMap[req.UUID] = authUser
+			exist = true
 		}
 	}
 	if exist {
@@ -362,12 +358,16 @@ func GetVPNOnlineServerConfigWithAuthUser(user *dao.User, resp *proto.GenerateRe
 	if authUserMap != nil {
 		authUserMap.mutex.Lock()
 		defer authUserMap.mutex.Unlock()
-		for userID, v := range authUserMap.UserMap {
+		// 按用户ID分组
+		userGroups := make(map[uint][]proto.VPNAuthUserDPInfo)
+		for _, authUser := range authUserMap.AuthUserMap {
+			userGroups[authUser.UserID] = append(userGroups[authUser.UserID], authUser)
+		}
+		// 组装返回数据
+		for userID, authUsers := range userGroups {
 			var authUser proto.VPNAuthUserDPInfoList
 			authUser.UserID = userID
-			for _, v1 := range v {
-				authUser.AuthUser = append(authUser.AuthUser, v1)
-			}
+			authUser.AuthUser = authUsers
 			res.AuthUser = append(res.AuthUser, authUser)
 		}
 	}
@@ -484,17 +484,15 @@ func GetClientConfigExistService(user *dao.User, resp *proto.GenerateResp, serve
 		authUserMap.mutex.Lock()
 		defer authUserMap.mutex.Unlock()
 
-		theUserAuthList := authUserMap.UserMap[user.ID]
-		if theUserAuthList != nil {
-			for _, auth := range theUserAuthList {
-				if auth.UUID == uuidStr {
-					res.PrivateIPv4 = auth.PrivateIPv4
-					res.PrivateIPv6 = auth.PrivateIPv6
-					res.VPNDPSecret = auth.VPNDPSecret
-					res.ID = auth.ID
-				}
+		// 直接通过uuid查找
+		if auth, ok := authUserMap.AuthUserMap[uuidStr]; ok {
+			// 验证用户ID匹配
+			if auth.UserID == user.ID {
+				res.PrivateIPv4 = auth.PrivateIPv4
+				res.PrivateIPv6 = auth.PrivateIPv6
+				res.VPNDPSecret = auth.VPNDPSecret
+				res.ID = auth.ID
 			}
-
 		}
 	}
 
@@ -648,37 +646,38 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 		authUserMap.mutex.Lock()
 		defer authUserMap.mutex.Unlock()
 
-		theUserAuthList := authUserMap.UserMap[user.ID]
-		if theUserAuthList == nil {
-			var theUserList []proto.VPNAuthUserDPInfo
-			theUserList = append(theUserList, authUser)
-			authUserMap.UserMap[user.ID] = theUserList
-		} else {
-			if len(theUserAuthList) >= vpnOnlineServer.UserMaxDevice {
-				resp.Code = proto.VPNServerMaxUserDevice
-				resp.Message = "超出用户最大登录设备限制"
-				return
-			}
-			theUserAuthList = append(theUserAuthList, authUser)
-			authUserMap.UserMap[user.ID] = theUserAuthList
+		// 检查用户当前在线设备数量
+		currentCount := authUserMap.UserCountMap[user.ID]
+		if currentCount >= vpnOnlineServer.UserMaxDevice {
+			resp.Code = proto.VPNServerMaxUserDevice
+			resp.Message = "超出用户最大登录设备限制"
+			return
 		}
+
+		// 添加到AuthUserMap
+		authUserMap.AuthUserMap[authUser.UUID] = authUser
+		// 更新用户计数
+		authUserMap.UserCountMap[user.ID] = currentCount + 1
 	} else {
 		// 确保全局 ServerUserMap 已初始化（可能为 nil）
 		if GlobalVPNServerAuthUserMap.ServerUserMap == nil {
 			GlobalVPNServerAuthUserMap.ServerUserMap = make(map[string]*VPNAuthUserMap)
 		}
 
-		// 初始化新的 VPNAuthUserMap，并初始化其内部的 UserMap
+		// 初始化新的 VPNAuthUserMap，并初始化其内部的两个map
 		authUserMap_ := VPNAuthUserMap{
-			UserMap: make(map[uint][]proto.VPNAuthUserDPInfo),
+			AuthUserMap:  make(map[string]proto.VPNAuthUserDPInfo),
+			UserCountMap: make(map[uint]int),
 		}
 
 		hostInfo_ := proto.VPNClientHostInfo{}
 		hostInfo_ = *hostInfo
 		authUser.HostInfo = &hostInfo_
 
-		// 直接赋值单元素切片
-		authUserMap_.UserMap[user.ID] = []proto.VPNAuthUserDPInfo{authUser}
+		// 添加到AuthUserMap
+		authUserMap_.AuthUserMap[authUser.UUID] = authUser
+		// 设置用户计数
+		authUserMap_.UserCountMap[user.ID] = 1
 
 		GlobalVPNServerAuthUserMap.ServerUserMap[serverID] = &authUserMap_
 	}
@@ -703,10 +702,9 @@ func GetDPServerOnlineUsers(serverID string, resp *proto.GenerateResp) {
 	var respUsers []proto.VPNAuthUserDPInfo
 	authUserMap.mutex.Lock()
 	defer authUserMap.mutex.Unlock()
-	for _, users := range authUserMap.UserMap {
-		for _, user := range users {
-			respUsers = append(respUsers, user)
-		}
+	// 直接遍历AuthUserMap获取所有用户
+	for _, user := range authUserMap.AuthUserMap {
+		respUsers = append(respUsers, user)
 	}
 	//不返回密钥信息
 	for i, _ := range respUsers {
@@ -736,18 +734,19 @@ func KickOutAllUserService(user *dao.User, serverID string, resp *proto.Generate
 	authUserMap.mutex.Lock()
 	defer authUserMap.mutex.Unlock()
 
-	for _, users := range authUserMap.UserMap {
-		for _, user_ := range users {
-			count++
-			//释放IP
-			GlobalAddressPoolAllocatorMap.mutex.Lock()
-			ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
-			ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4(), nil)
-			GlobalAddressPoolAllocatorMap.mutex.Unlock()
-		}
+	// 遍历所有auth user释放资源
+	for _, user_ := range authUserMap.AuthUserMap {
+		count++
+		//释放IP
+		GlobalAddressPoolAllocatorMap.mutex.Lock()
+		ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
+		ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4(), nil)
+		GlobalAddressPoolAllocatorMap.mutex.Unlock()
 	}
-	resp.Data = len(authUserMap.UserMap)
-	authUserMap.UserMap = make(map[uint][]proto.VPNAuthUserDPInfo)
+	resp.Data = len(authUserMap.UserCountMap)
+	// 重置两个map
+	authUserMap.AuthUserMap = make(map[string]proto.VPNAuthUserDPInfo)
+	authUserMap.UserCountMap = make(map[uint]int)
 	SendVPNAuthUserMsgToDPServer(proto.DPOpCodeAuthUserDelAll, serverID, nil)
 	resp.Code = proto.SuccessCode
 	resp.Message = "success"
@@ -775,19 +774,20 @@ func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, resp *pro
 	defer authUserMap.mutex.Unlock()
 
 	if req.Type > 0 {
-		for _, users := range authUserMap.UserMap {
-			for _, user_ := range users {
-				count++
-				//释放IP
-				GlobalAddressPoolAllocatorMap.mutex.Lock()
-				ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
-				ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4(), nil)
-				GlobalAddressPoolAllocatorMap.mutex.Unlock()
-				SendVPNAuthUserMsgToClient(proto.VPNClientOpCodeKickOut, req.ServerID, &user_)
-			}
+		// 踢出所有用户
+		for _, user_ := range authUserMap.AuthUserMap {
+			count++
+			//释放IP
+			GlobalAddressPoolAllocatorMap.mutex.Lock()
+			ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
+			ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4(), nil)
+			GlobalAddressPoolAllocatorMap.mutex.Unlock()
+			SendVPNAuthUserMsgToClient(proto.VPNClientOpCodeKickOut, req.ServerID, &user_)
 		}
-		resp.Data = len(authUserMap.UserMap)
-		authUserMap.UserMap = make(map[uint][]proto.VPNAuthUserDPInfo)
+		resp.Data = len(authUserMap.UserCountMap)
+		// 重置两个map
+		authUserMap.AuthUserMap = make(map[string]proto.VPNAuthUserDPInfo)
+		authUserMap.UserCountMap = make(map[uint]int)
 		SendVPNAuthUserMsgToDPServer(proto.DPOpCodeAuthUserDelAll, req.ServerID, nil)
 		resp.Code = proto.SuccessCode
 		resp.Message = "success"
@@ -799,26 +799,29 @@ func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, resp *pro
 		delSessionMap[session.Session] = true
 	}
 
-	for userID, users := range authUserMap.UserMap {
-		var newUsers []proto.VPNAuthUserDPInfo
-		for _, user_ := range users {
-			if _, ok := delSessionMap[user_.UUID]; ok {
-				count++
-				//释放IP
-				GlobalAddressPoolAllocatorMap.mutex.Lock()
-				ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
-				ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4(), nil)
-				GlobalAddressPoolAllocatorMap.mutex.Unlock()
-				SendVPNAuthUserMsgToDPServer(proto.DPOpCodeAuthUserDel, req.ServerID, &user_)
-				SendVPNAuthUserMsgToClient(proto.VPNClientOpCodeKickOut, req.ServerID, &user_)
+	// 遍历需要删除的session
+	for sessionID := range delSessionMap {
+		if user_, ok := authUserMap.AuthUserMap[sessionID]; ok {
+			count++
+			//释放IP
+			GlobalAddressPoolAllocatorMap.mutex.Lock()
+			ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
+			ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4(), nil)
+			GlobalAddressPoolAllocatorMap.mutex.Unlock()
+			SendVPNAuthUserMsgToDPServer(proto.DPOpCodeAuthUserDel, req.ServerID, &user_)
+			SendVPNAuthUserMsgToClient(proto.VPNClientOpCodeKickOut, req.ServerID, &user_)
+			
+			// 从map中删除
+			delete(authUserMap.AuthUserMap, sessionID)
+			
+			// 更新用户计数
+			userID := user_.UserID
+			currentCount := authUserMap.UserCountMap[userID]
+			if currentCount > 1 {
+				authUserMap.UserCountMap[userID] = currentCount - 1
 			} else {
-				newUsers = append(newUsers, user_)
+				delete(authUserMap.UserCountMap, userID)
 			}
-		}
-		if len(newUsers) > 0 {
-			authUserMap.UserMap[userID] = newUsers
-		} else {
-			delete(authUserMap.UserMap, userID)
 		}
 	}
 	resp.Code = proto.SuccessCode
