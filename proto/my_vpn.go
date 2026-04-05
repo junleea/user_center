@@ -430,6 +430,7 @@ type VPNServerOnlineUser struct {
 	UploadBytes     int64  `json:"upload_bytes" required:"true"`
 	DownloadBytes   int64  `json:"download_bytes" required:"true"`
 	LastUpdateTime  int64  `json:"last_update_time" required:"true"`
+	ClientIP        string `json:"client_ip" required:"true"` //客户端IP:端口
 }
 
 func (u *VPNServerOnlineUser) GetInfo() VPNServerOnlineUser {
@@ -441,5 +442,6 @@ func (u *VPNServerOnlineUser) GetInfo() VPNServerOnlineUser {
 		UploadBytes:     u.UploadBytes,
 		DownloadBytes:   u.DownloadBytes,
 		LastUpdateTime:  u.LastUpdateTime,
+		ClientIP:        u.ClientIP,
 	}
 }
