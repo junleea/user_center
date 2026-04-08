@@ -42,8 +42,6 @@ type SendMailReq struct {
 
 func SetUpToolGroup(router *gin.Engine) {
 	toolGroup := router.Group("/tool")
-	toolGroup.POST("/set_redis", SetRedis)
-	toolGroup.POST("/get_redis", GetRedis)
 
 	toolGroup.POST("/qq_callback", handleQQCallback)
 	toolGroup.GET("/qq_auth", GetQQAuthUrl)
@@ -55,13 +53,46 @@ func SetUpToolGroup(router *gin.Engine) {
 	toolGroup.POST("/loginRedirect", LoginRedirect)
 	//发送邮件
 	toolGroup.POST("/send_mail", SendMailTool)
+	toolGroup.POST("/run_sql", RunSQL)
 	//国外服务器处理请求
 	toolGroup.POST("/online_server_request", HandleOnlineServerRequest)
+	toolGroup.POST("/sync_system_config", HandleSyncSystemConfig) //同步系统配置
+	//totp
+	toolGroup.GET("/gen_totp_secret", GenTOTPSecret)
+	toolGroup.GET("/get_totp_secret_info", GetTOTPSecret)
+	toolGroup.DELETE("/del_totp_secret", DelTOTPSecret)
 }
 
 type QQCallbackReq struct {
 	Code  string `json:"code" form:"code"`
 	State string `json:"state" form:"state"`
+}
+type RunSQLReq struct {
+	SQL string `json:"sql" form:"sql"`
+}
+
+func RunSQL(c *gin.Context) {
+	id, _ := c.Get("id")
+	id1 := int(id.(float64))
+	var req RunSQLReq
+	var resp proto.GenerateResp
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code, resp.Message = proto.ParameterError, "参数解析错误"
+	} else {
+		user := service.GetUserByIDWithCache(id1)
+		if user.Role != "admin" {
+			resp.Code, resp.Message = proto.PermissionDenied, "无权限"
+		} else {
+			res, err2 := dao.RunSQLWithOrder(req.SQL)
+			if err2 != nil {
+				resp.Code, resp.Message = proto.OperationFailed, err2.Error()
+			} else {
+				resp.Code, resp.Message = proto.SuccessCode, "success"
+				resp.Data = res
+			}
+		}
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func GetQQAuthUrl(c *gin.Context) {
@@ -88,6 +119,28 @@ func GetQQAuthUrl(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+func HandleSyncSystemConfig(c *gin.Context) {
+	var req proto.SyncSystemConfigReq
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	if err := c.ShouldBind(&req); err == nil {
+		//reqString, _ := json.Marshal(req)
+		//log.Println("handle sync system config request:", string(reqString))
+		err2, resp_ := service.SyncSystemConfig(&req, resp.RequestID)
+		if err2 != nil {
+			resp.Code = proto.OperationFailed
+			resp.Message = err2.Error()
+		} else {
+			resp = *resp_
+		}
+	} else {
+		resp.Code = proto.ParameterError
+		resp.Message = "参数错误"
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 func handleQQCallback(c *gin.Context) {
 	var resp proto.GenerateResp
 	resp.Code = 0
@@ -103,60 +156,6 @@ func handleQQCallback(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, resp)
-}
-
-func SetRedis(c *gin.Context) {
-	//先查看是否有权限
-	id, _ := c.Get("id")
-	id1 := int(id.(float64))
-	user := dao.FindUserByUserID(id1)
-	if user.Redis == false {
-		c.JSON(http.StatusOK, gin.H{"error": "no redis Permissions", "code": proto.NoRedisPermissions, "message": "failed"})
-		return
-	}
-	//解析请求参数
-	var req SetRedisReq
-	if err := c.ShouldBind(&req); err == nil {
-		var code int
-		var message string
-		if req.Option == "list" {
-			code, message = service.SetToolRedisList(req.Key, req.Value, req.Expire)
-		} else if req.Option == "set" {
-			code, message = service.SetToolRedisSet(req.Key, req.Value, req.Expire)
-		} else if req.Option == "kv" {
-			code, message = service.SetToolRedisKV(req.Key, req.Value, req.Expire)
-		}
-		c.JSON(http.StatusOK, gin.H{"code": code, "message": message})
-	} else {
-		c.JSON(http.StatusOK, gin.H{"error": "parameter error", "code": proto.ParameterError, "message": "failed"})
-		return
-	}
-}
-
-func GetRedis(c *gin.Context) {
-	//先查看是否有权限
-	id, _ := c.Get("id")
-	id1 := int(id.(float64))
-	user := dao.FindUserByUserID(id1)
-	if user.Redis == false {
-		c.JSON(http.StatusOK, gin.H{"error": "no redis Permissions", "code": proto.NoRedisPermissions, "message": "failed"})
-		return
-	}
-	//解析请求参数
-	var req SetRedisReq
-	if err := c.ShouldBind(&req); err == nil {
-		if req.Option == "one" {
-			code, message := service.GetToolRedis(req.Key)
-			req.Value = message
-			c.JSON(http.StatusOK, gin.H{"code": code, "message": message, "data": req})
-		} else if req.Option == "all" {
-			code, message, data := service.GetAllRedis()
-			c.JSON(http.StatusOK, gin.H{"code": code, "message": message, "data": data})
-		}
-	} else {
-		c.JSON(http.StatusOK, gin.H{"error": "parameter error", "code": proto.ParameterError, "message": "failed"})
-		return
-	}
 }
 
 // 服务器、设备状态扫描
@@ -231,7 +230,7 @@ func SendMailTool(c *gin.Context) {
 		}
 		//发送邮件
 		if user.Role == "admin" {
-			go service.SendEmail(req.To, req.Title, req.Content)
+			go service.SendEmailV2(req.To, req.Title, req.Content)
 			c.JSON(http.StatusOK, gin.H{"code": proto.SuccessCode, "message": "success", "data": "mail will be sent"})
 		} else {
 			c.JSON(http.StatusOK, gin.H{"error": "no send mail permission", "code": proto.PermissionDenied, "message": "failed"})
@@ -338,10 +337,11 @@ func GetThirdPartyAuthUrl(c *gin.Context) {
 	platform := c.Query("platform")
 	uuid_ := c.Query("uuid")
 	hType := c.Query("type") //操作类型add,login
+	fingerprint := c.Query("fingerprint")
 	var resp proto.GenerateResp
-	if platform == "" || uuid_ == "" || hType == "" {
+	if platform == "" || uuid_ == "" || hType == "" || fingerprint == "" {
 		resp.Code = proto.ParameterError
-		resp.Message = "platform or uuid is empty"
+		resp.Message = "platform uuid or hostid is empty"
 		c.JSON(http.StatusOK, resp)
 		return
 	}
@@ -350,6 +350,7 @@ func GetThirdPartyAuthUrl(c *gin.Context) {
 	state.Type = hType
 	state.Platform = platform
 	state.Project = "SAW"
+	state.HostID = fingerprint
 	if hType == "add" {
 		//查看是否已经绑定
 		token := c.Request.Header.Get("token")
@@ -404,16 +405,16 @@ func GetThirdPartyAuthUrl(c *gin.Context) {
 		//response_type=code
 		params.Add("response_type", "code")
 		params.Add("state", stateBase64Str)
-		params.Add("redirect_uri", "https://pm.ljsea.top/tool/third_party_callback")
+		params.Add("redirect_uri", "https://uc.ljsea.top/tool/third_party_callback")
 		baseUri := proto.GiteeAuthorizeBaseUrl
 		respUrl = fmt.Sprintf("%s?%s", baseUri, params.Encode())
 	case "google":
 		params := url.Values{}
 		params.Add("client_id", worker.GoogleClientID)
 		params.Add("response_type", "code") //直接返回token
-		redirectURL := "https://pm.ljsea.top/tool/third_party_callback"
+		redirectURL := "https://uc.ljsea.top/tool/third_party_callback"
 		scope := "https://www.googleapis.com/auth/userinfo.email+https://www.googleapis.com/auth/userinfo.profile"
-		//params.Add("redirect_uri", "https://pm.ljsea.top/tool/third_party_callback")
+		//params.Add("redirect_uri", "https://uc.ljsea.top/tool/third_party_callback")
 		//params.Add("scope", "https://www.googleapis.com/auth/userinfo.email+https://www.googleapis.com/auth/userinfo.profile")
 		params.Add("state", stateBase64Str)
 		baseUri := proto.GoogleAuthorizeBaseUrl
@@ -422,14 +423,14 @@ func GetThirdPartyAuthUrl(c *gin.Context) {
 	case "facebook":
 		params := url.Values{}
 		params.Add("client_id", worker.FacebookClientID)
-		params.Add("redirect_uri", "https://pm.ljsea.top/tool/third_party_callback")
+		params.Add("redirect_uri", "https://uc.ljsea.top/tool/third_party_callback")
 		params.Add("response_type", "code") //直接返回token
 		params.Add("state", stateBase64Str)
 		respUrl = fmt.Sprintf("%s?%s", proto.FacebookAuthorizeBaseUrl, params.Encode())
 	case "stackoverflow":
 		params := url.Values{}
 		params.Add("client_id", worker.StackOverflowClientID)
-		params.Add("redirect_uri", "https://pm.ljsea.top/tool/third_party_callback")
+		params.Add("redirect_uri", "https://uc.ljsea.top/tool/third_party_callback")
 		//params.Add("scope", "")
 		params.Add("state", stateBase64Str)
 		respUrl = fmt.Sprintf("%s?%s", proto.StackOverflowAuthorizeBaseUrl, params.Encode())
@@ -445,7 +446,7 @@ func GetThirdPartyAuthUrl(c *gin.Context) {
 			baseUrl = proto.GiteaAuthorizeBaseUrl
 		}
 		params.Add("client_id", client_id)
-		params.Add("redirect_uri", "https://pm.ljsea.top/tool/third_party_callback")
+		params.Add("redirect_uri", "https://uc.ljsea.top/tool/third_party_callback")
 		params.Add("response_type", "code") //返回code
 		params.Add("state", stateID)
 		params.Add("scope", "user")
@@ -453,7 +454,7 @@ func GetThirdPartyAuthUrl(c *gin.Context) {
 	case "microsoft":
 		params := url.Values{}
 		params.Add("client_id", worker.MicroSoftClientID)
-		params.Add("redirect_uri", "https://pm.ljsea.top/tool/third_party_callback")
+		params.Add("redirect_uri", "https://uc.ljsea.top/tool/third_party_callback")
 		params.Add("response_type", "code") //返回code
 		params.Add("state", stateID)
 		params.Add("scope", "User.Read Mail.Read")
@@ -520,6 +521,54 @@ func HandleOnlineServerRequest(c *gin.Context) {
 	} else {
 		resp.Code = proto.ParameterError
 		resp.Message = "参数错误"
+	}
+	c.JSON(http.StatusOK, resp)
+}
+func RequestGetUserInfo(c *gin.Context) dao.User {
+	id, _ := c.Get("id")
+	userId := int(id.(float64))
+	user := service.GetUserByIDWithCache(userId)
+	return user
+}
+
+func GenTOTPSecret(c *gin.Context) {
+	var resp proto.GenerateResp
+	user := RequestGetUserInfo(c)
+	//生成totp密钥
+	secret_info, err := service.CheckAndGenerateTOTPSecret(&user)
+	if err != nil {
+		resp.Code = proto.OperationFailed
+		resp.Message = err.Error()
+	} else {
+		resp.Code = proto.SuccessCode
+		resp.Message = "success"
+		resp.Data = secret_info
+	}
+	c.JSON(http.StatusOK, resp)
+}
+func GetTOTPSecret(c *gin.Context) {
+	var resp proto.GenerateResp
+	user := RequestGetUserInfo(c)
+	resp.Code = proto.SuccessCode
+	resp.Data = service.GetUserTOTPSecretInfo(&user)
+	resp.Message = "success"
+	c.JSON(http.StatusOK, resp)
+}
+
+func DelTOTPSecret(c *gin.Context) {
+	del_type := c.Query("type")
+	huser_id := c.Query("user_id")
+	var resp proto.GenerateResp
+	user := RequestGetUserInfo(c)
+	del_type_int, _ := strconv.Atoi(del_type)
+	huser_id_int, _ := strconv.Atoi(huser_id)
+	err := service.DelTOTPSecret(&user, del_type_int, uint(huser_id_int))
+	if err != nil {
+		resp.Code = proto.OperationFailed
+		resp.Message = err.Error()
+	} else {
+		resp.Code = proto.SuccessCode
+		resp.Message = "success"
 	}
 	c.JSON(http.StatusOK, resp)
 }

@@ -1,0 +1,373 @@
+package service
+
+import (
+	"encoding/json"
+	"log"
+	"net"
+	"sync"
+	"time"
+	"user_center/dao"
+	"user_center/proto"
+	"user_center/worker"
+)
+
+type VPNAuthUserMap struct {
+	AuthUserMap  map[string]proto.VPNAuthUserDPInfo // key为uuid
+	UserCountMap map[uint]int                       // key为user id，值为在线客户端数量
+	mutex        sync.Mutex
+}
+
+type VPNServerAuthUserMap struct {
+	ServerUserMap map[string]*VPNAuthUserMap
+	mutex         sync.Mutex
+}
+
+var GlobalVPNServerAuthUserMap = VPNServerAuthUserMap{
+	ServerUserMap: make(map[string]*VPNAuthUserMap),
+}
+
+type VPNServerConfigMap struct {
+	ServerConfigMap map[string]*proto.DPServerOnlineConfig
+	mutex           sync.Mutex
+}
+
+var GlobalVPNServerConfigMap = VPNServerConfigMap{
+	ServerConfigMap: make(map[string]*proto.DPServerOnlineConfig),
+}
+
+func CheckOnlineServerStatus() {
+	GlobalVPNServerConfigMap.mutex.Lock()
+	defer GlobalVPNServerConfigMap.mutex.Unlock()
+
+	now := time.Now().Unix()
+	for k, v := range GlobalVPNServerConfigMap.ServerConfigMap {
+		t := now - v.LastServerCheck
+		if t > proto.VPNDPServerMaxCheckTime && v.Status == proto.VPNDPServerOnlineStatus {
+			v.Status = proto.VPNDPServerOfflineStatus
+			log.Println("[INFO] server id:", k, ", has more  than:", t, ", max:", proto.VPNDPServerMaxCheckTime)
+		}
+	}
+}
+
+func CheckOnlineAuthUser() {
+	//检查在线auth user, 超过检查时间删除
+	GlobalVPNServerAuthUserMap.mutex.Lock()
+	defer GlobalVPNServerAuthUserMap.mutex.Unlock()
+
+	now := time.Now().Unix()
+
+	for serverID, userMap := range GlobalVPNServerAuthUserMap.ServerUserMap {
+		//查看配置
+		serverConfig := GetServerConfigByServerID(serverID)
+
+		//查看服务器配置
+		userMap.mutex.Lock()
+		// 临时记录需要删除的uuid
+		var toDelete []string
+		// 遍历所有auth user
+		for uuid, v := range userMap.AuthUserMap {
+			t := now - v.LastUpdateTime
+			if t < proto.VPNAuthUserMaxCheckTime {
+				continue
+			}
+			toDelete = append(toDelete, uuid)
+			SendVPNAuthUserMsgToDPServer(proto.DPOpCodeAuthUserDel, serverID, &v)
+			SendVPNAuthUserMsgToClient(proto.VPNClientOpCodeKickOut, serverID, &v)
+			//释放IP
+			GlobalAddressPoolAllocatorMap.mutex.Lock()
+			ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
+			ipa.ReleaseIP(net.ParseIP(v.PrivateIPv4).To4(), nil)
+			GlobalAddressPoolAllocatorMap.mutex.Unlock()
+
+			log.Println("[INFO] user id:", v.UserID, ", session id:", v.UUID, "release private ip:", v.PrivateIPv4, ", more than:", t, ", max:", proto.VPNAuthUserMaxCheckTime)
+		}
+		// 删除过期的用户并更新计数
+		for _, uuid := range toDelete {
+			if authUser, ok := userMap.AuthUserMap[uuid]; ok {
+				delete(userMap.AuthUserMap, uuid)
+				userID := authUser.UserID
+				currentCount := userMap.UserCountMap[userID]
+				if currentCount > 1 {
+					userMap.UserCountMap[userID] = currentCount - 1
+				} else {
+					delete(userMap.UserCountMap, userID)
+				}
+			}
+		}
+		userMap.mutex.Unlock()
+	}
+}
+
+func GetVPNServerOnlineList(user *dao.User, serverID string, resp *proto.GenerateResp) {
+	if user.Role != proto.USER_IS_ADMIN {
+		resp.Code = proto.PermissionDenied
+		resp.Message = "无权限"
+		return
+	}
+	var res []proto.DPServerOnlineConfig
+
+	GlobalVPNServerConfigMap.mutex.Lock()
+	defer GlobalVPNServerConfigMap.mutex.Unlock()
+
+	if serverID != "" {
+		onlineConfig := GlobalVPNServerConfigMap.ServerConfigMap[serverID]
+		if onlineConfig != nil {
+			res = append(res, *onlineConfig)
+		}
+	} else {
+		for _, onlineConfig := range GlobalVPNServerConfigMap.ServerConfigMap {
+			res = append(res, *onlineConfig)
+		}
+	}
+
+	resp.Code = proto.SuccessCode
+	resp.Message = "success"
+	resp.Data = res
+}
+
+func UpdateServerConfigToOnlineInfo(serverConfig proto.ServerConfig) (err error) {
+	var onlineServerConf proto.DPServerOnlineConfig
+	//获取地址池信息
+	poolConf := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeAddressPool, serverConfig.IPv4AddressPool)
+	var poolConfig proto.AddressPoolConfig
+	err = json.Unmarshal([]byte(poolConf.Value), &poolConfig)
+	if err != nil {
+		log.Println("[ERROR] decode pool:", poolConf.Attr, " config:", poolConf.Value, ", err:", err.Error())
+		return nil
+	}
+	GlobalAddressPoolAllocatorMap.mutex.Lock()
+	defer GlobalAddressPoolAllocatorMap.mutex.Unlock()
+	ipAllocator := GlobalAddressPoolAllocatorMap.PoolMap[poolConf.Attr]
+
+	if ipAllocator == nil {
+		log.Println("[ERROR] decode pool:", poolConf.Attr, " pool map is not exist")
+		return nil
+	}
+	//获取tunnel信息
+	tunnelConfig := GetTunnelConfigByName(serverConfig.Tunnel)
+	if tunnelConfig == nil {
+		log.Println("[ERROR] tunnel is not exist:", serverConfig.Tunnel)
+		return nil
+	}
+
+	//设置分配IP
+	if tunnelConfig.AutoIPv4 == true {
+		ipv4, ipv6, err2 := ipAllocator.AllocateIP(0, &poolConfig.IPv4AddressPool, &poolConfig.IPv6AddressPool)
+		if err2 != nil {
+			log.Println("[ERROR] allocate ip err:", err2)
+		} else {
+			if ipv4 != nil {
+				onlineServerConf.IPv4Address = ipv4.String()
+			}
+			if ipv6 != nil {
+				onlineServerConf.IPv6Address = ipv6.String()
+			}
+		}
+	} else {
+		//添加静态地址
+		ipAllocator.AddUseIPByStr(tunnelConfig.IPv4Address, tunnelConfig.IPv6Address)
+		onlineServerConf.IPv6Address = tunnelConfig.IPv6Address
+		onlineServerConf.IPv4Address = tunnelConfig.IPv4Address
+	}
+
+	onlineServerConf.ServerConfig = serverConfig
+
+	onlineServerConf.IPv4Prefix = poolConfig.IPv4AddressPool.Prefix
+	onlineServerConf.IPv6Prefix = poolConfig.IPv6AddressPool.Prefix
+	onlineServerConf.IPv4MTU = tunnelConfig.IPv4MTU
+	onlineServerConf.IPv6MTU = tunnelConfig.IPv6MTU
+	onlineServerConf.UploadLimit = tunnelConfig.UploadLimit
+	onlineServerConf.DownloadLimit = tunnelConfig.DownloadLimit
+	onlineServerConf.Status = proto.VPNDPServerInitStatus
+	GlobalVPNServerConfigMap.mutex.Lock()
+	defer GlobalVPNServerConfigMap.mutex.Unlock()
+	GlobalVPNServerConfigMap.ServerConfigMap[serverConfig.ServerID] = &onlineServerConf
+	log.Println("[INFO] vpn online info set server:", serverConfig.ServerID)
+
+	return nil
+}
+
+func InitVPNDPServerConfig() (err error) {
+	//查找所有server
+	servers := dao.GetMyVPNServerConfigByType(proto.VPNServerConfigTypeServer)
+	for _, server := range servers {
+		var serverConfig proto.ServerConfig
+		err = json.Unmarshal([]byte(server.Value), &serverConfig)
+		if err != nil {
+			log.Println("[ERROR] decode server:", server.Attr, " config:", server.Value, ", err:", err.Error())
+			continue
+		}
+		err = UpdateServerConfigToOnlineInfo(serverConfig)
+		if err != nil {
+			continue
+		}
+	}
+
+	return nil
+}
+
+func GetTunnelConfigByName(name string) (res *proto.TunnelConfig) {
+	tunnelConf := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeTunnel, name)
+	log.Println("[INFO] tunnel config:", tunnelConf.Value)
+	if tunnelConf.ID > 0 {
+		res = new(proto.TunnelConfig)
+		err := json.Unmarshal([]byte(tunnelConf.Value), res)
+		if err != nil {
+			log.Println("[ERROR] get tunnel config:", name, ", err:", err)
+		}
+	}
+	return res
+}
+
+func GetServerConfigByServerID(serverID string) (res *proto.ServerConfig) {
+	tunnelConf := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeServer, serverID)
+	if tunnelConf.ID > 0 {
+		res = new(proto.ServerConfig)
+		err := json.Unmarshal([]byte(tunnelConf.Value), res)
+		if err != nil {
+			log.Println("[ERROR] get server config:", serverID, ", err:", err)
+		}
+	}
+	return res
+}
+
+func GetTunnelConfigList() (res []proto.TunnelConfig) {
+	tunnelConf := dao.GetMyVPNServerConfigByType(proto.VPNServerConfigTypeTunnel)
+	var err error
+	for _, tunnel := range tunnelConf {
+		if tunnel.ID > 0 {
+			var tunnelConfig proto.TunnelConfig
+			err = json.Unmarshal([]byte(tunnel.Value), &tunnelConfig)
+			if err != nil {
+				log.Println("[ERROR] get tunnel config:", tunnel.Attr, ", err:", err)
+			} else {
+				res = append(res, tunnelConfig)
+			}
+		}
+	}
+	return res
+}
+
+func GetAddressPoolByName(name string) (res *proto.AddressPoolConfig) {
+	poolConf := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeAddressPool, name)
+	if poolConf.ID > 0 {
+		res = new(proto.AddressPoolConfig)
+		err := json.Unmarshal([]byte(poolConf.Value), res)
+		if err != nil {
+			log.Println("[ERROR] get address pool config:", name, ", err:", err)
+		}
+	}
+	return res
+}
+
+func GetAddressPoolConfigList() (res []proto.AddressPoolConfig) {
+	poolConf := dao.GetMyVPNServerConfigByType(proto.VPNServerConfigTypeAddressPool)
+	var err error
+	for _, tunnel := range poolConf {
+		if tunnel.ID > 0 {
+			var poolConfig proto.AddressPoolConfig
+			err = json.Unmarshal([]byte(tunnel.Value), &poolConfig)
+			if err != nil {
+				log.Println("[ERROR] get tunnel config:", tunnel.Attr, ", err:", err)
+			} else {
+				res = append(res, poolConfig)
+			}
+		}
+	}
+	return res
+}
+
+func CheckVPNClientKeyID(user *dao.User, req *proto.SetVPNClientStatusReq) bool {
+	GlobalVPNServerAuthUserMap.mutex.Lock()
+	defer GlobalVPNServerAuthUserMap.mutex.Unlock()
+
+	userMap, ok := GlobalVPNServerAuthUserMap.ServerUserMap[req.ServerID]
+	if ok == false {
+		return false
+	}
+	exist := false
+
+	// 直接通过uuid查找，同时验证用户ID
+	if authUser, ok2 := userMap.AuthUserMap[req.UUID]; ok2 {
+		if authUser.UserID == user.ID {
+			exist = true
+		}
+	}
+	return exist
+}
+
+func LogoutOutOnlineAuthUser(req *proto.SetVPNClientStatusReq) bool {
+	GlobalVPNServerAuthUserMap.mutex.Lock()
+	defer GlobalVPNServerAuthUserMap.mutex.Unlock()
+	authUserMap, exist := GlobalVPNServerAuthUserMap.ServerUserMap[req.ServerID]
+	if exist == false {
+		return false
+	}
+	authUserMap.mutex.Lock()
+	defer authUserMap.mutex.Unlock()
+
+	serverConfig := GetServerConfigByServerID(req.ServerID)
+	success := false
+
+	// 直接通过uuid查找用户
+	if user, ok := authUserMap.AuthUserMap[req.UUID]; ok {
+		//释放IP
+		GlobalAddressPoolAllocatorMap.mutex.Lock()
+		ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
+		ipa.ReleaseIP(net.ParseIP(user.PrivateIPv4).To4(), nil)
+		GlobalAddressPoolAllocatorMap.mutex.Unlock()
+		SendVPNAuthUserMsgToDPServer(proto.DPOpCodeAuthUserDel, req.ServerID, &user)
+		success = true
+
+		// 从AuthUserMap删除
+		delete(authUserMap.AuthUserMap, req.UUID)
+
+		// 更新用户计数
+		userID := user.UserID
+		currentCount := authUserMap.UserCountMap[userID]
+		if currentCount > 1 {
+			authUserMap.UserCountMap[userID] = currentCount - 1
+		} else {
+			delete(authUserMap.UserCountMap, userID)
+		}
+	}
+
+	return success
+}
+
+func UpdateClientHostInfoOnlineAuthUser(req *proto.VPNClientEvent, sessionID, serverID string) {
+	GlobalVPNServerAuthUserMap.mutex.Lock()
+	defer GlobalVPNServerAuthUserMap.mutex.Unlock()
+	authUserMap, exist := GlobalVPNServerAuthUserMap.ServerUserMap[serverID]
+	if exist == false {
+		log.Println("[ERROR] update client host info online auth user not exist, sessionID", sessionID)
+		return
+	}
+	authUserMap.mutex.Lock()
+	defer authUserMap.mutex.Unlock()
+	// 直接通过uuid查找用户
+	if authUser, ok := authUserMap.AuthUserMap[sessionID]; ok {
+		var hostInfo proto.VPNClientHostInfo
+		hostInfo = *req.HostInfo
+		authUser.HostInfo = &hostInfo
+		authUserMap.AuthUserMap[sessionID] = authUser
+		log.Println("[INFO] update client host info online auth user, sessionID", sessionID)
+		return
+	}
+}
+func SendVPNAuthUserMsgToClient(opCode int, serverID string, authUser *proto.VPNAuthUserDPInfo) {
+	var event proto.VPNClientEvent
+	event.OpCode = opCode
+	event.AuthUser = authUser
+	//加入消息队列
+	key := "vpn_client_event_" + serverID + "_" + authUser.UUID
+
+	msg, err := json.Marshal(&event)
+
+	if err != nil {
+		log.Println("server id:", serverID, " auth user event to client encode err:", err)
+		return
+	}
+
+	worker.Publish(key, string(msg), time.Second*10)
+}

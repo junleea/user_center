@@ -6,31 +6,15 @@ import (
 	"fmt"
 	"github.com/golang-jwt/jwt"
 	"log"
+	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 	"user_center/dao"
 	"user_center/proto"
 	"user_center/worker"
 )
-
-func SetToolRedisList(key string, value string, expire int) (code int, message string) {
-	if expire == 0 {
-		if worker.PushRedisList(key, value) {
-			return proto.SuccessCode, "success"
-		} else {
-			return proto.OperationFailed, "push redis list failed"
-		}
-	} else if expire > 0 {
-		if worker.PushRedisListWithExpire(key, value, time.Duration(expire)) {
-			return proto.SuccessCode, "success"
-		} else {
-			return proto.OperationFailed, "push redis list with expire failed"
-		}
-	} else {
-		return proto.ParameterError, "expire time can not be negative"
-	}
-}
 
 func SetToolRedisSet(key string, value string, expire int) (code int, message string) {
 	if expire == 0 {
@@ -112,6 +96,59 @@ func SendEmail(email, subject, body string) {
 	}
 }
 
+func readFileToString(filePath string) (string, error) {
+	// 读取文件内容，返回字节切片
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", err // 返回错误
+	}
+	// 将字节切片转换为字符串
+	return string(content), nil
+}
+
+func SendEmailCodeMail(email, code, option string) {
+	template, err := readFileToString(proto.Config.EMAIL_CODE_TEMPLATE)
+	if err != nil || template == "" {
+		template = "您的$OPTION验证码：$VERCODE,请在5分钟内使用！"
+	}
+	template = strings.ReplaceAll(template, "$OPTION", option)
+	template = strings.ReplaceAll(template, "$VERCODE", code)
+
+	SendEmailV2(email, "集成AI工具统一验证码", template)
+}
+
+func SendEmailV2(email, subject, body string) {
+	//捕获异常
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Errorf("tool send mail error: %s", err)
+		}
+	}()
+	// TODO
+	// 发送邮件
+	// 邮件内容
+	// 邮件标题
+	// 收件人
+	// 发送邮件
+	// 发送邮件通知
+	// 发送邮件通知
+	if len(proto.Config.SMTP_SERVER_LIST) == 0 {
+		log.Println("smtp server list is nil, cant send")
+		return
+	}
+	smtp_server_info := proto.Config.SMTP_SERVER_LIST[0]
+	var em worker.MyEmail
+	em.SmtpPassword = smtp_server_info.SmtpPassword
+	em.SmtpHost = smtp_server_info.SmtpHost
+	em.SmtpUserName = smtp_server_info.SmtpUserName
+	em.SmtpPort = smtp_server_info.SmtpPort
+	em.ImapPort = smtp_server_info.ImapPort
+	err := em.Send(subject, body, []string{email})
+	if err != nil {
+		fmt.Println("send mail error:", err)
+	}
+}
+
 // 地址校验
 func CheckEmail(email string) bool {
 	//正则表达式判断是否是邮箱
@@ -163,7 +200,7 @@ func GenerateJWTToken(userID int, userName string) (string, error) {
 
 func DoGiteeCallBack(state *proto.ThirdPartyLoginState, code string) {
 	//获取Access Token
-	resp, err := worker.GetGiteeAccessTokenByCode(code, "https://pm.ljsea.top/tool/third_party_callback", proto.Config.GITEE_CLIENT_ID, proto.Config.GITEE_CLIENT_SECRET)
+	resp, err := worker.GetGiteeAccessTokenByCode(code, "https://uc.ljsea.top/tool/third_party_callback", proto.Config.GITEE_CLIENT_ID, proto.Config.GITEE_CLIENT_SECRET)
 	if err != nil {
 		log.Println("get gitee access token error:", err)
 		return
@@ -236,10 +273,10 @@ func HandleThirdPartyLoginStatus(state *proto.ThirdPartyLoginState, thirdPartyLo
 			} else {
 				//成功
 				thirdPartyLoginStatus.Status = proto.SuccessCode
-				thirdPartyLoginStatus.UserInfo.UserID = int(user.ID)
+				thirdPartyLoginStatus.UserInfo.UserID = user.ID
 				thirdPartyLoginStatus.UserInfo.Username = user.Name
 				thirdPartyLoginStatus.UserInfo.Email = user.Email
-				thirdPartyLoginStatus.UserInfo.Token, _ = GenerateJWTToken(int(user.ID), user.Name)
+				thirdPartyLoginStatus.UserInfo.AccessToken, thirdPartyLoginStatus.UserInfo.RefreshToken, _ = GenerateAuthTokens(user)
 			}
 		}
 	} else if state.Type == "add" {
@@ -270,10 +307,10 @@ func HandleThirdPartyLoginStatus(state *proto.ThirdPartyLoginState, thirdPartyLo
 					} else {
 						//成功
 						thirdPartyLoginStatus.Status = proto.SuccessCode
-						thirdPartyLoginStatus.UserInfo.UserID = int(user.ID)
+						thirdPartyLoginStatus.UserInfo.UserID = user.ID
 						thirdPartyLoginStatus.UserInfo.Username = user.Name
 						thirdPartyLoginStatus.UserInfo.Email = user.Email
-						thirdPartyLoginStatus.UserInfo.Token, _ = GenerateJWTToken(int(user.ID), user.Name)
+						thirdPartyLoginStatus.UserInfo.AccessToken, thirdPartyLoginStatus.UserInfo.RefreshToken, _ = GenerateAuthTokens(user)
 					}
 				}
 			}
@@ -305,10 +342,10 @@ func HandleThirdPartyLoginStatusV2(state *proto.ThirdPartyLoginState, thirdParty
 			} else {
 				//成功
 				thirdPartyLoginStatus.Status = proto.SuccessCode
-				thirdPartyLoginStatus.UserInfo.UserID = int(user.ID)
+				thirdPartyLoginStatus.UserInfo.UserID = user.ID
 				thirdPartyLoginStatus.UserInfo.Username = user.Name
 				thirdPartyLoginStatus.UserInfo.Email = user.Email
-				thirdPartyLoginStatus.UserInfo.Token, _ = GenerateJWTToken(int(user.ID), user.Name)
+				thirdPartyLoginStatus.UserInfo.AccessToken, thirdPartyLoginStatus.UserInfo.RefreshToken, _ = GenerateAuthTokens(user)
 			}
 		}
 	} else if state.Type == "add" {
@@ -339,10 +376,10 @@ func HandleThirdPartyLoginStatusV2(state *proto.ThirdPartyLoginState, thirdParty
 					} else {
 						//成功
 						thirdPartyLoginStatus.Status = proto.SuccessCode
-						thirdPartyLoginStatus.UserInfo.UserID = int(user.ID)
+						thirdPartyLoginStatus.UserInfo.UserID = user.ID
 						thirdPartyLoginStatus.UserInfo.Username = user.Name
 						thirdPartyLoginStatus.UserInfo.Email = user.Email
-						thirdPartyLoginStatus.UserInfo.Token, _ = GenerateJWTToken(int(user.ID), user.Name)
+						thirdPartyLoginStatus.UserInfo.AccessToken, thirdPartyLoginStatus.UserInfo.RefreshToken, _ = GenerateAuthTokens(user)
 					}
 				}
 			}
@@ -415,7 +452,7 @@ func DoGithubCallBack(state *proto.ThirdPartyLoginState, code string) {
 
 func DoGoogleCallBack(state *proto.ThirdPartyLoginState, code string) {
 	//根据code获取Access Token
-	tokenResp, err := worker.GetGoogleAccessTokenByCode(code, "https://pm.ljsea.top/tool/third_party_callback", worker.GoogleClientID, proto.Config.GoogleClientSecret)
+	tokenResp, err := worker.GetGoogleAccessTokenByCode(code, "https://uc.ljsea.top/tool/third_party_callback", worker.GoogleClientID, proto.Config.GoogleClientSecret)
 
 	if tokenResp.AccessToken == "" {
 		log.Println("get google access token is empty")
@@ -441,7 +478,7 @@ func DoGoogleCallBack(state *proto.ThirdPartyLoginState, code string) {
 
 func DoFaceBookCallBack(state *proto.ThirdPartyLoginState, code string) {
 	//根据code获取Access Token
-	tokenResp, err := worker.GetFacebookAccessTokenByCode(code, "https://pm.ljsea.top/tool/third_party_callback", worker.FacebookClientID, proto.Config.FacebookClientSecret)
+	tokenResp, err := worker.GetFacebookAccessTokenByCode(code, "https://uc.ljsea.top/tool/third_party_callback", worker.FacebookClientID, proto.Config.FacebookClientSecret)
 
 	if tokenResp.AccessToken == "" {
 		log.Println("get facebook access token is empty")
@@ -470,7 +507,7 @@ func DoStackoverflowCallBack(state *proto.ThirdPartyLoginState, code string) {
 	var userInfo proto.StackoverflowUserInfo
 	thirdPartyLoginStatus.Type = state.Platform
 	//根据code获取Access Token
-	tokenResp, err := worker.GetStackoverflowAccessTokenByCode(code, "https://pm.ljsea.top/tool/third_party_callback", worker.StackOverflowClientID, proto.Config.StackOverflowClientSecret)
+	tokenResp, err := worker.GetStackoverflowAccessTokenByCode(code, "https://uc.ljsea.top/tool/third_party_callback", worker.StackOverflowClientID, proto.Config.StackOverflowClientSecret)
 	if tokenResp.AccessToken == "" {
 		log.Println("get Stackoverflow access token is empty")
 		thirdPartyLoginStatus.Status = proto.ParameterError
@@ -593,7 +630,7 @@ func DoGiteaCallBack(state *proto.ThirdPartyLoginState, code string) {
 		baseDomain = "https://gitea.com"
 		clientID, clientSecret = worker.GiteaClientID, proto.Config.GITEA_CLIENT_SECRET
 	}
-	tokenResp, _ := worker.GetGiteaAccessTokenByCode(baseDomain, code, "https://pm.ljsea.top/tool/third_party_callback", clientID, clientSecret)
+	tokenResp, _ := worker.GetGiteaAccessTokenByCode(baseDomain, code, "https://uc.ljsea.top/tool/third_party_callback", clientID, clientSecret)
 	//if err != nil {
 	//	log.Printf("get %s access token error:%v\n", state.Platform, err)
 	//	thirdPartyLoginStatus.Status = proto.ParameterError
@@ -626,7 +663,7 @@ func DoMicroSoftCallBack(state *proto.ThirdPartyLoginState, code string) {
 	var thirdPartyLoginStatus proto.ThirdPartyLoginStatus
 	thirdPartyLoginStatus.Type = state.Platform
 	//根据code获取Access Token
-	tokenResp, _ := worker.GetMicroSoftAccessTokenByCode(code, "https://pm.ljsea.top/tool/third_party_callback", worker.MicroSoftClientID, proto.Config.MICROSOFT_CLIENT_SECRET)
+	tokenResp, _ := worker.GetMicroSoftAccessTokenByCode(code, "https://uc.ljsea.top/tool/third_party_callback", worker.MicroSoftClientID, proto.Config.MICROSOFT_CLIENT_SECRET)
 	//if err != nil {
 	//	log.Printf("get %s access token error:%v\n", state.Platform, err)
 	//	thirdPartyLoginStatus.Status = proto.ParameterError
@@ -653,4 +690,46 @@ func DoMicroSoftCallBack(state *proto.ThirdPartyLoginState, code string) {
 	thirdPartyLoginStatusStr, _ := json.Marshal(thirdPartyLoginStatus)
 	log.Printf("do handle %s callback success, third party login status: %v\n", state.Platform, thirdPartyLoginStatus)
 	worker.SetRedisWithExpire(state.UUID, string(thirdPartyLoginStatusStr), time.Minute*10)
+}
+
+func GetIPRegionByAPI(ip string) string {
+	//先从本地数据库获取
+	ip_info := dao.GetIPAddressInfo(ip)
+	var err error
+	var result []byte
+	if ip_info.IP == "" {
+		uri := proto.TX_LOCATION_URL + "?ip=" + ip + "&key=" + proto.Config.TX_LOCATION_SERVER_KEY
+		//get请求
+		err, result = worker.DoGetRequestV2(uri)
+		if err != nil {
+			log.Printf("do get request err:%v\n", err)
+		}
+		err = dao.AddIPAddressInfo(ip, string(result))
+		if err != nil {
+			log.Println("add ip info err:", err)
+		}
+	} else {
+		result = []byte(ip_info.Info)
+	}
+
+	var resp proto.IPInfoResponse
+	err = json.Unmarshal(result, &resp)
+	if err != nil {
+		log.Printf("json unmarshal err:%v\n", err)
+	}
+	address := resp.Result.AdInfo.Nation + resp.Result.AdInfo.Province + resp.Result.AdInfo.City //到市一级
+	return address
+}
+
+// 查看字符串是否是邮箱
+func CheckIsEmail(email string) bool {
+	// 邮箱正则表达式模式
+	// 规则说明：
+	// - 本地部分（@前）：允许字母、数字、以及 . _ % + - 等特殊字符
+	// - @ 符号：必须存在且唯一
+	// - 域名部分（@后）：允许字母、数字、. 和 -，且至少包含一个 .（如 .com .cn 等）
+	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+
+	// 匹配并返回结果
+	return emailRegex.MatchString(email)
 }

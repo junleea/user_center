@@ -4,11 +4,14 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
+	"log"
 	"net/http"
+	"strconv"
 	"time"
 	"user_center/dao"
 	"user_center/proto"
@@ -20,6 +23,8 @@ func SetUpUserGroup(router *gin.Engine) {
 	userGroup := router.Group("/user")
 	userGroup.POST("/register", registerHandlerV2)
 	userGroup.POST("/register_code", handleRegisterCode) //注册验证码
+	userGroup.POST("/login_code", handleLoginCode)
+	userGroup.POST("/login_by_code", handleLoginByCode)
 	userGroup.POST("/login", loginHandler)
 	userGroup.POST("/uuid", GetScanUUID)
 	userGroup.POST("/gqr", GetQRStatus)
@@ -27,6 +32,7 @@ func SetUpUserGroup(router *gin.Engine) {
 	userGroup.POST("/confirm", ConfirmQRLogin)
 	userGroup.POST("/search", SearchHandler)
 	userGroup.POST("/info", GetUserInfo)
+	userGroup.POST("/base_user_list", GetUserBaseInfoList)
 	userGroup.POST("/update", UpdateUserInfo)
 	userGroup.POST("/delete", DeleteUser)
 	userGroup.POST("/reset", ResetPassword)
@@ -37,15 +43,183 @@ func SetUpUserGroup(router *gin.Engine) {
 	//前端用户ui配置
 	userGroup.GET("/get_user_ui_config", GetUserUIConfig)  //获取用户ui配置
 	userGroup.POST("/set_user_ui_config", SetUserUIConfig) //设置用户ui配置
+	userGroup.POST("/refresh_token", refreshTokenHandler)  //刷新token
+	userGroup.GET("/get_token_code", GetTokenCode)         //获取token的code
+	userGroup.GET("/get_token_by_code", GetTokenByCode)    //通过code获取token
+	userGroup.GET("/get_client_token_uuid", GetClientTokenUUID)
+	userGroup.GET("/set_client_token_status", SetClientTokenStatus)
+	userGroup.POST("/second_auth", HandleSecondAuth)
+	userGroup.POST("/catalogue", UpdateUserCatalogueHandle)
+	userGroup.POST("/add_group", AddUserGroupHandle)
+	userGroup.GET("/get_group", GetUserGroupHandle)
+	userGroup.GET("/get_all_default_users", GetAllDefaultUsers)
+	userGroup.POST("/admin_add_user", AdminAddUserHandle)
+	userGroup.GET("/get_my_vpn_server_config", GetMyVPNServerConfig)
+	userGroup.POST("/gen_user_token", GenerateUserTokenHandler)
+}
+
+func GenerateUserTokenHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	var req proto.GenerateUserTokenReq
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	if user.Role != proto.USER_IS_ADMIN {
+		resp.Code, resp.Message = proto.PermissionDenied, "no permission"
+	} else {
+		var err error
+		if err = c.ShouldBind(&req); err != nil {
+			log.Println("[ERROR] request id:", resp.RequestID, ", GenerateUserTokenHandler req err:", err.Error())
+			resp.Code, resp.Data = proto.ParameterError, "解析参数失败"
+		} else {
+			targetUser := service.GetUserByIDWithCache(int(req.UserID))
+			if targetUser.ID == 0 {
+				resp.Code, resp.Message = proto.OperationFailed, "user not found"
+			} else {
+				accessToken, refreshToken, err2 := service.GenerateAuthTokensWithExpire(targetUser, req.ExpireIn, req.RefreshExpireIn)
+				if err2 != nil {
+					log.Println("[ERROR] request id:", resp.RequestID, ", GenerateUserTokenHandler generate tokens err:", err2.Error())
+					resp.Code, resp.Data = proto.TokenGenerationError, "Failed to generate tokens"
+				} else {
+					authResponse := proto.AuthResponse{
+						AccessToken:  accessToken,
+						RefreshToken: refreshToken,
+						UserID:       user.ID,
+						ExpireIn:     time.Now().Add(time.Duration(req.ExpireIn) * time.Second).Unix(), // 令牌过期时间
+						Username:     user.Name,
+						Email:        user.Email,
+					}
+					resp.Code, resp.Message = proto.SuccessCode, "success"
+					resp.Data = authResponse
+				}
+			}
+		}
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetMyVPNServerConfig(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+
+	resp.Data = user
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetAllDefaultUsers(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	if user.Role != proto.USER_IS_ADMIN {
+		resp.Code, resp.Message = proto.PermissionDenied, "no permission"
+	} else {
+		var err error
+		resp.Data, err = dao.GetAllDefaultUsers()
+		if err != nil {
+			resp.Code, resp.Message = proto.InternalServerError, "internal server error"
+			log.Println("[ERROR] request id:", resp.RequestID, "，GetAllDefaultUsers err:", err.Error())
+		} else {
+			resp.Code, resp.Message = proto.SuccessCode, "success"
+		}
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetUserGroupHandle(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	resp.Data, resp.Code, resp.Message = service.GetUserGroup(&user)
+	c.JSON(http.StatusOK, resp)
+}
+func AddUserGroupHandle(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var req proto.AddUserGroupReq
+	var resp proto.GenerateResp
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code, resp.Message = proto.ParameterError, "缺少必要参数"
+		log.Println("[ERROR] update user catalogue req:", err.Error())
+	} else {
+		resp.Code, resp.Message = service.AddUserGroup(&user, &req)
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func AdminAddUserHandle(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var req proto.AdminAddUserRequest
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code, resp.Message = proto.ParameterError, "缺少必要参数"
+		log.Println("[ERROR] request id:", resp.RequestID, ", admin add user req:", err.Error())
+	} else {
+		if user.Role == proto.USER_IS_ADMIN {
+			if len(req.Name) < 6 || len(req.Name) > 32 {
+				resp.Code, resp.Message = proto.ParameterError, "用户名过短或过长"
+				goto end
+			}
+			if len(req.Password) < 6 {
+				resp.Code, resp.Message = proto.ParameterError, "密码过短"
+				goto end
+			}
+			if service.CheckIsEmail(req.Email) == false {
+				resp.Code, resp.Message = proto.ParameterError, "邮箱不合法"
+			} else {
+				if req.Prev != 0 && service.GetUserByIDWithCache(int(req.Prev)).Type == 0 {
+					resp.Code, resp.Message = proto.OperationFailed, "target group id is invalid"
+				} else {
+					if service.ContainsUser(req.Name, req.Email) == true {
+						resp.Code, resp.Message = proto.OperationFailed, "user or email is exist"
+						log.Println("[ERROR] request id:", resp.RequestID, ", admin add user exist, name:", req.Name, ", email:", req.Email)
+					} else {
+						if len(req.Password) != 32 {
+							hashes := md5.New()
+							hashes.Write([]byte(req.Password))                 // 生成密码的 MD5 散列值
+							req.Password = hex.EncodeToString(hashes.Sum(nil)) // 生成密码的 MD5 散列值
+						}
+						resp.Code = proto.SuccessCode
+						resp.Data = service.CreateUserBaseInfo(req.Name, req.Password, req.Email, req.Prev)
+					}
+				}
+			}
+		} else {
+			resp.Code, resp.Message = proto.PermissionDenied, "no permission"
+		}
+	}
+end:
+	c.JSON(http.StatusOK, resp)
+}
+
+func UpdateUserCatalogueHandle(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var req proto.UserCatalogueReq
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code, resp.Message = proto.ParameterError, "缺少必要参数"
+		log.Println("[ERROR] request id:", resp.RequestID, " update user catalogue req:", err.Error())
+	} else {
+		resp.Code, resp.Message = service.UpdateUserCatalogue(resp.RequestID, &user, &req)
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+type RefreshTokenReq struct {
+	RefreshToken string `json:"refresh_token" form:"refresh_token"`
 }
 
 type RLReq struct {
-	User     string `json:"username" form:"username"`
-	Email    string `json:"email" form:"email"`
-	Password string `json:"password" form:"password"`
-	Age      int    `json:"age" form:"age"`
-	Code     string `json:"code" form:"code"` //验证码
-	Gender   string `json:"gender" form:"gender"`
+	User        string `json:"username" form:"username"`
+	Email       string `json:"email" form:"email"`
+	Password    string `json:"password" form:"password"`
+	Age         int    `json:"age" form:"age"`
+	Code        string `json:"code" form:"code"` //验证码
+	FingerPrint string `json:"fingerprint" form:"fingerprint"`
+	Gender      string `json:"gender" form:"gender"`
 }
 
 type QRReq struct {
@@ -62,12 +236,90 @@ type GetUserInfoReq struct {
 	ID int `json:"id" form:"id"`
 }
 
+type GetUserBaseInfoListRequest struct {
+	IDList []GetUserInfoReq `json:"id_list" form:"id_list"`
+}
+
 type ResetPasswordReq struct {
 	Email       string `json:"email" form:"email"`
 	OldPassword string `json:"old_password" form:"old_password"`
 	NewPassword string `json:"new_password" form:"new_password"`
 	Type        int    `json:"type" form:"type"` //0获取验证码,2为邮箱验证码重置密码，1为旧密码重置密码
 	Code        string `json:"code" form:"code"` //验证码
+}
+
+func handleLoginCode(c *gin.Context) {
+	var req proto.EmailPhoneCodeLoginReq
+	var resp proto.GenerateResp
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code, resp.Message = proto.ParameterError, "解析参数错误"
+	} else {
+		err2 := service.SendLoginCodeByEmailPhone(req)
+		if err2 != nil {
+			resp.Code = proto.OperationFailed
+			resp.Message = err2.Error()
+		} else {
+			resp.Code, resp.Message = proto.SuccessCode, "success"
+		}
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func handleLoginByCode(c *gin.Context) {
+	var req proto.EmailPhoneCodeLoginReq
+	var resp proto.GenerateResp
+	ip := c.ClientIP()
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code, resp.Message = proto.ParameterError, "解析参数错误"
+	} else {
+		if req.LoginType == 1 {
+			if req.Email == "" || req.Code == "" {
+				resp.Code, resp.Message = proto.ParameterError, "请求参数错误"
+			} else {
+				key := "login_code_" + req.Email
+				email_code := worker.GetRedis(key)
+				if email_code == "" {
+					resp.Code, resp.Message = proto.OperationFailed, "无效的邮箱,验证码已过期"
+				} else if email_code != req.Code {
+					resp.Code, resp.Message = proto.OperationFailed, "无效的验证码"
+				} else {
+					user := dao.FindUserByEmail(req.Email)
+					if user.CodeNeedSecondAuth > 0 && service.GetUserTOTPSecretInfo(&user).ID > 0 { //需要二次认证且TOTP需配置
+						resp2, err4 := service.NeedSecondAuthService(&user, "code")
+						//无错误才支持二次认证
+						if err4 == nil && resp2.Type != "" {
+							resp.Code, resp.Message, resp.Data = proto.NeedSecondAuth, "验证码登录需要二次认证", resp2
+						}
+					} else {
+						accessToken, refreshToken, err2 := service.GenerateAuthTokens(user)
+						if err2 != nil {
+							c.JSON(http.StatusInternalServerError, gin.H{"code": proto.TokenGenerationError, "message": "Failed to generate tokens", "data": err2.Error()})
+							return
+						}
+						authResponse := proto.AuthResponse{
+							AccessToken:  accessToken,
+							RefreshToken: refreshToken,
+							UserID:       user.ID,
+							ExpireIn:     time.Now().Add(proto.AccessTokenDuration).Unix(), // 令牌过期时间
+							Username:     user.Name,
+							Email:        user.Email,
+						}
+						authBytes, _ := json.Marshal(authResponse)
+						c.SetCookie("user_token", string(authBytes), 3600*24, "/", ".ljsea.top", true, false) //设置cookie
+						resp.Code, resp.Message, resp.Data = proto.SuccessCode, "success", authResponse
+						service.UpdateUserLoginAddressDeviceInfo(&user, req.FingerPrint, ip)
+						worker.DelRedis(key)
+					}
+
+				}
+			}
+		} else if req.LoginType == 2 {
+			resp.Code, resp.Message = proto.ParameterError, "不支持短信验证"
+		} else {
+			resp.Code, resp.Message = proto.ParameterError, "不支持的类型"
+		}
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func ResetPassword(c *gin.Context) {
@@ -89,7 +341,8 @@ func ResetPassword(c *gin.Context) {
 			code := worker.GetRandomString(6)
 			worker.SetRedisWithExpire("reset_password_"+req_data.Email, code, time.Minute*5) //设置5分钟过期`
 			//发送邮件
-			service.SendEmail(req_data.Email, "大学生学业作品AI生成工具开发重置密码", "验证码:"+code+" ,请在5分钟内使用!")
+			go service.SendEmailCodeMail(req_data.Email, code, "重置密码")
+			//service.SendEmail(req_data.Email, "大学生学业作品AI生成工具开发重置密码", "验证码:"+code+" ,请在5分钟内使用!")
 			c.JSON(200, gin.H{"code": proto.SuccessCode, "message": "success", "data": "2"})
 			return
 		} else if req_data.Type == 1 {
@@ -172,17 +425,17 @@ func ResetPassword(c *gin.Context) {
 func GetUserInfo(c *gin.Context) {
 	var req_data GetUserInfoReq
 	id, _ := c.Get("id")
-	user_id := int(id.(float64))
+	userId := int(id.(float64))
 	if err := c.ShouldBind(&req_data); err == nil {
 		var user dao.User
-		if req_data.ID == user_id {
-			user = dao.FindUserByID2(user_id)
+		if req_data.ID == userId {
+			user = service.GetUserByIDWithCache(req_data.ID)
 			user.Password = "" //不返回密码
 		} else {
 			//判断当前用户是否有权限查看
-			cur_user := dao.FindUserByID2(user_id)
+			cur_user := service.GetUserByIDWithCache(userId)
 			if cur_user.Role == "admin" {
-				user = dao.FindUserByID2(req_data.ID)
+				user = service.GetUserByIDWithCache(req_data.ID)
 				user.Password = "" //不返回密码
 			} else {
 				c.JSON(200, gin.H{"code": proto.PermissionDenied, "message": "无权查看", "data": "2"})
@@ -196,21 +449,54 @@ func GetUserInfo(c *gin.Context) {
 	}
 }
 
+func GetUserBaseInfoList(c *gin.Context) {
+	var req_data GetUserBaseInfoListRequest
+	id, _ := c.Get("id")
+	user_id := int(id.(float64))
+	var resp proto.GenerateResp
+	if err := c.ShouldBind(&req_data); err == nil {
+		user := service.GetUserByIDWithCache(user_id)
+		if user.Role == "admin" {
+			ids := make([]int, len(req_data.IDList))
+			for i, v := range req_data.IDList {
+				ids[i] = v.ID
+			}
+			users := service.FindBaseUserInfoList(ids)
+			resp.Code = proto.SuccessCode
+			resp.Message = "success"
+			resp.Data = users
+		} else {
+			resp.Code = proto.PermissionDenied
+			resp.Message = "无权查看"
+			resp.Data = nil
+		}
+	} else {
+		resp.Code = proto.ParameterError
+		resp.Message = err.Error()
+	}
+	c.JSON(http.StatusOK, resp)
+
+}
+
 func DeleteUser(c *gin.Context) {
 	var req GetUserInfoReq
 	id, _ := c.Get("id")
-	user_id := int(id.(float64))
+	userId := int(id.(float64))
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
 	if err := c.ShouldBind(&req); err == nil {
-		res := service.DeleteUserService(req.ID, user_id)
-		if res != 0 {
-			c.JSON(200, gin.H{"code": proto.SuccessCode, "message": "success", "data": res})
+		res := service.DeleteUserService(resp.RequestID, req.ID, userId)
+		if res > 0 {
+			resp.Code, resp.Message, resp.Data = proto.SuccessCode, "success", res
 		} else {
-			c.JSON(200, gin.H{"code": proto.OperationFailed, "message": "failed", "data": res})
+			resp.Code, resp.Message = proto.OperationFailed, "删除失败"
 		}
 	} else {
-		c.JSON(200, gin.H{"code": proto.ParameterError, "message": err, "data": "2"})
-		return
+		resp.Code, resp.Message = proto.ParameterError, "解析请求参数失败"
+		log.Println("[ERROR] request id:", resp.RequestID, " ,error:", err)
 	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func UpdateUserInfo(c *gin.Context) {
@@ -386,54 +672,56 @@ func SearchHandler(c *gin.Context) {
 
 func loginHandler(c *gin.Context) {
 	var req_data RLReq
-	tokenString := ""
+	var resp proto.GenerateResp
+	ip := c.ClientIP()
 	if err := c.ShouldBind(&req_data); err == nil {
-		if len(req_data.Password) != 32 {
-			hasher := md5.New()
-			hasher.Write([]byte(req_data.Password))                 // 生成密码的 MD5 散列值
-			req_data.Password = hex.EncodeToString(hasher.Sum(nil)) // 生成密码的 MD5 散列值
-		}
-		user := service.GetUser(req_data.User, req_data.Password, req_data.Password)
-		if user.ID != 0 {
-			key := "user_" + user.Name
-			redis_token := worker.GetRedis(string(key))
-			if redis_token == "" {
-				// 生成 JWT 令牌
-				token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-					"username": user.Name,
-					"id":       user.ID,
-					"exp":      time.Now().Add(time.Hour * 24).Unix(), // 令牌过期时间, 24小时后过期
-				})
-				tokenString, err = token.SignedString(proto.SigningKey)
-				if err != nil {
-					c.JSON(200, gin.H{"error": err.Error(), "code": proto.TokenGenerationError, "message": "error"})
-					return
-				}
-
-				worker.SetRedisWithExpire("user_"+user.Name, tokenString, time.Hour*24) // 将用户信息存入
-				worker.SetRedisWithExpire(tokenString, tokenString, time.Hour*24)       // 设置过期时间为24h
-				data := make(map[string]interface{})
-				data["id"] = user.ID
-				data["username"] = user.Name
-				data["email"] = user.Email
-				worker.SetHash(tokenString, data) // 将用户信息存入
-			} else {
-				tokenString = redis_token
-			}
-			// 返回令牌
-			data := make(map[string]interface{})
-			data["id"] = user.ID
-			data["username"] = user.Name
-			data["email"] = user.Email
-			data["token"] = tokenString
-			c.JSON(200, gin.H{"code": proto.SuccessCode, "message": "success", "data": data})
+		if req_data.FingerPrint == "" || len(req_data.FingerPrint) != 32 {
+			resp.Message, resp.Code = "设备ID错误", proto.ParameterError
 		} else {
-			//用户名或密码错误
-			c.JSON(200, gin.H{"error": "用户名或密码错误", "code": proto.UsernameOrPasswordError, "message": "error"})
+			if len(req_data.Password) != 32 {
+				hasher := md5.New()
+				hasher.Write([]byte(req_data.Password))                 // 生成密码的 MD5 散列值
+				req_data.Password = hex.EncodeToString(hasher.Sum(nil)) // 生成密码的 MD5 散列值
+			}
+			user := service.GetUser(req_data.User, req_data.Password, req_data.Password)
+			if user.ID != 0 {
+				if user.PasswordNeedSecondAuth > 0 {
+					resp2, err4 := service.NeedSecondAuthService(&user, "pwd")
+					//无错误才支持二次认证
+					if err4 == nil {
+						resp.Code, resp.Message, resp.Data = proto.NeedSecondAuth, "密码登录需要二次认证", resp2
+					}
+				} else {
+					accessToken, refreshToken, err2 := service.GenerateAuthTokens(user)
+					if err2 != nil {
+						c.JSON(http.StatusInternalServerError, gin.H{"code": proto.TokenGenerationError, "message": "Failed to generate tokens", "data": err2.Error()})
+						return
+					} else {
+						authResponse := proto.AuthResponse{
+							AccessToken:  accessToken,
+							RefreshToken: refreshToken,
+							UserID:       user.ID,
+							ExpireIn:     time.Now().Add(proto.AccessTokenDuration).Unix(), // 令牌过期时间
+							Username:     user.Name,
+							Email:        user.Email,
+						}
+						service.UpdateUserLoginAddressDeviceInfo(&user, req_data.FingerPrint, ip)
+						authBytes, _ := json.Marshal(authResponse)
+						c.SetCookie("user_token", string(authBytes), 3600*24, "/", ".ljsea.top", true, false) //设置cookie
+						resp.Code, resp.Data = proto.SuccessCode, authResponse
+
+					}
+				}
+			} else {
+				//用户名或密码错误
+				resp.Code, resp.Message = proto.UsernameOrPasswordError, "用户名或密码错误"
+			}
 		}
 	} else {
-		c.JSON(200, gin.H{"error": err.Error(), "code": proto.DeviceRestartFailed, "message": "error"})
+		resp.Code, resp.Message = proto.ParameterError, "解析参数错误"
+		log.Printf("user %s password login decode request param err:%s\n", req_data.User, err.Error())
 	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func registerHandler(c *gin.Context) {
@@ -489,8 +777,9 @@ func registerHandler(c *gin.Context) {
 func registerHandlerV2(c *gin.Context) {
 	var reqData RLReq
 	var resp proto.GenerateResp
+	ip := c.ClientIP()
 	if err := c.ShouldBind(&reqData); err == nil {
-		if reqData.User == "" || reqData.Email == "" || reqData.Password == "" {
+		if reqData.User == "" || reqData.Email == "" || reqData.Password == "" || reqData.FingerPrint == "" || len(reqData.User) < 6 || len(reqData.User) > 32 || len(reqData.Password) < 6 || len(reqData.Password) < 8 {
 			resp.Code = proto.ParameterError
 			resp.Message = "必要参数不能为空"
 		} else {
@@ -500,6 +789,7 @@ func registerHandlerV2(c *gin.Context) {
 				resp.Code = proto.OperationFailed
 				resp.Message = "验证码错误"
 			} else {
+				worker.DelRedis("register_code_" + reqData.Email)
 				if len(reqData.Password) != 32 {
 					hasher := md5.New()
 					hasher.Write([]byte(reqData.Password))                 // 生成密码的 MD5 散列值
@@ -514,26 +804,31 @@ func registerHandlerV2(c *gin.Context) {
 						resp.Code = proto.OperationFailed
 						resp.Message = "创建用户失败"
 					} else {
-						// 生成 JWT 令牌
-						token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-							"username": reqData.User,
-							"id":       id,
-							"exp":      time.Now().Add(time.Hour * 24).Unix(), // 令牌过期时间, 24小时后过期
-						})
-						tokenString, err2 := token.SignedString(proto.SigningKey)
-						if err2 != nil {
-							resp.Code = proto.TokenGenerationError
-							resp.Message = "生成token失败"
+						createdUser := service.GetUserByIDWithCache(int(id))
+						if createdUser.ID == 0 {
+							resp.Code = proto.OperationFailed
+							resp.Message = "Failed to retrieve created user"
 						} else {
-							// 返回令牌
-							data := make(map[string]interface{})
-							data["id"] = id
-							data["username"] = reqData.User
-							data["email"] = reqData.Email
-							data["token"] = tokenString
-							resp.Code = proto.SuccessCode
-							resp.Message = "success"
-							resp.Data = data
+							accessToken, refreshToken, errGenTokens := service.GenerateAuthTokens(createdUser)
+							if errGenTokens != nil {
+								resp.Code = proto.TokenGenerationError
+								resp.Message = "Failed to generate tokens: " + errGenTokens.Error()
+							} else {
+								authResponse := proto.AuthResponse{
+									AccessToken:  accessToken,
+									RefreshToken: refreshToken,
+									UserID:       createdUser.ID,
+									ExpireIn:     time.Now().Add(proto.AccessTokenDuration).Unix(), // 令牌过期时间
+									Username:     createdUser.Name,
+									Email:        createdUser.Email,
+								}
+								resp.Code = proto.SuccessCode
+								resp.Message = "success"
+								resp.Data = authResponse
+								authBytes, _ := json.Marshal(authResponse)
+								service.UpdateUserLoginAddressDeviceInfo(&createdUser, reqData.FingerPrint, ip)
+								c.SetCookie("user_token", string(authBytes), 3600*24, "/", ".ljsea.top", true, false) //设置cookie
+							}
 						}
 					}
 				}
@@ -546,12 +841,41 @@ func registerHandlerV2(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+func refreshTokenHandler(c *gin.Context) {
+	var req RefreshTokenReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": proto.ParameterError, "message": "Invalid request body: " + err.Error(), "data": nil})
+		return
+	}
+
+	if req.RefreshToken == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"code": proto.ParameterError, "message": "Refresh token is required", "data": nil})
+		return
+	}
+
+	newAccessToken, err := service.ValidateRefreshTokenAndCreateNewAccessToken(req.RefreshToken)
+	//获取cookie
+	var authResponse proto.AuthResponse
+	authResponse.AccessToken = newAccessToken
+	authBytes, _ := json.Marshal(authResponse)
+	c.SetCookie("user_token", string(authBytes), 3600*24, "/", ".ljsea.top", true, false) //设置cookie
+
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": proto.TokenInvalid, "message": "Invalid or expired refresh token: " + err.Error(), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": proto.SuccessCode, "message": "Access token refreshed successfully", "data": gin.H{"access_token": newAccessToken}})
+}
+
 func LoginOAuth(c *gin.Context) {
 	uuid := c.Query("uuid")
+	host_id := c.Query("host_id")
+	ip := c.ClientIP()
 	var resp proto.GenerateResp
-	if uuid == "" {
+	if uuid == "" || host_id == "" || len(uuid) < 32 || len(host_id) < 32 {
 		resp.Code = proto.ParameterError
-		resp.Message = "uuid is empty"
+		resp.Message = "uuid or host_id is invalid"
 		c.JSON(200, resp)
 		return
 	}
@@ -564,18 +888,37 @@ func LoginOAuth(c *gin.Context) {
 		return
 	}
 	var status proto.ThirdPartyLoginStatus
-	if err := json.Unmarshal([]byte(loginStatus), &status); err != nil {
+	var err error
+	if err = json.Unmarshal([]byte(loginStatus), &status); err != nil {
 		resp.Code = proto.OperationFailed
 		resp.Message = "error"
 		c.JSON(200, resp)
 		return
 	}
+	var secondAuth *proto.NeedSecondAuthResp
 	if status.Status == 0 {
+		user := service.GetUserByIDWithCache(int(status.UserInfo.UserID))
+		if user.ThirdPartyNeedSecondAuth > 0 {
+			secondAuth, err = service.NeedSecondAuthService(&user, "third")
+			if err != nil {
+				resp.Code = proto.OperationFailed
+				resp.Message = "需二次认证，但服务器处理错误"
+				c.JSON(200, resp)
+				return
+			}
+		}
+		service.UpdateUserLoginAddressDeviceInfo(&user, host_id, ip)
 		worker.DelRedis(uuid) //删除uuid,只能查一次
 	}
-	resp.Code = proto.SuccessCode
-	resp.Message = "success"
-	resp.Data = status
+	if secondAuth != nil {
+		resp.Code = proto.NeedSecondAuth
+		resp.Message = "需要二次认证"
+		resp.Data = secondAuth
+	} else {
+		resp.Code = proto.SuccessCode
+		resp.Message = "success"
+		resp.Data = status //不需二次认证，直接返回token信息
+	}
 	c.JSON(200, resp)
 }
 
@@ -650,13 +993,22 @@ func handleRegisterCode(c *gin.Context) {
 				resp.Code = proto.OperationFailed
 				resp.Message = "邮箱已存在，请更换邮箱"
 			} else {
-				//随机字符串验证码大写
-				code := worker.GetRandomString(6)
-				worker.SetRedisWithExpire("register_code_"+req.Email, code, time.Minute*5) //设置5分钟过期
-				//发送邮件
-				service.SendEmail(req.Email, "大学生学业作品AI生成工具开发注册邮件验证码", "验证码:"+code+" ,请在5分钟内使用!")
-				resp.Code = proto.SuccessCode
-				resp.Message = "success"
+				key := "register_code_" + req.Email
+				if worker.IsContainKey(key + "_") {
+					//存在说明发过验证码，返回错误
+					resp.Code = proto.OperationFailed
+					resp.Message = "发送过于频繁，请稍后再试！"
+				} else {
+					//随机字符串验证码大写
+					code := worker.GetRandomString(6)
+					worker.SetRedisWithExpire(key, code, time.Minute*5) //设置5分钟过期
+					//发送邮件
+					//service.SendEmail(req.Email, "集成AI工具邮件验证码", "验证码:"+code+" ,请在5分钟内使用!")
+					go service.SendEmailCodeMail(req.Email, code, "注册")
+					resp.Code = proto.SuccessCode
+					resp.Message = "success"
+					worker.SetRedisWithExpire(key+"_", code, time.Minute*1) //每分钟只能发一次
+				}
 			}
 		}
 	} else {
@@ -694,5 +1046,223 @@ func SetUserUIConfig(c *gin.Context) {
 		resp.Code = proto.ParameterError
 		resp.Message = "error:" + err.Error()
 	}
+	c.JSON(http.StatusOK, resp)
+}
+
+type GetTokenCodeResp struct {
+	Code     string `json:"code"`
+	ExpireIn int64  `json:"expire_in"` //过期时间
+}
+
+func GetClientTokenUUID(c *gin.Context) {
+	var resp proto.GenerateResp
+	//生成code
+	code := uuid.New().String()
+	//设置code到redis
+	success := worker.SetRedisWithExpire("token_code_"+code, "0", time.Minute*5) //5分钟过期
+	if success {
+		resp.Code = proto.SuccessCode
+		resp.Message = "success"
+		var getTokenCodeResp GetTokenCodeResp
+		getTokenCodeResp.Code = code
+		getTokenCodeResp.ExpireIn = time.Now().Add(time.Minute * 5).Unix() //设置过期时间
+		resp.Data = getTokenCodeResp
+	} else {
+		resp.Code = proto.RedisSetError
+		resp.Message = "设置code失败"
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func SetClientTokenStatus(c *gin.Context) {
+	id, _ := c.Get("user_id")
+	code := c.Query("code")
+	userId := id.(int)
+	var resp proto.GenerateResp
+	//设置code到redis
+	var success bool
+	key := "token_code_" + code
+	if worker.IsContainKey(key) == false {
+		success = false
+		log.Println("[ERROR] set client token status failed, code not found:", key)
+	} else {
+		success = worker.SetRedisWithExpire(key, fmt.Sprintf("%d", userId), time.Minute*5) //5分钟过期
+	}
+	if success {
+		resp.Code = proto.SuccessCode
+		resp.Message = "success"
+		var getTokenCodeResp GetTokenCodeResp
+		getTokenCodeResp.Code = code
+		getTokenCodeResp.ExpireIn = time.Now().Add(time.Minute * 5).Unix() //设置过期时间
+		resp.Data = getTokenCodeResp
+	} else {
+		resp.Code = proto.RedisSetError
+		resp.Message = "设置code失败"
+	}
+	c.JSON(http.StatusOK, resp)
+}
+func GetTokenCode(c *gin.Context) {
+	id, _ := c.Get("user_id")
+	userId := id.(int)
+	var resp proto.GenerateResp
+	//生成code
+	code := uuid.New().String()
+	//设置code到redis
+	success := worker.SetRedisWithExpire("token_code_"+code, fmt.Sprintf("%d", userId), time.Minute*5) //5分钟过期
+	if success {
+		resp.Code = proto.SuccessCode
+		resp.Message = "success"
+		var getTokenCodeResp GetTokenCodeResp
+		getTokenCodeResp.Code = code
+		getTokenCodeResp.ExpireIn = time.Now().Add(time.Minute * 5).Unix() //设置过期时间
+		resp.Data = getTokenCodeResp
+	} else {
+		resp.Code = proto.RedisSetError
+		resp.Message = "设置code失败"
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// 根据code获取token
+func GetTokenByCode(c *gin.Context) {
+	code := c.Query("code")
+	var resp proto.GenerateResp
+	if code == "" {
+		resp.Code = proto.ParameterError
+		resp.Message = "code is empty"
+	} else {
+		//获取code对应的user_id
+		userIdStr := worker.GetRedis("token_code_" + code)
+		if userIdStr == "" {
+			resp.Code = proto.OperationFailed
+			resp.Message = "code已失效"
+		} else {
+			userId, err := strconv.Atoi(userIdStr)
+			if err != nil || userId == 0 {
+				resp.Code = proto.OperationFailed
+				resp.Message = "code无有效信息"
+			} else {
+				user := service.GetUserByIDWithCache(userId)
+				accessToken, refreshToken, err2 := service.GenerateAuthTokens(user)
+				if err2 != nil {
+					c.JSON(http.StatusOK, gin.H{"code": proto.TokenGenerationError, "message": "Failed to generate tokens", "data": err2.Error()})
+					return
+				}
+				authResponse := proto.AuthResponse{
+					AccessToken:  accessToken,
+					RefreshToken: refreshToken,
+					UserID:       user.ID,
+					ExpireIn:     time.Now().Add(proto.AccessTokenDuration).Unix(), // 令牌过期时间
+					Username:     user.Name,
+					Email:        user.Email,
+				}
+				resp.Code = proto.SuccessCode
+				resp.Message = "success"
+				resp.Data = authResponse
+				worker.DelRedis("token_code_" + code) //删除code,只能查一次
+			}
+		}
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func HandleSecondAuth(c *gin.Context) {
+	var resp proto.GenerateResp
+	ip := c.ClientIP()
+	//处理二次认证
+	var req proto.SecondAuthRequest
+	if err := c.ShouldBind(&req); err == nil {
+		state_str := worker.GetRedis(req.State)
+		if state_str == "" {
+			resp.Code = proto.ParameterError
+			resp.Message = "状态错误"
+		} else {
+			var state proto.SecondAuthServerSaveState
+			_ = json.Unmarshal([]byte(state_str), &state)
+			user := service.GetUserByIDWithCache(state.UserId)
+			switch req.Type {
+			case "TOTP":
+				err = service.CheckUserTOTPCode(&user, req.Code)
+			case "EMAIL":
+				if state.Code != req.Code {
+					err = errors.New("邮件验证码错误")
+				}
+			default:
+				err = errors.New("错误的二次认证类型")
+			}
+			if err != nil {
+				resp.Code = proto.ParameterError
+				resp.Message = "无效的验证码"
+			} else {
+				accessToken, refreshToken, err2 := service.GenerateAuthTokens(user)
+				if err2 != nil {
+					resp.Code = proto.OperationFailed
+					resp.Message = "生成TOKEN错误"
+				} else {
+					authResponse := proto.AuthResponse{
+						AccessToken:  accessToken,
+						RefreshToken: refreshToken,
+						UserID:       user.ID,
+						ExpireIn:     time.Now().Add(proto.AccessTokenDuration).Unix(), // 令牌过期时间
+						Username:     user.Name,
+						Email:        user.Email,
+					}
+					resp.Code = proto.SuccessCode
+					resp.Message = "success"
+					resp.Data = authResponse
+					worker.DelKV(req.State) //成功则删除，只能用一次
+					service.UpdateUserLoginAddressDeviceInfo(&user, req.HostID, ip)
+				}
+			}
+		}
+	} else {
+		resp.Code = proto.ParameterError
+		resp.Message = "解析参数错误：" + err.Error()
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func HandleTOTPSecondAuth(c *gin.Context) {
+	var resp proto.GenerateResp
+	//处理二次认证
+	var req proto.TOTPSecondAuthRequest
+	if err := c.ShouldBind(&req); err == nil {
+		user_id_str := worker.GetRedis(req.State)
+		if user_id_str == "" {
+			resp.Code = proto.ParameterError
+			resp.Message = "状态错误"
+		} else {
+			user_id, _ := strconv.Atoi(user_id_str)
+			user := service.GetUserByIDWithCache(user_id)
+			err = service.CheckUserTOTPCode(&user, req.Code)
+			if err != nil {
+				resp.Code = proto.ParameterError
+				resp.Message = "无效的验证码"
+			} else {
+				accessToken, refreshToken, err2 := service.GenerateAuthTokens(user)
+				if err2 != nil {
+					resp.Code = proto.OperationFailed
+					resp.Message = "生成TOKEN错误"
+				} else {
+					authResponse := proto.AuthResponse{
+						AccessToken:  accessToken,
+						RefreshToken: refreshToken,
+						UserID:       user.ID,
+						ExpireIn:     time.Now().Add(proto.AccessTokenDuration).Unix(), // 令牌过期时间
+						Username:     user.Name,
+						Email:        user.Email,
+					}
+					resp.Code = proto.SuccessCode
+					resp.Message = "success"
+					resp.Data = authResponse
+				}
+			}
+		}
+	} else {
+		resp.Code = proto.ParameterError
+		resp.Message = "解析参数错误：" + err.Error()
+	}
+
 	c.JSON(http.StatusOK, resp)
 }

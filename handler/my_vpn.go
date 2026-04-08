@@ -1,0 +1,424 @@
+package handler
+
+import (
+	"github.com/gin-gonic/gin"
+	"log"
+	"net/http"
+	"user_center/proto"
+	"user_center/service"
+)
+
+func SetUpMyVPNGroup(router *gin.Engine) {
+	myVPNGroup := router.Group("/vpn")
+	myVPNGroup.POST("/server_register", ServerRegisterHandler)
+	myVPNGroup.GET("/get_support_vpn_server", GetSupportVPNServerHandler)
+	myVPNGroup.POST("/update_client_status", UpdateClientStatusHandler)
+	myVPNGroup.POST("/update_server_status", UpdateServerStatusHandler)
+	myVPNGroup.POST("/get_client_config", GetClientConfigHandler) //prepare online
+	myVPNGroup.GET("/get_server_config", GetServerConfigHandler)
+	myVPNGroup.PUT("/client_heartbeat", ClientHeartbeatHandler)
+	myVPNGroup.GET("/get_vpn_user", GetVPNUserHandler)
+	myVPNGroup.POST("/set_vpn_server_config", SetVPNServerConfigHandler)
+	myVPNGroup.GET("/get_vpn_server_config", GetVPNServerConfigHandler)
+	myVPNGroup.GET("/get_server_online", GetVPNServerOnlineListHandler)
+	myVPNGroup.DELETE("/delete_vpn_server", DeleteVPNServerHandler)
+	myVPNGroup.POST("/set_vpn_ip_pool", SetVPNPoolHandler)
+	myVPNGroup.GET("/get_vpn_ip_pool", GetVPNAddressPoolHandler)
+	myVPNGroup.DELETE("/delete_vpn_ip_pool", DeleteVPNPoolHandler)
+	myVPNGroup.POST("/set_vpn_tunnel", SetVPNTunnelHandler)
+	myVPNGroup.DELETE("/delete_vpn_tunnel", DeleteVPNTunnelHandler)
+	myVPNGroup.GET("/get_vpn_tunnel_config", GetVPNTunnelConfigHandler)
+	myVPNGroup.GET("/get_client_online_users", GetClientOnlineUsers)
+	myVPNGroup.GET("/clients_url", GetMyVPNClientUrl)
+	myVPNGroup.POST("/kick_out_user", KickOutUser)
+	myVPNGroup.GET("/get_vpn_logs", GetVPNLogsHandler) // 获取VPN日志，管理员权限
+
+	myVPNGroup.GET("/server_ws", DPServerConnectWSHandler) //vpn dp服务器与控制服务器实时通信使用
+	myVPNGroup.GET("/client_ws", VPNClientConnectWSHandler)
+}
+
+func KickOutUser(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.Code = proto.SuccessCode
+	resp.Message = "success"
+	resp.RequestID = requestID.(string)
+	var req proto.KickOutUserRequest
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid parameter: " + err.Error()
+	} else {
+		service.KickOutUserService(&req, &user, &resp)
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetMyVPNClientUrl(c *gin.Context) {
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.Code = proto.SuccessCode
+	resp.Message = "success"
+	resp.RequestID = requestID.(string)
+	resp.Data = proto.Config.MyVPNClientDownloadURL
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetClientOnlineUsers(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	serverID := c.Query("server_id")
+	if user.Role != proto.USER_IS_ADMIN {
+		resp.Code = proto.PermissionDenied
+		resp.Message = "无权限"
+	} else {
+		if serverID == "" {
+			resp.Code = proto.ParameterError
+			resp.Message = "server id不能为空"
+		} else {
+			service.GetDPServerOnlineUsers(serverID, &resp)
+		}
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func UpdateServerStatusHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	var req proto.SetVPNServerStatusReq
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid parameter: " + err.Error()
+	} else {
+		service.SetServerStatusService(&user, &req, &resp)
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func UpdateClientStatusHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	var req proto.SetVPNClientStatusReq
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid parameter: " + err.Error()
+	} else {
+		service.SetClientStatusService(&user, &req, &resp)
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetVPNServerOnlineListHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	serverId := c.Query("server_id")
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	service.GetVPNServerOnlineList(&user, serverId, &resp)
+	c.JSON(http.StatusOK, resp)
+}
+
+func SetVPNTunnelHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	var req proto.TunnelRequestAndResponse
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid parameter: " + err.Error()
+	} else {
+		err = service.SetMyVPNTunnelService(&user, &req, &resp)
+		if err != nil {
+			log.Println("[ERROR] SetVPNTunnelHandler:", err)
+			resp.Message = "设置操作失败"
+			resp.Code = proto.OperationFailed
+		}
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetVPNTunnelConfigHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	err := service.GetMyVPNTunnelService(&user, &resp)
+	if err != nil {
+		log.Println("[ERROR] GetVPNTunnelHandler:", err)
+		resp.Message = "获取失败"
+		resp.Code = proto.OperationFailed
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func DeleteVPNTunnelHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	var req proto.TunnelRequestAndResponse
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid parameter: " + err.Error()
+	} else {
+		err = service.DeleteMyVPNTunnelService(&user, &req, &resp)
+		if err != nil {
+			log.Println("[ERROR] SetVPNTunnelHandler:", err)
+			resp.Message = "删除操作失败"
+			resp.Code = proto.OperationFailed
+		}
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetClientConfigHandler(c *gin.Context) {
+	var resp proto.GenerateResp
+	var req proto.ConnectVPNRequest
+	user := RequestGetUserInfo(c)
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid parameter: " + err.Error()
+	} else {
+		if req.SessionID == "" {
+			err = service.GetClientConfigService(&user, &resp, req.ServerID, req.HostInfo)
+			if err != nil {
+				log.Println("[ERROR] GetClientConfigHandler:", err)
+				resp.Message = "获取失败"
+				resp.Code = proto.OperationFailed
+			}
+		} else {
+			service.GetClientConfigExistService(&user, &resp, req.ServerID, req.SessionID)
+		}
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetSupportVPNServerHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+
+	err := service.GetSupportVPNServerList(&user, &resp)
+	if err != nil {
+		log.Println("[ERROR] GetSupportVPNServerHandler:", err)
+		resp.Message = "获取失败"
+		resp.Code = proto.OperationFailed
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func ServerRegisterHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	var req proto.SetServerConfigRequest
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid parameter: " + err.Error()
+	} else {
+		resp.Code, err = service.RegisterMyVPNServerConfigService(&user, &req)
+		if err != nil {
+			resp.Message = err.Error()
+		}
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetServerConfigHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	serverID := c.Query("server_id")
+	restart := c.Query("restart")
+	if serverID == "" {
+		resp.Code = proto.ParameterError
+		resp.Message = "server id is null"
+	} else {
+		if restart != "" {
+			//重启通知服务器踢出所有用户
+			service.KickOutAllUserService(&user, serverID, &resp)
+			service.GetVPNOnlineServerConfigWithAuthUser(&user, &resp, serverID)
+		} else {
+			service.GetVPNOnlineServerConfigWithAuthUser(&user, &resp, serverID)
+		}
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func ClientHeartbeatHandler(c *gin.Context) {
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetVPNUserHandler(c *gin.Context) {
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func SetVPNServerConfigHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	var req proto.SetServerConfigRequest
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid parameter: " + err.Error()
+	} else {
+		resp.Code, err = service.SetMyVPNServerConfigService(&user, &req)
+		if err != nil {
+			resp.Message = err.Error()
+		}
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func DeleteVPNServerHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	var req proto.SetServerConfigRequest
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid parameter: " + err.Error()
+	} else {
+		resp.Code, err = service.DeleteMyVPNServerConfigService(&user, &req)
+		if err != nil {
+			resp.Message = err.Error()
+		}
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetVPNServerConfigHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+
+	var err error
+	resp.Code, resp.Data, err = service.GetMyVPNServerConfigService(&user)
+	if err != nil {
+		resp.Message = err.Error()
+	}
+	resp.Message = "success"
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func SetVPNPoolHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	var req proto.AddressPoolRequest
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid parameter: " + err.Error()
+	} else {
+		err = service.SetMyVPNAddressPoolService(&user, &req, &resp)
+		if err != nil {
+			log.Println("[ERROR] SetVPNPoolHandler:", err)
+			resp.Message = "设置操作失败"
+			resp.Code = proto.OperationFailed
+		}
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func DeleteVPNPoolHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	var req proto.AddressPoolRequest
+	if err := c.ShouldBind(&req); err != nil {
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid parameter: " + err.Error()
+	} else {
+		err = service.DeleteMyVPNAddressPoolService(&user, &req, &resp)
+		if err != nil {
+			log.Println("[ERROR] SetVPNPoolHandler:", err)
+			resp.Message = "删除操作失败"
+			resp.Code = proto.OperationFailed
+		}
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetVPNAddressPoolHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+	err := service.GetMyVPNAddressPoolService(&user, &resp)
+	if err != nil {
+		log.Println("[ERROR] SetVPNPoolHandler:", err)
+		resp.Message = "获取失败"
+		resp.Code = proto.OperationFailed
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetVPNLogsHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+
+	// 仅管理员可访问
+	if user.Role != proto.USER_IS_ADMIN {
+		resp.Code = proto.PermissionDenied
+		resp.Message = "无权限"
+		c.JSON(http.StatusOK, resp)
+		return
+	}
+
+	// 获取参数
+	page := c.DefaultQuery("page", "1")
+	pageSize := c.DefaultQuery("page_size", "20")
+	userID := c.Query("user_id")
+	serverID := c.Query("server_id")
+	eventType := c.Query("event_type")
+	startTime := c.Query("start_time")
+	endTime := c.Query("end_time")
+
+	// 调用service层
+	err := service.GetVPNLogsService(page, pageSize, userID, serverID, eventType, startTime, endTime, &resp)
+	if err != nil {
+		log.Println("[ERROR] GetVPNLogsHandler:", err)
+		resp.Message = "获取VPN日志失败"
+		resp.Code = proto.OperationFailed
+	}
+
+	c.JSON(http.StatusOK, resp)
+}

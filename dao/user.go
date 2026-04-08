@@ -6,28 +6,33 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"gorm.io/gorm"
+	"log"
 	"user_center/proto"
 )
 
 type User struct {
 	gorm.Model
-	Name       string `gorm:"column:name"`
-	Age        int    `gorm:"column:age"`
-	Email      string `gorm:"column:email"`
-	Password   string `gorm:"column:password"`
-	Gender     string `gorm:"column:gender"`
-	Role       string `gorm:"column:role"`
-	Redis      bool   `gorm:"column:redis"`
-	Run        bool   `gorm:"column:run"`
-	Upload     bool   `gorm:"column:upload"`
-	VideoFunc  bool   `gorm:"column:video_func"`  //视频功能
-	DeviceFunc bool   `gorm:"column:device_func"` //设备功能
-	CIDFunc    bool   `gorm:"column:cid_func"`    //持续集成功能
-	Avatar     string `gorm:"column:avatar"`
-	CreateTime string `gorm:"column:create_time"`
-	QQ         int64  `gorm:"column:qq"`
-	QQOpenID   string `gorm:"column:qq_openid"`
-	UpdateTime string `gorm:"column:update_time"`
+	Type                     int    `gorm:"column:type" json:"type"` //类型用户组或用户，用户组1， 用户初始值0
+	Prev                     int    `gorm:"column:prev" json:"prev"` //所属用户组，0为不属于
+	Name                     string `gorm:"column:name"`
+	Age                      int    `gorm:"column:age"`
+	Email                    string `gorm:"column:email"`
+	Password                 string `gorm:"column:password"`
+	Gender                   string `gorm:"column:gender"`
+	Role                     string `gorm:"column:role"`
+	Redis                    int    `gorm:"column:redis"`
+	Run                      int    `gorm:"column:run"`
+	Upload                   int    `gorm:"column:upload"`
+	VideoFunc                int    `gorm:"column:video_func"`  //视频功能
+	DeviceFunc               int    `gorm:"column:device_func"` //设备功能
+	CIDFunc                  int    `gorm:"column:cid_func"`    //持续集成功能, 0为无效， -1为false, 1为true
+	Avatar                   string `gorm:"column:avatar"`
+	PasswordNeedSecondAuth   int    `gorm:"column:password_need_second_auth" json:"password_need_second_auth"`
+	ThirdPartyNeedSecondAuth int    `gorm:"column:third_party_need_second_auth" json:"third_party_need_second_auth"`
+	CodeNeedSecondAuth       int    `gorm:"column:code_need_second_auth" json:"code_need_second_auth"`
+	AISecondAuth             int    `json:"ai_second_auth" column:"ai_second_auth"`
+	LoginAddressInfo         string `gorm:"column:login_address_info" json:"login_address_info,omitempty"`
+	LoginDeviceInfo          string `gorm:"column:login_device_info" json:"login_device_info,omitempty"`
 }
 
 // 存储第三方统一信息
@@ -42,8 +47,28 @@ type ThirdPartyUserInfo struct {
 	ThirdPartyUserUrl    string `json:"third_party_user_url"`    // 第三方用户主页,可选
 }
 
+// 存储otp密钥信息
+type TOTPSecretInfo struct {
+	gorm.Model
+	UserID    int    `gorm:"column:user_id" json:"user_id"` // 用户ID
+	Type      int    `gorm:"column:type" json:"type"`       //0,totp;1,hotp
+	Secret    string `gorm:"column:secret" json:"secret"`
+	Period    int    `gorm:"column:period" json:"period"`
+	Length    int    `gorm:"column:length" json:"length"`
+	Algorithm int    `gorm:"column:algorithm" json:"algorithm"`
+}
+
 func CreateUser(name, password, email, gender string, age int) uint {
 	user := User{Name: name, Email: email, Password: password, Gender: gender, Age: age}
+	res := DB.Create(&user)
+	if res.Error != nil {
+		return 0
+	}
+	return user.ID
+}
+
+func CreateUserBaseInfo(name, password, email string, prev uint) uint {
+	user := User{Name: name, Email: email, Password: password, Prev: int(prev)}
 	res := DB.Create(&user)
 	if res.Error != nil {
 		return 0
@@ -57,6 +82,12 @@ func DeleteUserByID(id int) int {
 		return 0
 	}
 	return id
+}
+
+func DeleteUserByIDV2(id int) error {
+	db2 := GetDB()
+	res := db2.Delete(&User{}, id)
+	return res.Error
 }
 
 func FindUserByID(id int) []User {
@@ -77,9 +108,18 @@ func FindUserByUserID(id int) User {
 	return user
 }
 
+func GetAllDefaultUsers() (*[]proto.UserDefaultInfo, error) {
+	db2 := GetDB()
+	var userInfo []proto.UserDefaultInfo
+	err := db2.Table("users").
+		Select("users.id, users.type, users.prev, users.name").
+		Where("deleted_at is null").
+		Find(&userInfo).Error
+	return &userInfo, err
+}
+
 func FindUserByName(name string) User {
 	var user User
-	fmt.Println("name:", name)
 	DB.Where("name = ?", name).First(&user)
 	return user
 }
@@ -91,6 +131,13 @@ func FindUserByNameLike(name string) []User {
 	return users
 }
 
+func FindUserGroup() []User {
+	var users []User
+	//不查询密码
+	DB.Where("type > 0").Find(&users)
+	return users
+}
+
 func FindUserByEmail(email string) User {
 	var user User
 	DB.Where("email = ?", email).First(&user)
@@ -99,6 +146,24 @@ func FindUserByEmail(email string) User {
 
 func UpdateUserByID(id int, name, password, email string) {
 	DB.Model(&User{}).Where("id = ?", id).Updates(User{Name: name, Password: password, Email: email})
+}
+
+func UpdateUserByIDV4(id uint, user *User) {
+	db2 := GetDB()
+	db2.Model(&User{}).Where("id = ?", id).Updates(user)
+}
+
+func UpdateUserPrev(id uint, prev uint) error {
+	db2 := GetDB()
+	res := db2.Model(&User{}).Where("id = ?", id).Update("prev", prev)
+	return res.Error
+
+}
+
+func AddUserGroup(user *User) error {
+	db2 := GetDB()
+	res := db2.Model(&User{}).Create(user)
+	return res.Error
 }
 
 // 管理员修改用户信息
@@ -116,7 +181,12 @@ func UpdateUserByID2(id int, req proto.UpdateUserInfoReq) error {
 	updateData["Avatar"] = req.Avatar
 	updateData["Gender"] = req.Gender
 	updateData["QQ"] = req.QQ
-	res := DB.Model(&User{}).Where("id =?", id).Updates(updateData)
+	updateData["code_need_second_auth"] = req.CodeNeedSecondAuth
+	updateData["password_need_second_auth"] = req.PasswordNeedSecondAuth
+	updateData["third_party_need_second_auth"] = req.ThirdPartyNeedSecondAuth
+	updateData["ai_second_auth"] = req.AISecondAuth
+	db := GetDB()
+	res := db.Model(&User{}).Where("id =?", id).Updates(updateData)
 	if res.Error != nil {
 		return res.Error
 	}
@@ -125,7 +195,8 @@ func UpdateUserByID2(id int, req proto.UpdateUserInfoReq) error {
 
 // 用户修改自己的信息
 func UpdateUserByID3(id int, req proto.UpdateUserInfoReq) error {
-	res := DB.Model(&User{}).Where("id = ?", id).Updates(User{Name: req.Username, Age: req.Age, Avatar: req.Avatar, Gender: req.Gender, QQ: req.QQ})
+	db := GetDB()
+	res := db.Model(&User{}).Where("id = ?", id).Updates(User{Name: req.Username, Age: req.Age, Avatar: req.Avatar, Gender: req.Gender, PasswordNeedSecondAuth: req.PasswordNeedSecondAuth, CodeNeedSecondAuth: req.CodeNeedSecondAuth, ThirdPartyNeedSecondAuth: req.ThirdPartyNeedSecondAuth, AISecondAuth: req.AISecondAuth})
 	return res.Error
 }
 
@@ -208,14 +279,20 @@ func FindUserNum() int64 {
 // 根据用户id获取第三方平台信息
 func FindThirdPartyUserInfoByUserID(userID int) []ThirdPartyUserInfo {
 	var thirdPartyUserInfos []ThirdPartyUserInfo
-	DB.Where("user_id = ?", userID).Find(&thirdPartyUserInfos)
+	res := DB.Where("user_id = ?", userID).Find(&thirdPartyUserInfos)
+	if res.Error != nil {
+		log.Println("FindThirdPartyUserInfoByUserID error:", res.Error, "\tuserID:", userID)
+	}
 	return thirdPartyUserInfos
 }
 
 // 根据平台用户id获取信息
 func FindThirdPartyUserInfoByThirdPartyID(thirdPartyID string) []ThirdPartyUserInfo {
 	var thirdPartyUserInfo []ThirdPartyUserInfo
-	DB.Where("third_party_id = ?", thirdPartyID).First(&thirdPartyUserInfo)
+	res := DB.Where("third_party_id = ?", thirdPartyID).First(&thirdPartyUserInfo)
+	if res.Error != nil {
+		log.Println("FindThirdPartyUserInfoByThirdPartyID error:", res.Error, "\tthirdPartyID:", thirdPartyID)
+	}
 	return thirdPartyUserInfo
 }
 
@@ -330,4 +407,118 @@ func DeleteUserUIConfigInfo(userID int) error {
 		return err
 	}
 	return nil
+}
+
+// 根据用户id数组获取用户基础信息
+func FindBaseUserInfoByIDs(ids []int) []proto.BaseUserInfo {
+	var res []proto.BaseUserInfo
+	var db *gorm.DB
+	if proto.Config.SERVER_SQL_LOG {
+		db = DB.Debug()
+	} else {
+		db = DB
+	}
+	err := db.Find(&res, "id in ?", ids).Limit(1000)
+	if err.Error != nil {
+		log.Println("FindBaseUserInfoByIDs error:", err.Error, "ids:", ids)
+		return res
+	}
+	return res
+}
+
+// 更新用户的地址登录信息
+func UpdateUserLoginAddressInfo(id int, loginAddress string) error {
+	var db *gorm.DB
+	if proto.Config.SERVER_SQL_LOG {
+		db = DB.Debug()
+	} else {
+		db = DB
+	}
+	res := db.Exec("UPDATE users SET login_address_info = ? WHERE id = ?", loginAddress, id)
+	return res.Error
+}
+
+// 更新用户登录设备信息
+func UpdateUserLoginDeviceInfo(id int, loginDevice string) error {
+	var db *gorm.DB
+	if proto.Config.SERVER_SQL_LOG {
+		db = DB.Debug()
+	} else {
+		db = DB
+	}
+	res := db.Exec("UPDATE users SET login_device_info = ? WHERE id = ?", loginDevice, id)
+	return res.Error
+}
+
+func UpdateUserLoginAddressAndDeviceInfo(id int, loginDevice string, addressInfo string) error {
+	var db *gorm.DB
+	if proto.Config.SERVER_SQL_LOG {
+		db = DB.Debug()
+	} else {
+		db = DB
+	}
+	res := db.Exec("UPDATE users SET login_device_info = ?, login_address_info = ? WHERE id = ?", loginDevice, addressInfo, id)
+	return res.Error
+}
+
+func FindUserTOTPSecretByUserID(user_id uint) TOTPSecretInfo {
+	var secret TOTPSecretInfo
+	var db *gorm.DB
+	if proto.Config.SERVER_SQL_LOG {
+		db = DB.Debug()
+	} else {
+		db = DB
+	}
+	db.Where("user_id = ?", user_id).Find(&secret)
+	return secret
+}
+
+func InsertUserTOTPSecret(user_id int, secret string, otp_type int) error {
+	var db *gorm.DB
+	if proto.Config.SERVER_SQL_LOG {
+		db = DB.Debug()
+	} else {
+		db = DB
+	}
+	totp_secret := TOTPSecretInfo{UserID: user_id, Secret: secret, Period: proto.TOTP_PERIOD, Length: proto.TOTP_CODE_LENGTH, Algorithm: int(proto.TOTP_SECRET_ALGORITHM), Type: otp_type}
+	res := db.Create(&totp_secret)
+	return res.Error
+}
+
+func DelUserTOTPSecret(user_id uint) error {
+	var db *gorm.DB
+	if proto.Config.SERVER_SQL_LOG {
+		db = DB.Debug()
+	} else {
+		db = DB
+	}
+	res := db.Where("deleted_at IS NULL and user_id = ? and type = 0 ", user_id).Delete(&TOTPSecretInfo{})
+	return res.Error
+}
+
+func DelUserHOTPSecret(user_id uint) error {
+	var db *gorm.DB
+	if proto.Config.SERVER_SQL_LOG {
+		db = DB.Debug()
+	} else {
+		db = DB
+	}
+	res := db.Where("deleted_at IS NULL and type = 1 and user_id = ?", user_id).Delete(&TOTPSecretInfo{})
+	return res.Error
+}
+
+func GetDB() *gorm.DB {
+	var db *gorm.DB
+	if proto.Config.SERVER_SQL_LOG {
+		db = DB.Debug()
+	} else {
+		db = DB
+	}
+	return db
+}
+
+func DelAllUserTOTPSecret() error {
+	db := GetDB()
+	res := db.Where("deleted_at IS NULL").Delete(&TOTPSecretInfo{})
+	return res.Error
 }

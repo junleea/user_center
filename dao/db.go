@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"log"
@@ -14,6 +15,40 @@ import (
 	"time"
 	"user_center/proto"
 )
+
+// VPNAuthUserDPInfoModel VPN用户连接信息表（不存储敏感信息）
+type VPNAuthUserDPInfoModel struct {
+	gorm.Model
+	UserID         uint   `gorm:"index;not null"`
+	UserName       string `gorm:"size:100"`
+	PrivateIPv4    string `gorm:"size:50"`
+	PrivateIPv6    string `gorm:"size:50"`
+	UUID           string `gorm:"index;size:100;not null"`
+	LastUpdateTime int64  `gorm:"not null"`
+	ServerID       string `gorm:"index;size:100;not null"`
+	HostInfo       string `gorm:"type:text"` // 存储主机信息JSON
+}
+
+// VPNEventType VPN事件类型
+type VPNEventType int
+
+const (
+	VPNEventLogin  VPNEventType = 1 // 登录
+	VPNEventLogout VPNEventType = 2 // 登出
+	VPNEventKick   VPNEventType = 3 // 踢出
+	VPNEventHeartbeat VPNEventType = 4 // 心跳
+)
+
+// VPNEventLog VPN事件日志表
+type VPNEventLog struct {
+	gorm.Model
+	VPNAuthUserID uint         `gorm:"index;not null"` // 关联VPNAuthUserDPInfoModel的ID
+	Event         VPNEventType `gorm:"index;not null"` // 事件类型
+	EventTime     int64        `gorm:"not null"`       // 事件时间
+	ServerID      string       `gorm:"index;size:100"` // 服务器ID
+	UserID        uint         `gorm:"index;not null"` // 用户ID
+	Remark        string       `gorm:"size:255"`       // 备注
+}
 
 var DB *gorm.DB
 
@@ -34,22 +69,117 @@ func Init() error {
 		db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
 			Logger: logger,
 		})
+		log.Println("Using MySQL database with DSN:", dsn)
 	} else if proto.Config.DB == 1 {
 		dsn = proto.Config.PG_DSN
 		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
 			Logger: logger,
 		})
+		log.Println("Using PostgreSQL database with DSN:", dsn)
+	} else if proto.Config.DB == 2 { //sqlite
+		dsn = proto.Config.SQLITE_FILE
+		db, err = gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	}
 
 	if err != nil {
 		panic("failed to connect database")
 		return err
 	}
-	err = db.AutoMigrate(&User{})
+	err = db.AutoMigrate(&User{}) // 自动迁移，创建表，如果表已经存在，会自动更新表结构，不会删除表,只会创建不存在的表
 	if err != nil {
 		fmt.Println("user table:", err)
 		return err
-	} // 自动迁移，创建表，如果表已经存在，会自动更新表结构，不会删除表,只会创建不存在的表
+	} else {
+		log.Println("User table migrated successfully")
+	}
+
+	err = db.AutoMigrate(&ThirdPartyUserInfo{})
+	if err != nil {
+		log.Println("third party user info table:", err)
+		return err
+	} else {
+		log.Println("ThirdPartyUserInfo table migrated successfully")
+	}
+
+	err = db.AutoMigrate(&proto.Secret{})
+	if err != nil {
+		log.Println("secret table:", err)
+		return err
+	} else {
+		log.Println("Secret table migrated successfully")
+	}
+
+	err = db.AutoMigrate(&proto.LocalIPDataBase{})
+	if err != nil {
+		log.Println("local ip db table:", err)
+		return err
+	} else {
+		log.Println("local ip db table migrated successfully")
+	}
+
+	err = db.AutoMigrate(&TOTPSecretInfo{})
+	if err != nil {
+		log.Println("totp secret info db table:", err)
+		return err
+	} else {
+		log.Println("totp secret info db table migrated successfully")
+	}
+
+	err = db.AutoMigrate(&proto.PermissionPolicy{})
+	if err != nil {
+		log.Println("permission policy info db table:", err)
+		return err
+	} else {
+		log.Println("permission policy  db table migrated successfully")
+	}
+
+	err = db.AutoMigrate(&proto.UserPolicyInfo{})
+	if err != nil {
+		log.Println("permission policy user info db table:", err)
+		return err
+	} else {
+		log.Println("permission policy user db table migrated successfully")
+	}
+
+	err = db.AutoMigrate(&proto.UserModelPolicy{})
+	if err != nil {
+		log.Println("user model policy user info db table:", err)
+		return err
+	} else {
+		log.Println("user model policy user db table migrated successfully")
+	}
+
+	err = db.AutoMigrate(&proto.MyVPNServerConfig{})
+	if err != nil {
+		log.Println("my vpn server conf db table:", err)
+		return err
+	} else {
+		log.Println("my vpn server conf db table migrated successfully")
+	}
+
+	err = db.AutoMigrate(&proto.VPNPolicy{})
+	if err != nil {
+		log.Println("my vpn server policy db table:", err)
+		return err
+	} else {
+		log.Println("my vpn server policy db table migrated successfully")
+	}
+
+	err = db.AutoMigrate(&VPNAuthUserDPInfoModel{})
+	if err != nil {
+		log.Println("vpn auth user dp info table:", err)
+		return err
+	} else {
+		log.Println("VPN auth user dp info table migrated successfully")
+	}
+
+	err = db.AutoMigrate(&VPNEventLog{})
+	if err != nil {
+		log.Println("vpn event log table:", err)
+		return err
+	} else {
+		log.Println("VPN event log table migrated successfully")
+	}
 
 	DB = db
 	return err
@@ -58,7 +188,7 @@ func Init() error {
 func Close() {
 	sqlDB, err := DB.DB()
 	if err != nil {
-		panic("failed to connect database")
+		panic("close database failed: " + err.Error())
 	}
 	sqlDB.Close()
 }
