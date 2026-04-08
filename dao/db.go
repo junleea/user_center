@@ -16,6 +16,40 @@ import (
 	"user_center/proto"
 )
 
+// VPNAuthUserDPInfoModel VPN用户连接信息表（不存储敏感信息）
+type VPNAuthUserDPInfoModel struct {
+	gorm.Model
+	UserID         uint   `gorm:"index;not null"`
+	UserName       string `gorm:"size:100"`
+	PrivateIPv4    string `gorm:"size:50"`
+	PrivateIPv6    string `gorm:"size:50"`
+	UUID           string `gorm:"index;size:100;not null"`
+	LastUpdateTime int64  `gorm:"not null"`
+	ServerID       string `gorm:"index;size:100;not null"`
+	HostInfo       string `gorm:"type:text"` // 存储主机信息JSON
+}
+
+// VPNEventType VPN事件类型
+type VPNEventType int
+
+const (
+	VPNEventLogin  VPNEventType = 1 // 登录
+	VPNEventLogout VPNEventType = 2 // 登出
+	VPNEventKick   VPNEventType = 3 // 踢出
+	VPNEventHeartbeat VPNEventType = 4 // 心跳
+)
+
+// VPNEventLog VPN事件日志表
+type VPNEventLog struct {
+	gorm.Model
+	VPNAuthUserID uint         `gorm:"index;not null"` // 关联VPNAuthUserDPInfoModel的ID
+	Event         VPNEventType `gorm:"index;not null"` // 事件类型
+	EventTime     int64        `gorm:"not null"`       // 事件时间
+	ServerID      string       `gorm:"index;size:100"` // 服务器ID
+	UserID        uint         `gorm:"index;not null"` // 用户ID
+	Remark        string       `gorm:"size:255"`       // 备注
+}
+
 var DB *gorm.DB
 
 func Init() error {
@@ -129,6 +163,22 @@ func Init() error {
 		return err
 	} else {
 		log.Println("my vpn server policy db table migrated successfully")
+	}
+
+	err = db.AutoMigrate(&VPNAuthUserDPInfoModel{})
+	if err != nil {
+		log.Println("vpn auth user dp info table:", err)
+		return err
+	} else {
+		log.Println("VPN auth user dp info table migrated successfully")
+	}
+
+	err = db.AutoMigrate(&VPNEventLog{})
+	if err != nil {
+		log.Println("vpn event log table:", err)
+		return err
+	} else {
+		log.Println("VPN event log table migrated successfully")
 	}
 
 	DB = db

@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"errors"
+	"gorm.io/gorm"
 	"log"
 	"net"
 	"sync"
@@ -846,4 +847,164 @@ func HandleReceiveDPServerDataInfoService(req *proto.VPNDPServerEvent, user *dao
 	}
 	server.VPNStatus = req.DPServerStatus.GetInfo()
 	log.Println("[INFO] receive dp server msg op code:", req.OpCode, " update status success!")
+}
+
+// VPNLogResponse 日志响应结构
+type VPNLogResponse struct {
+	Total int64 `json:"total"`
+	List  []struct {
+		ID             uint                     `json:"id"`
+		UserID         uint                     `json:"user_id"`
+		UserName       string                   `json:"user_name"`
+		PrivateIPv4    string                   `json:"private_ipv4"`
+		PrivateIPv6    string                   `json:"private_ipv6"`
+		UUID           string                   `json:"uuid"`
+		LastUpdateTime int64                    `json:"last_update_time"`
+		ServerID       string                   `json:"server_id"`
+		HostInfo       *proto.VPNClientHostInfo `json:"host_info,omitempty"`
+		Events         []struct {
+			ID         uint      `json:"id"`
+			Event      int       `json:"event"`
+			EventTime  int64     `json:"event_time"`
+			Remark     string    `json:"remark,omitempty"`
+			CreatedAt  time.Time `json:"created_at"`
+		} `json:"events,omitempty"`
+		CreatedAt time.Time `json:"created_at"`
+	} `json:"list"`
+	Page     int `json:"page"`
+	PageSize int `json:"page_size"`
+}
+
+func GetVPNLogsService(page, pageSize, userID, serverID, eventType, startTime, endTime string, resp *proto.GenerateResp) error {
+	// 转换参数
+	pageInt, _ := strconv.Atoi(page)
+	pageSizeInt, _ := strconv.Atoi(pageSize)
+	if pageInt < 1 {
+		pageInt = 1
+	}
+	if pageSizeInt < 1 || pageSizeInt > 100 {
+		pageSizeInt = 20
+	}
+
+	offset := (pageInt - 1) * pageSizeInt
+
+	// 构建查询
+	db := dao.DB.Model(&dao.VPNAuthUserDPInfoModel{}).Order("created_at desc")
+
+	// 添加过滤条件
+	if userID != "" {
+		uid, _ := strconv.Atoi(userID)
+		if uid > 0 {
+			db = db.Where("user_id = ?", uid)
+		}
+	}
+	if serverID != "" {
+		db = db.Where("server_id = ?", serverID)
+	}
+
+	// 统计总数
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return err
+	}
+
+	// 查询用户连接信息
+	var authUsers []dao.VPNAuthUserDPInfoModel
+	if err := db.Offset(offset).Limit(pageSizeInt).Find(&authUsers).Error; err != nil {
+		return err
+	}
+
+	// 构建响应
+	var respData VPNLogResponse
+	respData.Total = total
+	respData.Page = pageInt
+	respData.PageSize = pageSizeInt
+
+	for _, authUser := range authUsers {
+		item := struct {
+			ID             uint                     `json:"id"`
+			UserID         uint                     `json:"user_id"`
+			UserName       string                   `json:"user_name"`
+			PrivateIPv4    string                   `json:"private_ipv4"`
+			PrivateIPv6    string                   `json:"private_ipv6"`
+			UUID           string                   `json:"uuid"`
+			LastUpdateTime int64                    `json:"last_update_time"`
+			ServerID       string                   `json:"server_id"`
+			HostInfo       *proto.VPNClientHostInfo `json:"host_info,omitempty"`
+			Events         []struct {
+				ID         uint      `json:"id"`
+				Event      int       `json:"event"`
+				EventTime  int64     `json:"event_time"`
+				Remark     string    `json:"remark,omitempty"`
+				CreatedAt  time.Time `json:"created_at"`
+			} `json:"events,omitempty"`
+			CreatedAt time.Time `json:"created_at"`
+		}{
+			ID:             authUser.ID,
+			UserID:         authUser.UserID,
+			UserName:       authUser.UserName,
+			PrivateIPv4:    authUser.PrivateIPv4,
+			PrivateIPv6:    authUser.PrivateIPv6,
+			UUID:           authUser.UUID,
+			LastUpdateTime: authUser.LastUpdateTime,
+			ServerID:       authUser.ServerID,
+			CreatedAt:      authUser.CreatedAt,
+		}
+
+		// 解析HostInfo
+		if authUser.HostInfo != "" {
+			var hostInfo proto.VPNClientHostInfo
+			if err := json.Unmarshal([]byte(authUser.HostInfo), &hostInfo); err == nil {
+				item.HostInfo = &hostInfo
+			}
+		}
+
+		// 查询关联事件
+		eventQuery := dao.DB.Model(&dao.VPNEventLog{}).Where("vpn_auth_user_id = ?", authUser.ID)
+		if eventType != "" {
+			et, _ := strconv.Atoi(eventType)
+			if et > 0 {
+				eventQuery = eventQuery.Where("event = ?", et)
+			}
+		}
+		if startTime != "" {
+			st, _ := strconv.ParseInt(startTime, 10, 64)
+			if st > 0 {
+				eventQuery = eventQuery.Where("event_time >= ?", st)
+			}
+		}
+		if endTime != "" {
+			et, _ := strconv.ParseInt(endTime, 10, 64)
+			if et > 0 {
+				eventQuery = eventQuery.Where("event_time <= ?", et)
+			}
+		}
+
+		var events []dao.VPNEventLog
+		if err := eventQuery.Order("event_time desc").Find(&events).Error; err == nil {
+			for _, e := range events {
+				eventItem := struct {
+					ID         uint      `json:"id"`
+					Event      int       `json:"event"`
+					EventTime  int64     `json:"event_time"`
+					Remark     string    `json:"remark,omitempty"`
+					CreatedAt  time.Time `json:"created_at"`
+				}{
+					ID:        e.ID,
+					Event:     int(e.Event),
+					EventTime: e.EventTime,
+					Remark:    e.Remark,
+					CreatedAt: e.CreatedAt,
+				}
+				item.Events = append(item.Events, eventItem)
+			}
+		}
+
+		respData.List = append(respData.List, item)
+	}
+
+	resp.Code = proto.SuccessCode
+	resp.Message = "success"
+	resp.Data = respData
+	return nil
 }

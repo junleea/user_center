@@ -31,6 +31,7 @@ func SetUpMyVPNGroup(router *gin.Engine) {
 	myVPNGroup.GET("/get_client_online_users", GetClientOnlineUsers)
 	myVPNGroup.GET("/clients_url", GetMyVPNClientUrl)
 	myVPNGroup.POST("/kick_out_user", KickOutUser)
+	myVPNGroup.GET("/get_vpn_logs", GetVPNLogsHandler) // 获取VPN日志，管理员权限
 
 	myVPNGroup.GET("/server_ws", DPServerConnectWSHandler) //vpn dp服务器与控制服务器实时通信使用
 	myVPNGroup.GET("/client_ws", VPNClientConnectWSHandler)
@@ -382,6 +383,40 @@ func GetVPNAddressPoolHandler(c *gin.Context) {
 	if err != nil {
 		log.Println("[ERROR] SetVPNPoolHandler:", err)
 		resp.Message = "获取失败"
+		resp.Code = proto.OperationFailed
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func GetVPNLogsHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	requestID, _ := c.Get("request_id")
+	resp.RequestID = requestID.(string)
+
+	// 仅管理员可访问
+	if user.Role != proto.USER_IS_ADMIN {
+		resp.Code = proto.PermissionDenied
+		resp.Message = "无权限"
+		c.JSON(http.StatusOK, resp)
+		return
+	}
+
+	// 获取参数
+	page := c.DefaultQuery("page", "1")
+	pageSize := c.DefaultQuery("page_size", "20")
+	userID := c.Query("user_id")
+	serverID := c.Query("server_id")
+	eventType := c.Query("event_type")
+	startTime := c.Query("start_time")
+	endTime := c.Query("end_time")
+
+	// 调用service层
+	err := service.GetVPNLogsService(page, pageSize, userID, serverID, eventType, startTime, endTime, &resp)
+	if err != nil {
+		log.Println("[ERROR] GetVPNLogsHandler:", err)
+		resp.Message = "获取VPN日志失败"
 		resp.Code = proto.OperationFailed
 	}
 
