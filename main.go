@@ -1,13 +1,11 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt"
-	"github.com/google/uuid"
-	"github.com/robfig/cron/v3"
 	"log"
 	"net/http"
 	"os"
@@ -19,6 +17,11 @@ import (
 	"user_center/proto"
 	"user_center/service"
 	"user_center/worker"
+
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt"
+	"github.com/google/uuid"
+	"github.com/robfig/cron/v3"
 )
 
 func main() {
@@ -64,7 +67,47 @@ func main() {
 	//读取配置文件，设置系统
 	ReadConfigToSetSystem()
 	initVPNConfig()
+	go StartListenCertAuthHttpServe()
 	r.Run(":" + proto.Config.SERVER_PORT) // listen and serve on 0.0.0.0:8083
+}
+
+func StartListenCertAuthHttpServe() {
+	serverCert, err := tls.LoadX509KeyPair(proto.Config.CertCerPath, proto.Config.CertKeyPath)
+	if err != nil {
+		log.Fatalf("Failed to load server certificate: %v", err)
+	}
+	caCertPool := x509.NewCertPool()
+	caCert, err := os.ReadFile(proto.Config.CertCaPath)
+	if err != nil {
+		log.Fatalf("Failed to read CA certificate: %v", err)
+	}
+	if !caCertPool.AppendCertsFromPEM(caCert) {
+		log.Fatalf("Failed to append CA certificate")
+	}
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientCAs:    caCertPool,
+		MinVersion:   tls.VersionTLS12,
+	}
+
+	// 创建HTTP服务器
+	mux := http.NewServeMux()
+	mux.HandleFunc("/cert_auth", HandleCertAuth)
+
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "HTTPS Server with Client Certificate Authentication\n")
+		fmt.Fprintf(w, "Visit /cert_auth for authenticated endpoint\n")
+	})
+
+	httpServer := &http.Server{
+		Addr:      ":" + proto.Config.CertAuthPort,
+		Handler:   mux,
+		TLSConfig: tlsConfig,
+	}
+	log.Fatal(httpServer.ListenAndServeTLS("", ""))
 }
 
 func initVPNConfig() {
@@ -91,6 +134,61 @@ func init() {
 	//设置不需认证api
 	proto.InitAppendDontNeedAuthAPI()
 	//readConfig()
+}
+
+func HandleCertAuth(w http.ResponseWriter, r *http.Request) {
+	if len(r.TLS.PeerCertificates) > 0 {
+		clientCert := r.TLS.PeerCertificates[0]
+		log.Println("[INFO] client certificate:", clientCert.Subject.String())
+		state_ := r.URL.Query().Get("state")
+		if state_ == "" {
+			w.WriteHeader(http.StatusBadRequest)
+		}else{
+
+			//获取user
+			stateStr := worker.GetRedis(state_)
+			if stateStr == "" {
+				log.Println("[INFO] state isn't exist")
+				w.WriteHeader(http.StatusBadRequest)
+			}else{
+				var state proto.SecondAuthServerSaveState
+				_ = json.Unmarshal([]byte(stateStr), &state)
+				user := service.GetUserByIDWithCache(state.UserId)
+				//证书认证
+				
+				accessToken, refreshToken, err2 := service.GenerateAuthTokens(user)
+				var resp proto.GenerateResp
+				if err2 != nil {
+					resp.Code = proto.OperationFailed
+					resp.Message = "生成TOKEN错误"
+				} else {
+					authResponse := proto.AuthResponse{
+						AccessToken:  accessToken,
+						RefreshToken: refreshToken,
+						UserID:       user.ID,
+						ExpireIn:     time.Now().Add(proto.AccessTokenDuration).Unix(), // 令牌过期时间
+						Username:     user.Name,
+						Email:        user.Email,
+					}
+					resp.Code = proto.SuccessCode
+					resp.Message = "success"
+					resp.Data = authResponse
+					worker.DelKV(state_) //成功则删除，只能用一次
+				}
+				w.WriteHeader(http.StatusOK)
+				err := json.NewEncoder(w).Encode(resp)
+				if err != nil {
+					log.Println("[ERROR] encode response err:", err)
+					return
+				}
+			}
+		}
+
+
+	} else {
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprintf(w, "No client certificate provided\n")
+	}
 }
 
 // func readConfig() {

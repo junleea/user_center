@@ -300,8 +300,9 @@ type GetClientConfigOnlineResponse struct {
 	TCPPort      int    `json:"tcp_port" form:"tcp_port"` /*dp, tcp port*/
 	Protocol     int    `json:"protocol" form:"protocol"` /* 1: tcp, 2: udp */
 	IPType       int    `json:"ip_type" form:"ip_type"`   /* 4, 6, 46 */
-	PrivateIPv4  string `json:"private_ipv4" form:"private_ipv4"`
+	DNSServer    string `json:"dns_server" form:"dns_server"`
 	IPv4Prefix   int    `json:"ipv4_prefix" form:"ipv4_prefix"`
+	PrivateIPv4  string `json:"private_ipv4" form:"private_ipv4"`
 	PrivateIPv6  string `json:"private_ipv6" form:"private_ipv6"`
 	IPv6Prefix   int    `json:"ipv6_prefix" form:"ipv6_prefix"`
 	IPv4MTU      int    `json:"ipv4_mtu" form:"ipv4_mtu"`

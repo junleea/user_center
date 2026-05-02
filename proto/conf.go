@@ -3,10 +3,11 @@ package proto
 import (
 	"encoding/json"
 	"fmt"
-	"gorm.io/gorm"
 	"log"
 	"os"
 	"sync"
+
+	"gorm.io/gorm"
 )
 
 var Config ConfigStruct
@@ -90,6 +91,10 @@ type ConfigStruct struct {
 	MONGO_DATABASE            string           `json:"mongo_database"`
 	SlowQueryThreshold        int              `json:"slow_query_threshold"` // 慢查询阈值，单位ms
 	KV_TYPE                   int              `json:"kv_type"`              //内存存储方式，1,redis, 2,badger
+	CertAuthPort              string           `json:"cert_auth_port"`       //cert auth port
+	CertCerPath               string           `json:"cert_cer_path"`
+	CertKeyPath               string           `json:"cert_key_path"`
+	CertCaPath                string           `json:"cert_ca_path"`
 	BADGER_DATA_PATH          string           `json:"badger_data_path"`
 	REDIS_ADDR                string           `json:"redis_addr"`
 	TOKEN_USE_REDIS           bool             `json:"token_use_redis"`
@@ -237,6 +242,7 @@ func DefaultConfig() {
 	Config.MYSQL_DSN = MYSQL_DSN
 	Config.PG_DSN = ""
 	Config.SlowQueryThreshold = 400
+	Config.CertAuthPort = "28443"
 	Config.REDIS_ADDR = REDIS_ADDR
 	Config.TOKEN_USE_REDIS = false
 	Config.REDIS_User_PW = false

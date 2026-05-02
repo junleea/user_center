@@ -576,6 +576,7 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	res.TCPPort = serverConfig.TCPPort
 	res.Protocol = serverConfig.Protocol
 	res.IPType = serverConfig.IPType
+	res.DNSServer = serverConfig.DNSServer
 
 	//获取tunnel
 	tunnel := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeTunnel, serverConfig.Tunnel)
