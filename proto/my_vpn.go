@@ -71,6 +71,7 @@ type VPNRouter struct {
 	IP   string `json:"ip" form:"ip"`
 	/*前缀*/
 	Prefix int `json:"prefix" form:"prefix"`
+	Metric int `json:"metric" form:"metric"` /*默认35*/
 }
 
 type StringValue struct {
