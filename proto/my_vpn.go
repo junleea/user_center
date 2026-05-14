@@ -66,12 +66,19 @@ const (
 	VPNClientEventOOpCodeHostInfo = 4 //host info upload
 )
 
+const (
+	VPNRouterTypeGlobal = 0 /*全局路由*/
+	VPNRouterTypeUser   = 1 /*用户路由*/
+	VPNRouterTypeGroup  = 2 /*用户组路由*/
+)
+
 type VPNRouter struct {
-	Type int    `json:"type" form:"type"` /*4,6,46*/
-	IP   string `json:"ip" form:"ip"`
-	/*前缀*/
-	Prefix int `json:"prefix" form:"prefix"`
-	Metric int `json:"metric" form:"metric"` /*默认35*/
+	Type         int    `json:"type" form:"type"`                 /*4,6,46*/
+	IP           string `json:"ip" form:"ip"`
+	Prefix       int    `json:"prefix" form:"prefix"`             /*前缀*/
+	Metric       int    `json:"metric" form:"metric"`             /*默认35*/
+	RouterType   int    `json:"router_type" form:"router_type"`   /*路由类型：0-全局路由，1-用户路由，2-用户组路由*/
+	TargetID     int    `json:"target_id" form:"target_id"`       /*目标ID：0-全局，>0-用户ID或用户组ID（根据RouterType区分）*/
 }
 
 type StringValue struct {

@@ -445,6 +445,36 @@ func GetSupportVPNServerList(user *dao.User, resp *proto.GenerateResp) error {
 	return nil
 }
 
+// filterUserRoutes 筛选用户的路由：全局路由 + 用户路由 + 用户所属用户组的路由
+func filterUserRoutes(userID uint, routes []proto.VPNRouter) []proto.VPNRouter {
+	var filteredRoutes []proto.VPNRouter
+
+	// 获取用户信息，包括所属用户组
+	userInfo := dao.FindUserByID2(int(userID))
+
+	for _, route := range routes {
+		// 全局路由：所有用户都有
+		if route.RouterType == proto.VPNRouterTypeGlobal {
+			filteredRoutes = append(filteredRoutes, route)
+			continue
+		}
+
+		// 用户路由：TargetID 等于当前用户ID
+		if route.RouterType == proto.VPNRouterTypeUser && route.TargetID == int(userID) {
+			filteredRoutes = append(filteredRoutes, route)
+			continue
+		}
+
+		// 用户组路由：TargetID 等于用户所属的用户组ID
+		if route.RouterType == proto.VPNRouterTypeGroup && route.TargetID == userInfo.Prev {
+			filteredRoutes = append(filteredRoutes, route)
+			continue
+		}
+	}
+
+	return filteredRoutes
+}
+
 func GetClientConfigExistService(user *dao.User, resp *proto.GenerateResp, serverID, uuidStr string) {
 	var res proto.GetClientConfigOnlineResponse
 
@@ -457,8 +487,9 @@ func GetClientConfigExistService(user *dao.User, resp *proto.GenerateResp, serve
 		return
 	}
 
-	res.IPv4Router = serverConf.IPv4Router
-	res.IPv6Router = serverConf.IPv6Router
+	// 筛选用户的路由：全局路由 + 用户路由 + 用户所属用户组的路由
+	res.IPv4Router = filterUserRoutes(user.ID, serverConf.IPv4Router)
+	res.IPv6Router = filterUserRoutes(user.ID, serverConf.IPv6Router)
 	res.IPv4MTU = serverConf.IPv4MTU
 	res.IPv6MTU = serverConf.IPv6MTU
 	res.Hash = serverConf.Hash
@@ -565,9 +596,9 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	var poolConfig proto.AddressPoolConfig
 	err = json.Unmarshal([]byte(poolInfo.Value), &poolConfig)
 
-	//客户端配置
-	res.IPv4Router = serverConfig.IPv4Router
-	res.IPv6Router = serverConfig.IPv6Router
+	//客户端配置：筛选用户的路由（全局+用户+用户组）
+	res.IPv4Router = filterUserRoutes(user.ID, serverConfig.IPv4Router)
+	res.IPv6Router = filterUserRoutes(user.ID, serverConfig.IPv6Router)
 	res.ServerID = serverConfig.ServerID
 	res.ServerIP = serverConfig.ServerIP
 	res.ServerIPV6 = vpnOnlineServer.ServerIPV6
