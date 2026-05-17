@@ -394,8 +394,12 @@ func GenerateAuthTokensWithExpire(user dao.User, ExpireIn, RefreshExpireIn int64
 
 	// Store Refresh Token in Redis
 	redisKey := fmt.Sprintf("refresh_token:%d:%s", user.ID, refreshTokenString)
-	if !worker.SetRedisWithExpire(redisKey, "active", proto.RefreshTokenDuration) { // Value can be simple, e.g., "active" or user.ID
-		return "", "", fmt.Errorf("failed to store refresh token in Redis")
+	if proto.Config.TOKEN_USE_REDIS {
+		if !worker.SetRedisWithExpire(redisKey, "active", time.Duration(RefreshExpireIn) * time.Second) { // Value can be simple, e.g., "active" or user.ID
+			return "", "", fmt.Errorf("failed to store refresh token in Redis")
+		}
+	}else{
+		log.Println("Not using Redis for token storage")
 	}
 
 	return accessTokenString, refreshTokenString, nil
@@ -487,7 +491,7 @@ func ValidateRefreshTokenAndCreateNewAccessToken(refreshTokenString string) (new
 
 	// Check if the refresh token exists in Redis
 	redisKey := fmt.Sprintf("refresh_token:%d:%s", userID, refreshTokenString)
-	if !worker.IsContainKey(redisKey) {
+	if !worker.IsContainKey(redisKey) && proto.Config.TOKEN_USE_REDIS {
 		return "", errors.New("refresh token not found in Redis or has expired")
 	}
 
