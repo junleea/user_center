@@ -729,7 +729,10 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	eventLog.SessionID = authUser.UUID
 	eventLog.Event = proto.UserLoginEvent
 
-	dao.CreateMyVPNUserLoginInfo(&eventLog)
+	eventErr := dao.CreateMyVPNUserLoginInfo(&eventLog)
+	if eventErr != nil {
+		log.Println("[ERROR] user:", user.ID, ", uuid:", authUser.UUID, ", create my vpn user login info err:", eventErr)
+	}
 
 	resp.Code = proto.SuccessCode
 	resp.Message = "success"
