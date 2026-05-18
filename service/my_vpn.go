@@ -11,6 +11,7 @@ import (
 	"user_center/dao"
 	"user_center/proto"
 	"user_center/worker"
+	"github.com/gin-gonic/gin"
 
 	"github.com/google/uuid"
 )
@@ -533,7 +534,7 @@ func GetClientConfigExistService(user *dao.User, resp *proto.GenerateResp, serve
 	resp.Data = res
 }
 
-func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID string, hostInfo *proto.VPNClientHostInfo) (err error) {
+func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID string, hostInfo *proto.VPNClientHostInfo, c *gin.Context) (err error) {
 	var res proto.GetClientConfigOnlineResponse
 	var authUser proto.VPNAuthUserDPInfo
 
@@ -717,6 +718,19 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 		GlobalVPNServerAuthUserMap.ServerUserMap[serverID] = &authUserMap_
 	}
 
+	//add online event
+	var eventLog proto.MyVPNUserLoginInfo
+	eventLog.UserID = user.ID
+	eventLog.UserName = user.Name
+	eventLog.ServerID = serverID
+	eventLog.PrivateIP = authUser.PrivateIPv4
+	eventLog.HostID = hostInfo.HostID
+	eventLog.ClientIP = c.ClientIP()
+	eventLog.SessionID = authUser.UUID
+	eventLog.Event = proto.UserLoginEvent
+
+	dao.CreateMyVPNUserLoginInfo(&eventLog)
+
 	resp.Code = proto.SuccessCode
 	resp.Message = "success"
 	resp.Data = res
@@ -785,10 +799,10 @@ func KickOutAllUserService(user *dao.User, serverID string, resp *proto.Generate
 	SendVPNAuthUserMsgToDPServer(proto.DPOpCodeAuthUserDelAll, serverID, nil)
 	resp.Code = proto.SuccessCode
 	resp.Message = "success"
-	return
 }
 
-func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, resp *proto.GenerateResp) {
+
+func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, clientIP string, resp *proto.GenerateResp) {
 	if user.Role != proto.USER_IS_ADMIN {
 		resp.Code = proto.PermissionDenied
 		resp.Message = "permission denied"
@@ -818,6 +832,21 @@ func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, resp *pro
 			ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4(), nil)
 			GlobalAddressPoolAllocatorMap.mutex.Unlock()
 			SendVPNAuthUserMsgToClient(proto.VPNClientOpCodeKickOut, req.ServerID, &user_)
+
+			//add admin kick out event
+			var eventLog proto.MyVPNUserLoginInfo
+			eventLog.UserID = user_.UserID
+			eventLog.UserName = user_.UserName
+			eventLog.ServerID = req.ServerID
+			eventLog.PrivateIP = user_.PrivateIPv4
+			if user_.HostInfo != nil {
+				eventLog.HostID = user_.HostInfo.HostID
+			}
+			eventLog.ClientIP = clientIP
+			eventLog.SessionID = user_.UUID
+			eventLog.Event = proto.VPNAdminKickOutEvent
+
+			dao.CreateMyVPNUserLoginInfo(&eventLog)
 		}
 		resp.Data = len(authUserMap.UserCountMap)
 		// 重置两个map
@@ -845,10 +874,25 @@ func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, resp *pro
 			GlobalAddressPoolAllocatorMap.mutex.Unlock()
 			SendVPNAuthUserMsgToDPServer(proto.DPOpCodeAuthUserDel, req.ServerID, &user_)
 			SendVPNAuthUserMsgToClient(proto.VPNClientOpCodeKickOut, req.ServerID, &user_)
-			
+
+			//add admin kick out event
+			var eventLog proto.MyVPNUserLoginInfo
+			eventLog.UserID = user_.UserID
+			eventLog.UserName = user_.UserName
+			eventLog.ServerID = req.ServerID
+			eventLog.PrivateIP = user_.PrivateIPv4
+			if user_.HostInfo != nil {
+				eventLog.HostID = user_.HostInfo.HostID
+			}
+			eventLog.ClientIP = clientIP
+			eventLog.SessionID = user_.UUID
+			eventLog.Event = proto.VPNAdminKickOutEvent
+
+			dao.CreateMyVPNUserLoginInfo(&eventLog)
+
 			// 从map中删除
 			delete(authUserMap.AuthUserMap, sessionID)
-			
+
 			// 更新用户计数
 			userID := user_.UserID
 			currentCount := authUserMap.UserCountMap[userID]

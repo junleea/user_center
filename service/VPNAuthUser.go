@@ -92,6 +92,20 @@ func CheckOnlineAuthUser() {
 				} else {
 					delete(userMap.UserCountMap, userID)
 				}
+
+				//add timeout kick out event
+				var eventLog proto.MyVPNUserLoginInfo
+				eventLog.UserID = authUser.ID
+				eventLog.UserName = authUser.UserName
+				eventLog.ServerID = serverID
+				eventLog.PrivateIP = authUser.PrivateIPv4
+				if authUser.HostInfo != nil {
+					eventLog.HostID = authUser.HostInfo.HostID
+				}
+				eventLog.SessionID = authUser.UUID
+				eventLog.Event = proto.VPNCientTimeoutKickOutEvent
+
+				dao.CreateMyVPNUserLoginInfo(&eventLog)
 			}
 		}
 		userMap.mutex.Unlock()
@@ -308,9 +322,11 @@ func LogoutOutOnlineAuthUser(req *proto.SetVPNClientStatusReq) bool {
 
 	serverConfig := GetServerConfigByServerID(req.ServerID)
 	success := false
+	var user proto.VPNAuthUserDPInfo
+	var ok bool
 
 	// 直接通过uuid查找用户
-	if user, ok := authUserMap.AuthUserMap[req.UUID]; ok {
+	if user, ok = authUserMap.AuthUserMap[req.UUID]; ok {
 		//释放IP
 		GlobalAddressPoolAllocatorMap.mutex.Lock()
 		ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
@@ -331,6 +347,20 @@ func LogoutOutOnlineAuthUser(req *proto.SetVPNClientStatusReq) bool {
 			delete(authUserMap.UserCountMap, userID)
 		}
 	}
+
+	//add user kick out event
+	var eventLog proto.MyVPNUserLoginInfo
+	eventLog.UserID = user.ID
+	eventLog.UserName = user.UserName
+	eventLog.ServerID = req.ServerID
+	eventLog.PrivateIP = user.PrivateIPv4
+	if user.HostInfo != nil {
+		eventLog.HostID = user.HostInfo.HostID
+	}
+	eventLog.SessionID = user.UUID
+	eventLog.Event = proto.UserLogoutEvent
+
+	dao.CreateMyVPNUserLoginInfo(&eventLog)
 
 	return success
 }

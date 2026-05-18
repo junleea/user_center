@@ -49,7 +49,7 @@ func KickOutUser(c *gin.Context) {
 		resp.Code = proto.ParameterError
 		resp.Message = "invalid parameter: " + err.Error()
 	} else {
-		service.KickOutUserService(&req, &user, &resp)
+		service.KickOutUserService(&req, &user, c.ClientIP(), &resp)
 	}
 
 	c.JSON(http.StatusOK, resp)
@@ -193,7 +193,7 @@ func GetClientConfigHandler(c *gin.Context) {
 		resp.Message = "invalid parameter: " + err.Error()
 	} else {
 		if req.SessionID == "" {
-			err = service.GetClientConfigService(&user, &resp, req.ServerID, req.HostInfo)
+			err = service.GetClientConfigService(&user, &resp, req.ServerID, req.HostInfo, c)
 			if err != nil {
 				log.Println("[ERROR] GetClientConfigHandler:", err)
 				resp.Message = "获取失败"

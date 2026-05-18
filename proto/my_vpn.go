@@ -266,6 +266,25 @@ const (
 	VPNServerConfigTypeTunnel      = 2
 )
 
+const (
+	UserLoginEvent = 1
+	UserLogoutEvent = 2
+	VPNAdminKickOutEvent = 3
+	VPNCientTimeoutKickOutEvent = 4
+)
+/*my vpn user login info*/
+type MyVPNUserLoginInfo struct {
+	gorm.Model
+	UserID    uint   `json:"user_id" form:"user_id"`
+	UserName  string `json:"user_name" form:"user_name"`
+	HostID    string `json:"host_id" form:"host_id"`
+	ServerID  string `json:"server_id" form:"server_id"`
+	SessionID string `json:"session_id" form:"session_id"`
+	ClientIP  string `json:"client_ip" form:"client_ip"`
+	PrivateIP string `json:"private_ip" form:"private_ip"`
+	Event 	uint    `json:"event" form:"event"` /*1: login, 2: logout, */
+}
+
 /*my vpn server config*/
 type MyVPNServerConfig struct {
 	gorm.Model
