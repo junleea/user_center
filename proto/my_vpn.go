@@ -294,6 +294,7 @@ type VPNAuthUserDPInfo struct {
 	VPNDPSecret    string             `json:"vpn_dp_secret,omitempty" form:"vpn_dp_secret"` /*dp secret*/
 	UUID           string             `json:"uuid,omitempty" form:"uuid"`
 	LastUpdateTime int64              `json:"last_update_time,omitempty" form:"last_update_time"`
+	OnlineTime	   int64              `json:"online_time,omitempty" form:"online_time"`
 	HostInfo       *VPNClientHostInfo `json:"host_info,omitempty" form:"host_info"`
 }
 

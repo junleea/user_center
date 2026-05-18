@@ -541,6 +541,7 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	res.UserID = user.ID
 	authUser.UserName = user.Name
 	authUser.UUID = uuid.New().String()
+	authUser.OnlineTime = time.Now().Unix()
 
 	server := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeServer, serverID)
 	if server.ID == 0 {
