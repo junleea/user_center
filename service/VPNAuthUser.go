@@ -95,7 +95,7 @@ func CheckOnlineAuthUser() {
 
 				//add timeout kick out event
 				var eventLog proto.MyVPNUserLoginInfo
-				eventLog.UserID = authUser.ID
+				eventLog.UserID = authUser.UserID
 				eventLog.UserName = authUser.UserName
 				eventLog.ServerID = serverID
 				eventLog.PrivateIP = authUser.PrivateIPv4
