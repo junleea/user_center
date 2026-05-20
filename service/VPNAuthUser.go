@@ -99,6 +99,7 @@ func CheckOnlineAuthUser() {
 				eventLog.UserName = authUser.UserName
 				eventLog.ServerID = serverID
 				eventLog.PrivateIP = authUser.PrivateIPv4
+				eventLog.ClientIP = authUser.ClientIP
 				if authUser.HostInfo != nil {
 					eventLog.HostID = authUser.HostInfo.HostID
 				}
@@ -354,13 +355,15 @@ func LogoutOutOnlineAuthUser(req *proto.SetVPNClientStatusReq) bool {
 	eventLog.UserName = user.UserName
 	eventLog.ServerID = req.ServerID
 	eventLog.PrivateIP = user.PrivateIPv4
+	eventLog.ClientIP = user.ClientIP
 	if user.HostInfo != nil {
 		eventLog.HostID = user.HostInfo.HostID
 	}
 	eventLog.SessionID = user.UUID
 	eventLog.Event = proto.UserLogoutEvent
-
-	dao.CreateMyVPNUserLoginInfo(&eventLog)
+	if user.UserID > 0 {
+		dao.CreateMyVPNUserLoginInfo(&eventLog)
+	}
 
 	return success
 }

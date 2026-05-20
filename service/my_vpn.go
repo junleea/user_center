@@ -543,6 +543,7 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	authUser.UserName = user.Name
 	authUser.UUID = uuid.New().String()
 	authUser.OnlineTime = time.Now().Unix()
+	authUser.ClientIP = c.ClientIP()
 
 	server := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeServer, serverID)
 	if server.ID == 0 {
@@ -677,6 +678,10 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	GlobalVPNServerAuthUserMap.mutex.Lock()
 	defer GlobalVPNServerAuthUserMap.mutex.Unlock()
 
+	hostInfo_ := proto.VPNClientHostInfo{}
+	hostInfo_ = *hostInfo
+	authUser.HostInfo = &hostInfo_
+
 	authUserMap := GlobalVPNServerAuthUserMap.ServerUserMap[serverID]
 	if authUserMap != nil {
 		authUserMap.mutex.Lock()
@@ -705,10 +710,6 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 			AuthUserMap:  make(map[string]proto.VPNAuthUserDPInfo),
 			UserCountMap: make(map[uint]int),
 		}
-
-		hostInfo_ := proto.VPNClientHostInfo{}
-		hostInfo_ = *hostInfo
-		authUser.HostInfo = &hostInfo_
 
 		// 添加到AuthUserMap
 		authUserMap_.AuthUserMap[authUser.UUID] = authUser
@@ -890,9 +891,10 @@ func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, clientIP 
 			eventLog.ClientIP = clientIP
 			eventLog.SessionID = user_.UUID
 			eventLog.Event = proto.VPNAdminKickOutEvent
-
-			dao.CreateMyVPNUserLoginInfo(&eventLog)
-
+			if user_.UserID > 0 {
+				dao.CreateMyVPNUserLoginInfo(&eventLog)
+			}
+			
 			// 从map中删除
 			delete(authUserMap.AuthUserMap, sessionID)
 
