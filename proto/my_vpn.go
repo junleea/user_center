@@ -44,6 +44,7 @@ const (
 	DPMsyServerConfigType = 3
 	DPMsgServerInfo       = 4
 	CPVPNTimeType         = 5 //vpn time download
+	DPMsgServerControlType = 6 //server control
 
 	DPOpCodeAuthUserAdd    = 1
 	DPOpCodeAuthUserDel    = 2
@@ -57,6 +58,7 @@ const (
 
 	DPOpCodeConfigUpdate = 10
 	DPOpCodeServerDel    = 11
+	DPOpCodeRestart       = 12
 )
 
 const (

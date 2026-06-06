@@ -125,6 +125,8 @@ func initVPNConfig() {
 		return
 	}
 	service.MyVPNSecretID.SetID(worker.SecureRandomInt(time.Now().Unix() / 1000)) /*设置初始值1024*/
+
+	service.InitVPNAuthUserMapFromRedis()
 }
 func init() {
 	// 创建cid的目录
@@ -291,9 +293,7 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 		tokenString := c.Request.Header.Get("Authorization")
 		if tokenString != "" {
 			// 如果 tokenString 以 Bearer 开头，则去掉前缀
-			if strings.HasPrefix(tokenString, "Bearer ") {
-				tokenString = strings.TrimPrefix(tokenString, "Bearer ")
-			}
+			tokenString, _ = strings.CutPrefix(tokenString, "Bearer ")
 		} else {
 			tokenString = c.Request.Header.Get("token")
 			if tokenString == "" {

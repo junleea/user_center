@@ -74,17 +74,107 @@ func SetMyVPNServerConfigService(user *dao.User, req *proto.SetServerConfigReque
 		return proto.PermissionDenied, errors.New("permission denied")
 	}
 	var configStr string
-	configByte, _ := json.Marshal(req.Config)
+	restart := false
+	configByte, err := json.Marshal(req.Config)
+	if err != nil {
+		log.Println("[ERROR] SetMyVPNServerConfigService marshal:", err)
+		code = proto.OperationFailed
+		err = errors.New("marshal vpn server config failed")
+		return code, err
+	}
+	originalConf := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeServer, req.ServerID)
+	var originalConfig proto.ServerConfig
+	err = json.Unmarshal([]byte(originalConf.Value), &originalConfig)
+	if err != nil {
+		log.Println("[ERROR] SetMyVPNServerConfigService unmarshal:", err)
+		code = proto.OperationFailed
+		err = errors.New("unmarshal vpn server config failed")
+		return code, err
+	}
+	if originalConfig.IPv4AddressPool != req.Config.IPv4AddressPool || originalConfig.IPv6AddressPool != req.Config.IPv6AddressPool || 
+	  	originalConfig.Protocol != req.Config.Protocol || originalConfig.UDPPort != req.Config.UDPPort || originalConfig.TCPPort != req.Config.TCPPort ||
+		originalConfig.Encryption != req.Config.Encryption {
+		restart = true
+	}
 	configStr = string(configByte)
 	err = dao.UpdateMyVPNServerConfigByTypeAttr(proto.VPNServerConfigTypeServer, req.ServerID, configStr)
-	err = UpdateServerConfigToOnlineInfo(req.Config)
 	if err != nil {
 		log.Println("[ERROR] SetMyVPNServerConfigService:", err)
 		code = proto.OperationFailed
-		err = errors.New("update vpn server config failed")
+		err = errors.New("update store vpn server config failed")
 		return code, err
 	}
+	err = UpdateServerConfigToOnlineInfo(req.Config)
+	if err != nil {
+		log.Println("[ERROR] SetMyVPNServerConfigService online:", err)
+		code = proto.OperationFailed
+		err = errors.New("update vpn server config  online failed")
+		return code, err
+	}
+	if restart == true {
+		// send dp server message to restart
+		SendToDPServerRestartVPNServer(req.ServerID)
+
+		//kickout all user
+		KickoutAllVPNUser(req.ServerID)
+	}
 	return proto.SuccessCode, nil
+}
+
+func SendToDPServerRestartVPNServer(serverID string) {
+	var event proto.VPNDPServerEvent
+	event.MsgType = proto.DPMsgServerControlType
+	event.OpCode = proto.DPOpCodeRestart
+	//加入消息队列
+	key := "vpn_dp_event_" + serverID
+
+	msg, err := json.Marshal(&event)
+
+	if err != nil {
+		log.Println("server id:", serverID, " auth user event to dp server encode err:", err)
+		return
+	}
+
+	worker.Publish(key, string(msg), time.Second*10)
+}
+
+func KickoutAllVPNUser(serverID string) {
+	GlobalVPNServerAuthUserMap.mutex.Lock()
+	defer GlobalVPNServerAuthUserMap.mutex.Unlock()
+	count := 0
+	authUserMap, exist := GlobalVPNServerAuthUserMap.ServerUserMap[serverID]
+	if exist == false {
+		return
+	}
+	serverConfig := GetServerConfigByServerID(serverID)
+	authUserMap.mutex.Lock()
+	defer authUserMap.mutex.Unlock()
+
+	// 踢出所有用户
+	for _, user_ := range authUserMap.AuthUserMap {
+		count++
+		//释放IP
+		GlobalAddressPoolAllocatorMap.mutex.Lock()
+		ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
+		ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4(), nil)
+		GlobalAddressPoolAllocatorMap.mutex.Unlock()
+		SendVPNAuthUserMsgToClient(proto.VPNClientOpCodeKickOut, serverID, &user_)
+
+		//add admin kick out event
+		var eventLog proto.MyVPNUserLoginInfo
+		eventLog.UserID = user_.UserID
+		eventLog.UserName = user_.UserName
+		eventLog.ServerID = serverID
+		eventLog.PrivateIP = user_.PrivateIPv4
+		if user_.HostInfo != nil {
+			eventLog.HostID = user_.HostInfo.HostID
+		}
+		eventLog.SessionID = user_.UUID
+		eventLog.Event = proto.VPNAdminKickOutEvent
+
+		dao.CreateMyVPNUserLoginInfo(&eventLog)
+	}
+	log.Println("kickout all user count:", count)
 }
 
 func GetMyVPNServerConfigService(user *dao.User) (code int, res []proto.ServerConfig, err error) {

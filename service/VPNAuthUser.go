@@ -111,6 +111,36 @@ func CheckOnlineAuthUser() {
 		}
 		userMap.mutex.Unlock()
 	}
+
+	/*store in redis */
+	userInfo, err := json.Marshal(GlobalVPNServerAuthUserMap.ServerUserMap)
+	if err != nil {
+		log.Println("[ERROR] marshal auth user map err:", err)
+	} else {
+		key := "global_vpn_auth_user_map"
+		worker.SetRedisWithExpire(key, string(userInfo), time.Second*30)
+	}
+
+}
+
+func InitVPNAuthUserMapFromRedis() {
+	key := "global_vpn_auth_user_map"
+	var err error
+	result := worker.GetRedis(key)
+	if result == "" {
+		log.Println("[INFO] get vpn auth user map from redis is empty")
+		return
+	}
+	var authUserMap map[string]*VPNAuthUserMap
+	err = json.Unmarshal([]byte(result), &authUserMap)
+	if err != nil {
+		log.Println("[ERROR] unmarshal vpn auth user map from redis err:", err)
+		return
+	}
+	GlobalVPNServerAuthUserMap.mutex.Lock()
+	GlobalVPNServerAuthUserMap.ServerUserMap = authUserMap
+	GlobalVPNServerAuthUserMap.mutex.Unlock()
+	log.Println("[INFO] init vpn auth user map from redis success")
 }
 
 func GetVPNServerOnlineList(user *dao.User, serverID string, resp *proto.GenerateResp) {
