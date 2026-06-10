@@ -41,7 +41,7 @@ func InitAddressPoolToMap() (err error) {
 func UpdateIPAddressPoolToMap(name string, poolConfig proto.AddressPoolConfig) (err error) {
 	ipAllocator, err2 := NewIPAllocator(&poolConfig.IPv4AddressPool, &poolConfig.IPv6AddressPool)
 	if err2 != nil {
-		log.Println("[ERROR] get ip allocator:", name, ", err:", err.Error())
+		log.Println("[ERROR] get ip allocator:", name, ", err:", err2.Error())
 		return nil
 	}
 	GlobalAddressPoolAllocatorMap.mutex.Lock()
