@@ -76,7 +76,8 @@ func CheckOnlineAuthUser() {
 			//释放IP
 			GlobalAddressPoolAllocatorMap.mutex.Lock()
 			ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
-			ipa.ReleaseIP(net.ParseIP(v.PrivateIPv4).To4(), nil)
+			ipa.ReleaseIP(net.ParseIP(v.PrivateIPv4).To4())
+			ipa.ReleaseIP(net.ParseIP(v.PrivateIPv6).To16())
 			GlobalAddressPoolAllocatorMap.mutex.Unlock()
 
 			log.Println("[INFO] user id:", v.UserID, ", session id:", v.UUID, "release private ip:", v.PrivateIPv4, ", more than:", t, ", max:", proto.VPNAuthUserMaxCheckTime)
@@ -197,7 +198,7 @@ func UpdateServerConfigToOnlineInfo(serverConfig proto.ServerConfig) (err error)
 
 	//设置分配IP
 	if tunnelConfig.AutoIPv4 == true {
-		ipv4, ipv6, err2 := ipAllocator.AllocateIP(0, &poolConfig.IPv4AddressPool, &poolConfig.IPv6AddressPool)
+		ipv4, ipv6, err2 := ipAllocator.AllocateIP(0)
 		if err2 != nil {
 			log.Println("[ERROR] allocate ip err:", err2)
 		} else {
@@ -361,7 +362,8 @@ func LogoutOutOnlineAuthUser(req *proto.SetVPNClientStatusReq) bool {
 		//释放IP
 		GlobalAddressPoolAllocatorMap.mutex.Lock()
 		ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
-		ipa.ReleaseIP(net.ParseIP(user.PrivateIPv4).To4(), nil)
+		ipa.ReleaseIP(net.ParseIP(user.PrivateIPv4).To4())
+		ipa.ReleaseIP(net.ParseIP(user.PrivateIPv6).To16())
 		GlobalAddressPoolAllocatorMap.mutex.Unlock()
 		SendVPNAuthUserMsgToDPServer(proto.DPOpCodeAuthUserDel, req.ServerID, &user)
 		success = true

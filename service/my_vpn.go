@@ -121,6 +121,11 @@ func SetMyVPNServerConfigService(user *dao.User, req *proto.SetServerConfigReque
 	return proto.SuccessCode, nil
 }
 
+func RestartDPServerService(server_id string, resp *proto.GenerateResp) {
+	SendToDPServerRestartVPNServer(server_id)
+	resp.Code = proto.SuccessCode
+	resp.Message = "success"
+}
 func SendToDPServerRestartVPNServer(serverID string) {
 	var event proto.VPNDPServerEvent
 	event.MsgType = proto.DPMsgServerControlType
@@ -156,7 +161,8 @@ func KickoutAllVPNUser(serverID string) {
 		//释放IP
 		GlobalAddressPoolAllocatorMap.mutex.Lock()
 		ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
-		ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4(), nil)
+		ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4())
+		ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv6).To16())
 		GlobalAddressPoolAllocatorMap.mutex.Unlock()
 		SendVPNAuthUserMsgToClient(proto.VPNClientOpCodeKickOut, serverID, &user_)
 
@@ -730,7 +736,7 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 		resp.Message = "vpn address pool not exist"
 		return nil
 	}
-	ipv4, ipv6, err := ipAllocator.AllocateIP(user.ID, &poolConfig.IPv4AddressPool, &poolConfig.IPv6AddressPool)
+	ipv4, ipv6, err := ipAllocator.AllocateIP(int(user.ID))
 	res.IPType = serverConfig.IPType
 	if ipv4 == nil {
 		resp.Code = proto.VPNNoAvailableIP
@@ -883,7 +889,8 @@ func KickOutAllUserService(user *dao.User, serverID string, resp *proto.Generate
 		//释放IP
 		GlobalAddressPoolAllocatorMap.mutex.Lock()
 		ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
-		ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4(), nil)
+		ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4())
+		ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv6).To16())
 		GlobalAddressPoolAllocatorMap.mutex.Unlock()
 	}
 	resp.Data = len(authUserMap.UserCountMap)
@@ -923,7 +930,8 @@ func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, clientIP 
 			//释放IP
 			GlobalAddressPoolAllocatorMap.mutex.Lock()
 			ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
-			ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4(), nil)
+			ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4())
+			ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv6).To16())
 			GlobalAddressPoolAllocatorMap.mutex.Unlock()
 			SendVPNAuthUserMsgToClient(proto.VPNClientOpCodeKickOut, req.ServerID, &user_)
 
@@ -964,7 +972,8 @@ func KickOutUserService(req *proto.KickOutUserRequest, user *dao.User, clientIP 
 			//释放IP
 			GlobalAddressPoolAllocatorMap.mutex.Lock()
 			ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
-			ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4(), nil)
+			ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv4).To4())
+			ipa.ReleaseIP(net.ParseIP(user_.PrivateIPv6).To16())
 			GlobalAddressPoolAllocatorMap.mutex.Unlock()
 			SendVPNAuthUserMsgToDPServer(proto.DPOpCodeAuthUserDel, req.ServerID, &user_)
 			SendVPNAuthUserMsgToClient(proto.VPNClientOpCodeKickOut, req.ServerID, &user_)

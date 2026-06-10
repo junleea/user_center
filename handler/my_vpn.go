@@ -32,9 +32,31 @@ func SetUpMyVPNGroup(router *gin.Engine) {
 	myVPNGroup.GET("/clients_url", GetMyVPNClientUrl)
 	myVPNGroup.POST("/kick_out_user", KickOutUser)
 	myVPNGroup.GET("/get_vpn_logs", GetVPNLogsHandler) // 获取VPN日志，管理员权限
+	myVPNGroup.GET("/restart_dp_server", RestartDPServerHandler) // 重启VPN服务器，管理员权限
 
 	myVPNGroup.GET("/server_ws", DPServerConnectWSHandler) //vpn dp服务器与控制服务器实时通信使用
 	myVPNGroup.GET("/client_ws", VPNClientConnectWSHandler)
+}
+
+func RestartDPServerHandler(c *gin.Context) {
+	user := RequestGetUserInfo(c)
+	var resp proto.GenerateResp
+	server_id := c.Query("server_id")
+	requestID, _ := c.Get("request_id")
+	resp.Code = proto.SuccessCode
+	resp.Message = "success"
+	resp.RequestID = requestID.(string)
+	if server_id == "" {
+		resp.Code = proto.ParameterError
+		resp.Message = "server_id is required"
+	}else if user.Role != proto.USER_IS_ADMIN {
+		resp.Code = proto.PermissionDenied
+		resp.Message = "无权限"
+	} else {
+		service.RestartDPServerService(server_id, &resp)
+	}
+
+	c.JSON(http.StatusOK, resp)
 }
 
 func KickOutUser(c *gin.Context) {
