@@ -522,3 +522,41 @@ func DelAllUserTOTPSecret() error {
 	res := db.Where("deleted_at IS NULL").Delete(&TOTPSecretInfo{})
 	return res.Error
 }
+
+// GetUserGroupChain 获取用户所属的用户组链，返回顺序：直接所属组 -> 上层组 -> ...
+func GetUserGroupChain(userID int) ([]User, error) {
+	db := GetDB()
+	var groups []User
+	visited := make(map[int]bool)
+
+	// 先获取当前用户
+	var currentUser User
+	res := db.Where("id = ?", userID).First(&currentUser)
+	if res.Error != nil {
+		return groups, res.Error
+	}
+
+	groups = append(groups, currentUser)
+
+	currentPrev := currentUser.Prev
+
+	// 循环向上查找用户组
+	for currentPrev > 0 {
+		// 防止循环引用
+		if visited[currentPrev] {
+			break
+		}
+		visited[currentPrev] = true
+
+		var group User
+		res := db.Where("id = ? AND type > 0", currentPrev).First(&group)
+		if res.Error != nil {
+			break
+		}
+
+		groups = append(groups, group)
+		currentPrev = group.Prev
+	}
+
+	return groups, nil
+}

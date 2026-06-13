@@ -126,6 +126,13 @@ type ServerConfigBase struct {
 	IPv6Router      []VPNRouter `json:"ipv6_router" form:"ipv6_router"`
 }
 
+type VPNAllowUser struct {
+	UserID uint `json:"user_id" form:"user_id"` //用户/用户组ID
+	MaxConnections int `json:"max_connections" form:"max_connections"` //最大连接数，0不限
+	MaxUpload int `json:"max_upload" form:"max_upload"` //上传限速，Kbps, 默认：1024Kbps
+	MaxDownload int `json:"max_download" form:"max_download"` //下载限速，Kbps, 默认：1024Kbps
+}
+
 type ServerConfig struct {
 	Name            string      `json:"name" form:"name"`
 	ServerID        string      `json:"server_id" form:"server_id"`
@@ -141,7 +148,7 @@ type ServerConfig struct {
 	IPv6AddressPool string      `json:"ipv6_address_pool" form:"ipv6_address_pool"`
 	DNSServer       string      `json:"dns_server" form:"dns_server"`
 	Tunnel          string      `json:"tunnel" form:"tunnel"`
-	AllowUserID     []UserID    `json:"allow_user_id" form:"allow_user_id"`
+	AllowUser      []VPNAllowUser `json:"allow_user" form:"allow_user"`
 	Encryption      string      `json:"encryption" form:"encryption"` /*加密算法：aes-128-gcm, aes-192-gcm, aes-256-gcm, SM4-GCM*/
 	Hash            string      `json:"hash" form:"hash"`             /*摘要算法：sha256, sha512, md5, sm3*/
 	UserMaxDevice   int         `json:"user_max_device" form:"user_max_device"`
@@ -315,6 +322,8 @@ type VPNAuthUserDPInfo struct {
 	VPNDPSecret    string             `json:"vpn_dp_secret,omitempty" form:"vpn_dp_secret"` /*dp secret*/
 	UUID           string             `json:"uuid,omitempty" form:"uuid"`
 	LastUpdateTime int64              `json:"last_update_time,omitempty" form:"last_update_time"`
+	MaxUpload	   int                `json:"max_upload,omitempty" form:"max_upload"`         /*上传限速，Kbps, 默认：1024Kbps*/
+	MaxDownload	   int                `json:"max_download,omitempty" form:"max_download"`     /*下载限速，Kbps, 默认：1024Kbps*/
 	OnlineTime	   int64              `json:"online_time,omitempty" form:"online_time"`
 	ClientIP       string             `json:"client_ip,omitempty" form:"client_ip"`
 	HostInfo       *VPNClientHostInfo `json:"host_info,omitempty" form:"host_info"`
@@ -434,6 +443,7 @@ type ConnectVPNRequest struct {
 
 type VPNDPServerStatus struct {
 	Status         int                   `json:"status" required:"true"`
+	StartTime      int64                 `json:"start_time" required:"true"`
 	ReceivePackets int64                 `json:"receive_packets" required:"true"`
 	SendPackets    int64                 `json:"send_packets" required:"true"`
 	ReceiveBytes   int64                 `json:"receive_bytes" required:"true"`
@@ -451,6 +461,7 @@ func (s *VPNDPServerStatus) GetInfo() VPNDPServerStatus {
 		SendBytes:      s.SendBytes,
 		LastUpdateTime: s.LastUpdateTime,
 		OnlineUserInfo: s.OnlineUserInfo,
+		StartTime: s.StartTime,
 	}
 }
 

@@ -521,8 +521,8 @@ func GetSupportVPNServerList(user *dao.User, resp *proto.GenerateResp) error {
 			log.Println("[ERROR] GetSupportVPNServerList:", err)
 			continue
 		}
-		for _, userID := range serverConfig.AllowUserID {
-			if userID.ID == user.ID {
+		for _, allowUser := range serverConfig.AllowUser {
+			if allowUser.UserID == user.ID {
 				var supportServer proto.SupportVPNServer
 				supportServer.ServerID = server.Attr
 				supportServer.ServerIP = serverConfig.ServerIP
@@ -572,6 +572,7 @@ func filterUserRoutes(userID uint, routes []proto.VPNRouter) []proto.VPNRouter {
 	return filteredRoutes
 }
 
+// prepare vpn client online, 快速重连时使用原有的配置和IP地址
 func GetClientConfigExistService(user *dao.User, resp *proto.GenerateResp, serverID, uuidStr string) {
 	var res proto.GetClientConfigOnlineResponse
 
@@ -630,6 +631,38 @@ func GetClientConfigExistService(user *dao.User, resp *proto.GenerateResp, serve
 	resp.Data = res
 }
 
+func MatchVPNAllowUser(userID uint, allowUsers []proto.VPNAllowUser) (res proto.VPNAllowUser, err error) {
+	//获取用户组织架构信息, 用户所属用户组列表
+
+	// var userGroups []uint
+	// userGroups = append(userGroups, userID)
+
+	userGroups, err2 := dao.GetUserGroupChain(int(userID))
+	if err2 != nil {
+		log.Println("[ERROR] MatchVPNAllowUser:", err2)
+		return res, err2
+	}
+
+
+	//遍历用户组织信息架构， 找到允许最精细的配置信息
+	for _, ug := range userGroups {
+		for _, allowUser := range allowUsers {
+			if allowUser.UserID == ug.ID {
+				return allowUser, nil
+			}
+		}
+	}
+	//未找到。 查看是否有允许所有用户的配置
+	for _, allowUser := range allowUsers {
+		if allowUser.UserID == 0 {
+			return allowUser, nil
+		}
+	}
+	//未找到任何配置，返回错误，不允许用户连接
+	return res, errors.New("user not allowed")
+}
+
+// start vpn client online, 分配新的IP地址和配置及加密密钥
 func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID string, hostInfo *proto.VPNClientHostInfo, c *gin.Context) (err error) {
 	var res proto.GetClientConfigOnlineResponse
 	var authUser proto.VPNAuthUserDPInfo
@@ -657,18 +690,15 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 		resp.Message = "decode vpn server config failed"
 		return nil
 	}
-	allowed := false
-	for _, userID := range serverConfig.AllowUserID {
-		if userID.ID == user.ID {
-			allowed = true
-			break
-		}
-	}
-	if !allowed {
+	allowUser, err := MatchVPNAllowUser(user.ID, serverConfig.AllowUser)
+	if err != nil {
 		resp.Code = proto.PermissionDenied
 		resp.Message = "permission denied"
+			log.Println("user id:", user.ID, " try to connect vpn server:", serverConfig.Name, ", but not in allow users")
 		return nil
 	}
+	authUser.MaxDownload = allowUser.MaxDownload
+	authUser.MaxUpload = allowUser.MaxUpload
 
 	//查看VPN DP服务器状态，在线正常才可
 	GlobalVPNServerConfigMap.mutex.Lock()
@@ -785,9 +815,9 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 
 		// 检查用户当前在线设备数量
 		currentCount := authUserMap.UserCountMap[user.ID]
-		if currentCount >= vpnOnlineServer.UserMaxDevice {
+		if currentCount >= allowUser.MaxConnections && allowUser.MaxConnections != 0{ // 0表示不限制连接数
 			resp.Code = proto.VPNServerMaxUserDevice
-			resp.Message = "超出用户最大登录设备限制"
+			resp.Message = "超出用户同时最大连接数限制"
 			return
 		}
 
