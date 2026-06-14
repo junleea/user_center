@@ -771,7 +771,6 @@ func registerHandler(c *gin.Context) {
 	data["email"] = req_data.Email
 	data["token"] = tokenString
 	c.JSON(200, gin.H{"code": proto.SuccessCode, "message": "success", "data": data})
-	return
 }
 
 func registerHandlerV2(c *gin.Context) {
@@ -779,9 +778,9 @@ func registerHandlerV2(c *gin.Context) {
 	var resp proto.GenerateResp
 	ip := c.ClientIP()
 	if err := c.ShouldBind(&reqData); err == nil {
-		if reqData.User == "" || reqData.Email == "" || reqData.Password == "" || reqData.FingerPrint == "" || len(reqData.User) < 6 || len(reqData.User) > 32 || len(reqData.Password) < 6 || len(reqData.Password) < 8 {
+		if reqData.User == "" || reqData.Email == "" || reqData.Password == "" || reqData.FingerPrint == "" || len(reqData.User) < 6 || len(reqData.User) > 32 || len(reqData.Password) < 8 {
 			resp.Code = proto.ParameterError
-			resp.Message = "必要参数不能为空"
+			resp.Message = "必要参数不能为空或不满足最短要求"
 		} else {
 			//校验验证码
 			code := worker.GetRedis("register_code_" + reqData.Email)

@@ -383,7 +383,7 @@ func LogoutOutOnlineAuthUser(req *proto.SetVPNClientStatusReq) bool {
 
 	//add user kick out event
 	var eventLog proto.MyVPNUserLoginInfo
-	eventLog.UserID = user.ID
+	eventLog.UserID = user.UserID
 	eventLog.UserName = user.UserName
 	eventLog.ServerID = req.ServerID
 	eventLog.PrivateIP = user.PrivateIPv4

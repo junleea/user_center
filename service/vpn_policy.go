@@ -105,7 +105,7 @@ func MatchMyVPNPolicy(user *dao.User, req *proto.VPNPolicyRequest, resp *proto.G
 	}
 }
 
-func MatchPolicySrc(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy) bool {
+func MatchPolicySrc(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy, srcUserGroup map[uint]bool) bool {
 	switch policy.SrcType {
 	case proto.VPNPolicyTypeIP:
 		if policy.SrcIP != req.SrcIP {
@@ -124,7 +124,9 @@ func MatchPolicySrc(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy) bool {
 			return false
 		}
 	case proto.VPNPolicyTypeGroupID:
-		return false
+		if srcUserGroup[uint(policy.SrcUserID)] == false {
+			return false
+		}
 	default:
 		return false
 	}
@@ -132,7 +134,7 @@ func MatchPolicySrc(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy) bool {
 	return true
 }
 
-func MatchPolicyDst(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy) bool {
+func MatchPolicyDst(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy, dstUserGroup map[uint]bool) bool {
 	switch policy.DstType {
 	case proto.VPNPolicyTypeIP:
 		if policy.DstIP != req.DstIP {
@@ -151,7 +153,9 @@ func MatchPolicyDst(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy) bool {
 			return false
 		}
 	case proto.VPNPolicyTypeGroupID:
-		return false
+		if dstUserGroup[uint(policy.DstUserID)] == false {
+			return false
+		}
 	default:
 		return false
 	}
@@ -159,10 +163,32 @@ func MatchPolicyDst(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy) bool {
 }
 
 func MatchPolicy(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy) bool {
-	if MatchPolicySrc(req, policy) == false {
+	srcUser := make(map[uint]bool)
+	dstUser := make(map[uint]bool)
+	if req.SrcType == proto.VPNPolicyTypeGroupID || req.SrcType == proto.VPNPolicyTypeUserID {
+		//获取用户组信息
+		srcUserGroup, err := dao.GetUserGroupChain(req.SrcUserID)
+		if err != nil {
+			return false
+		}
+		for _, user := range srcUserGroup {
+			srcUser[user.ID] = true
+		}
+	}
+	if req.DstType == proto.VPNPolicyTypeGroupID || req.DstType == proto.VPNPolicyTypeUserID {
+		//获取用户组信息
+		dstUserGroup, err := dao.GetUserGroupChain(req.DstUserID)
+		if err != nil {
+			return false
+		}
+		for _, user := range dstUserGroup {
+			dstUser[user.ID] = true
+		}
+	}
+	if MatchPolicySrc(req, policy, srcUser) == false {
 		return false
 	}
-	if MatchPolicyDst(req, policy) == false {
+	if MatchPolicyDst(req, policy, dstUser) == false {
 		return false
 	}
 	return true

@@ -312,7 +312,9 @@ type SupportVPNServer struct {
 	TCPPort    int    `json:"tcp_port" form:"tcp_port"`
 	Protocol   int    `json:"protocol" form:"protocol"` /* 1: tcp, 2: udp */
 }
-
+type UserGroupInfo struct {
+	UserGroupID uint `json:"user_group_id" form:"user_group_id"`	
+}
 type VPNAuthUserDPInfo struct {
 	ID             uint               `json:"id" form:"id"` /*连接id,区分每个连接*/
 	UserID         uint               `json:"user_id" form:"user_id"`
@@ -326,6 +328,7 @@ type VPNAuthUserDPInfo struct {
 	MaxDownload	   int                `json:"max_download,omitempty" form:"max_download"`     /*下载限速，Kbps, 默认：1024Kbps*/
 	OnlineTime	   int64              `json:"online_time,omitempty" form:"online_time"`
 	ClientIP       string             `json:"client_ip,omitempty" form:"client_ip"`
+	UserGroupInfo  []UserGroupInfo 	  `json:"user_group_info,omitempty" form:"user_group_info"`
 	HostInfo       *VPNClientHostInfo `json:"host_info,omitempty" form:"host_info"`
 }
 
@@ -396,6 +399,9 @@ type VPNPolicyBase struct {
 	//操作
 	Action uint   `json:"action" form:"action" required:"true"` // 0-deny, 1-permit
 	Info   string `json:"info,omitempty" form:"info"`
+
+	// 新增：优先级，数值越小优先级越高，默认100
+	Priority int `json:"priority" form:"priority"` 
 }
 
 type VPNPolicy struct {

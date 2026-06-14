@@ -631,23 +631,13 @@ func GetClientConfigExistService(user *dao.User, resp *proto.GenerateResp, serve
 	resp.Data = res
 }
 
-func MatchVPNAllowUser(userID uint, allowUsers []proto.VPNAllowUser) (res proto.VPNAllowUser, err error) {
+func MatchVPNAllowUser(userGroups []proto.UserGroupInfo, allowUsers []proto.VPNAllowUser) (res proto.VPNAllowUser, err error) {
 	//获取用户组织架构信息, 用户所属用户组列表
-
-	// var userGroups []uint
-	// userGroups = append(userGroups, userID)
-
-	userGroups, err2 := dao.GetUserGroupChain(int(userID))
-	if err2 != nil {
-		log.Println("[ERROR] MatchVPNAllowUser:", err2)
-		return res, err2
-	}
-
 
 	//遍历用户组织信息架构， 找到允许最精细的配置信息
 	for _, ug := range userGroups {
 		for _, allowUser := range allowUsers {
-			if allowUser.UserID == ug.ID {
+			if allowUser.UserID == ug.UserGroupID {
 				return allowUser, nil
 			}
 		}
@@ -690,7 +680,20 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 		resp.Message = "decode vpn server config failed"
 		return nil
 	}
-	allowUser, err := MatchVPNAllowUser(user.ID, serverConfig.AllowUser)
+
+	//获取组织架构
+	userGroupsInfo, err2 := dao.GetUserGroupChain(int(user.ID))
+	if err2 != nil {
+		resp.Code = proto.PermissionDenied
+		resp.Message = "permission denied"
+		log.Println("[ERROR] MatchVPNAllowUser:", err2)
+		return nil
+	}
+	var userGroups []proto.UserGroupInfo
+	for _, ug := range userGroupsInfo {
+		userGroups = append(userGroups, proto.UserGroupInfo{UserGroupID: ug.ID})
+	}
+	allowUser, err := MatchVPNAllowUser(userGroups, serverConfig.AllowUser)
 	if err != nil {
 		resp.Code = proto.PermissionDenied
 		resp.Message = "permission denied"
@@ -699,6 +702,7 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	}
 	authUser.MaxDownload = allowUser.MaxDownload
 	authUser.MaxUpload = allowUser.MaxUpload
+	authUser.UserGroupInfo = userGroups
 
 	//查看VPN DP服务器状态，在线正常才可
 	GlobalVPNServerConfigMap.mutex.Lock()
