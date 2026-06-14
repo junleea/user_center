@@ -55,6 +55,7 @@ const (
 	DPOpCodePolicyDel      = 7
 	DPOpCodePolicyDelAll   = 8
 	DPOpCodeServerDataInfo = 9
+	DPOpCodeServerUpdate = 10  // 更新服务器程序
 
 	DPOpCodeConfigUpdate = 10
 	DPOpCodeServerDel    = 11

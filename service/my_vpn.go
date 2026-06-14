@@ -121,10 +121,36 @@ func SetMyVPNServerConfigService(user *dao.User, req *proto.SetServerConfigReque
 	return proto.SuccessCode, nil
 }
 
-func RestartDPServerService(server_id string, resp *proto.GenerateResp) {
-	SendToDPServerRestartVPNServer(server_id)
+func OptionDPServerService(server_id string, option string, resp *proto.GenerateResp) {
+	switch option {
+	case "restart":
+		SendToDPServerRestartVPNServer(server_id)
+	case "update":
+		SendToDPServerUpdateVPNServer(server_id)
+	default:
+		resp.Code = proto.ParameterError
+		resp.Message = "invalid option"
+		return
+	}
 	resp.Code = proto.SuccessCode
 	resp.Message = "success"
+}
+
+func SendToDPServerUpdateVPNServer(serverID string) {
+	var event proto.VPNDPServerEvent
+	event.MsgType = proto.DPMsgServerControlType
+	event.OpCode = proto.DPOpCodeServerUpdate
+	//加入消息队列
+	key := "vpn_dp_event_" + serverID
+
+	msg, err := json.Marshal(&event)
+
+	if err != nil {
+		log.Println("server id:", serverID, " event to dp server update encode err:", err)
+		return
+	}
+
+	worker.Publish(key, string(msg), time.Second*10)
 }
 func SendToDPServerRestartVPNServer(serverID string) {
 	var event proto.VPNDPServerEvent
@@ -136,7 +162,7 @@ func SendToDPServerRestartVPNServer(serverID string) {
 	msg, err := json.Marshal(&event)
 
 	if err != nil {
-		log.Println("server id:", serverID, " auth user event to dp server encode err:", err)
+		log.Println("server id:", serverID, " event to dp server restart encode err:", err)
 		return
 	}
 
