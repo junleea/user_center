@@ -124,6 +124,17 @@ func CheckOnlineAuthUser() {
 
 }
 
+func InitAuthUserIPAddress(serverID string, authUser *VPNAuthUserMap) {
+	serverConfig := GetServerConfigByServerID(serverID)
+	GlobalAddressPoolAllocatorMap.mutex.Lock()
+	ipa := GlobalAddressPoolAllocatorMap.PoolMap[serverConfig.IPv4AddressPool]
+	for _, dpInfo := range authUser.AuthUserMap {
+		ipa.AllocateByIP(int(dpInfo.UserID), net.ParseIP(dpInfo.PrivateIPv4).To4())
+		ipa.AllocateByIP(int(dpInfo.UserID), net.ParseIP(dpInfo.PrivateIPv6).To16())
+	}
+	GlobalAddressPoolAllocatorMap.mutex.Unlock()
+}
+
 func InitVPNAuthUserMapFromRedis() {
 	key := "global_vpn_auth_user_map"
 	var err error
@@ -140,6 +151,9 @@ func InitVPNAuthUserMapFromRedis() {
 	}
 	GlobalVPNServerAuthUserMap.mutex.Lock()
 	GlobalVPNServerAuthUserMap.ServerUserMap = authUserMap
+	for serverID, v := range authUserMap {
+		InitAuthUserIPAddress(serverID, v)
+	}
 	GlobalVPNServerAuthUserMap.mutex.Unlock()
 	log.Println("[INFO] init vpn auth user map from redis success")
 }
