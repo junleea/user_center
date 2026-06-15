@@ -189,6 +189,14 @@ func Init() error {
 		log.Println("VPN event log table migrated successfully")
 	}
 
+		err = db.AutoMigrate(&proto.VPNHostInfoModel{})
+	if err != nil {
+		log.Println("vpn host info table:", err)
+		return err
+	} else {
+		log.Println("VPN host info table migrated successfully")
+	}
+
 	DB = db
 	return err
 }
