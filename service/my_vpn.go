@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type VPNSecretID struct {
@@ -689,6 +690,38 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	authUser.UUID = uuid.New().String()
 	authUser.OnlineTime = time.Now().Unix()
 	authUser.ClientIP = c.ClientIP()
+	if hostInfo == nil || hostInfo.HostID == "" {
+		resp.Code = proto.ParameterError
+		resp.Message = "host info is empty"
+		return nil	
+	}
+	vpn_info, hostErr := dao.GetVPNHostInfoByHostID(hostInfo.HostID)
+	if hostErr != nil && !errors.Is(hostErr, gorm.ErrRecordNotFound) {
+		resp.Code = proto.OperationFailed
+		resp.Message = "get host info failed"
+		log.Println("[ERROR] GetVPNHostInfoByHostID:", hostErr)
+		return nil
+	}
+	if vpn_info == nil {
+		//创建
+		vpn_info = &proto.VPNHostInfoModel{
+			InfoStat:     hostInfo.InfoStat,
+			ComputerInfo: hostInfo.ComputerInfo,
+		}
+	} else {
+		vpn_info.ComputerInfo = hostInfo.ComputerInfo
+		vpn_info.Platform = hostInfo.Platform
+		vpn_info.PlatformFamily = hostInfo.PlatformFamily
+		vpn_info.Procs = hostInfo.Procs
+	}
+
+	if _, err := dao.UpsertVPNHostInfoByHostID(vpn_info); err != nil {
+		resp.Code = proto.OperationFailed
+		resp.Message = "save host info failed"
+		log.Println("[ERROR] UpsertVPNHostInfoByHostID:", err)
+		return nil
+	}
+
 
 	server := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeServer, serverID)
 	if server.ID == 0 {
@@ -889,6 +922,13 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	eventErr := dao.CreateMyVPNUserLoginInfo(&eventLog)
 	if eventErr != nil {
 		log.Println("[ERROR] user:", user.ID, ", uuid:", authUser.UUID, ", create my vpn user login info err:", eventErr)
+	}
+
+	//update host info
+	if vpn_info.ID != 0 {
+		dao.UpdateVPNHostInfo(vpn_info.ID, vpn_info)
+	}else{
+		dao.CreateVPNHostInfo(vpn_info)
 	}
 
 	resp.Code = proto.SuccessCode
@@ -1161,4 +1201,60 @@ func GetVPNLogsService(page, pageSize, userID, serverID, eventType, startTime, e
 	resp.Message = "success"
 	resp.Data = respData
 	return nil
+}
+
+func GetVPNHostInfoService(user *dao.User, hostID, page, pageSize string, resp *proto.GenerateResp) {
+	if user.Role != proto.USER_IS_ADMIN {
+		resp.Code = proto.PermissionDenied
+		resp.Message = "无权限"
+		return
+	}
+
+	// 按host_id精确查询
+	if hostID != "" {
+		info, err := dao.GetVPNHostInfoByHostID(hostID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				resp.Code = proto.SuccessCode
+				resp.Message = "success"
+				resp.Data = nil
+				return
+			}
+			log.Println("[ERROR] GetVPNHostInfoService:", err)
+			resp.Code = proto.OperationFailed
+			resp.Message = "获取主机信息失败"
+			return
+		}
+		resp.Code = proto.SuccessCode
+		resp.Message = "success"
+		resp.Data = info
+		return
+	}
+
+	// 分页查询全部
+	pageInt, _ := strconv.Atoi(page)
+	pageSizeInt, _ := strconv.Atoi(pageSize)
+	if pageInt < 1 {
+		pageInt = 1
+	}
+	if pageSizeInt < 1 || pageSizeInt > 100 {
+		pageSizeInt = 20
+	}
+
+	infos, total, err := dao.ListVPNHostInfo(pageInt, pageSizeInt)
+	if err != nil {
+		log.Println("[ERROR] GetVPNHostInfoService list:", err)
+		resp.Code = proto.OperationFailed
+		resp.Message = "获取主机信息失败"
+		return
+	}
+
+	resp.Code = proto.SuccessCode
+	resp.Message = "success"
+	resp.Data = proto.VPNHostInfoListResponse{
+		Total:    total,
+		List:     infos,
+		Page:     pageInt,
+		PageSize: pageSizeInt,
+	}
 }

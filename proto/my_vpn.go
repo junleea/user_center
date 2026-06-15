@@ -439,7 +439,29 @@ type VPNClientEvent struct {
 
 type VPNClientHostInfo struct {
 	host.InfoStat
+	ComputerInfo
 	ClientVersion string `json:"client_version" form:"client_version"`
+}
+
+type ComputerInfo struct {
+	MacAddress    string `json:"mac_address" form:"mac_address"`
+	BoardSN string `json:"board_sn" form:"board_sn"` //主板序列号
+	DiskSN string `json:"disk_sn" form:"disk_sn"` //硬盘序列号
+	CpuInfo string `json:"cpu_info" form:"cpu_info"` //cpu信息
+	HardwareID string `json:"hardware_id" form:"hardware_id"` //硬件id
+}
+
+type VPNHostInfoModel struct {
+	gorm.Model
+	host.InfoStat
+	ComputerInfo
+}
+
+type VPNHostInfoListResponse struct {
+	Total    int64                    `json:"total"`
+	List     []VPNHostInfoModel `json:"list"`
+	Page     int                      `json:"page"`
+	PageSize int                      `json:"page_size"`
 }
 
 type ConnectVPNRequest struct {

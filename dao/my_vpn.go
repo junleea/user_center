@@ -429,3 +429,117 @@ func ListVPNAuthUserDPInfo(page, pageSize int) ([]VPNAuthUserDPInfoModel, int64,
 	res := db.Offset(offset).Limit(pageSize).Find(&infos)
 	return infos, total, res.Error
 }
+
+
+
+// ==================== VPNHostInfoModel 相关操作 ====================
+
+// CreateVPNHostInfo 创建VPN主机信息
+func CreateVPNHostInfo(info *proto.VPNHostInfoModel) (*proto.VPNHostInfoModel, error) {
+	db := GetDB()
+	res := db.Create(info)
+	return info, res.Error
+}
+
+// GetVPNHostInfoByID 根据ID获取VPN主机信息
+func GetVPNHostInfoByID(id uint) (*proto.VPNHostInfoModel, error) {
+	db := GetDB()
+	var info proto.VPNHostInfoModel
+	res := db.Where("id = ?", id).First(&info)
+	if res.Error != nil {
+		return nil, res.Error
+	}
+	return &info, nil
+}
+
+// GetVPNHostInfoByHostID 根据HostID获取VPN主机信息
+func GetVPNHostInfoByHostID(hostID string) (*proto.VPNHostInfoModel, error) {
+	db := GetDB()
+	var info proto.VPNHostInfoModel
+	res := db.Where("host_id = ?", hostID).First(&info)
+	if res.Error != nil {
+		return nil, res.Error
+	}
+	return &info, nil
+}
+
+// GetVPNHostInfoByHardwareID 根据硬件ID获取VPN主机信息
+func GetVPNHostInfoByHardwareID(hardwareID string) (*proto.VPNHostInfoModel, error) {
+	db := GetDB()
+	var info proto.VPNHostInfoModel
+	res := db.Where("hardware_id = ?", hardwareID).First(&info)
+	if res.Error != nil {
+		return nil, res.Error
+	}
+	return &info, nil
+}
+
+// GetVPNHostInfoByMacAddress 根据MAC地址获取VPN主机信息
+func GetVPNHostInfoByMacAddress(macAddress string) ([]proto.VPNHostInfoModel, error) {
+	db := GetDB()
+	var infos []proto.VPNHostInfoModel
+	res := db.Where("mac_address = ?", macAddress).Find(&infos)
+	return infos, res.Error
+}
+
+// UpdateVPNHostInfo 更新VPN主机信息
+func UpdateVPNHostInfo(id uint, info *proto.VPNHostInfoModel) error {
+	db := GetDB()
+	res := db.Model(&proto.VPNHostInfoModel{}).Where("id = ?", id).Updates(info)
+	return res.Error
+}
+
+// UpdateVPNHostInfoByHostID 根据HostID更新VPN主机信息
+func UpdateVPNHostInfoByHostID(hostID string, info *proto.VPNHostInfoModel) error {
+	db := GetDB()
+	res := db.Model(&proto.VPNHostInfoModel{}).Where("host_id = ?", hostID).Updates(info)
+	return res.Error
+}
+
+// UpsertVPNHostInfoByHostID 根据HostID存在则更新，不存在则创建
+func UpsertVPNHostInfoByHostID(info *proto.VPNHostInfoModel) (*proto.VPNHostInfoModel, error) {
+	db := GetDB()
+	var existing proto.VPNHostInfoModel
+	res := db.Where("host_id = ?", info.HostID).First(&existing)
+	if res.Error != nil {
+		// 不存在则创建
+		if err := db.Create(info).Error; err != nil {
+			return nil, err
+		}
+		return info, nil
+	}
+	// 存在则更新
+	if err := db.Model(&existing).Updates(info).Error; err != nil {
+		return nil, err
+	}
+	return &existing, nil
+}
+
+// DeleteVPNHostInfoByID 根据ID删除VPN主机信息
+func DeleteVPNHostInfoByID(id uint) error {
+	db := GetDB()
+	res := db.Where("id = ?", id).Delete(&proto.VPNHostInfoModel{})
+	return res.Error
+}
+
+// DeleteVPNHostInfoByHostID 根据HostID删除VPN主机信息
+func DeleteVPNHostInfoByHostID(hostID string) error {
+	db := GetDB()
+	res := db.Where("host_id = ?", hostID).Delete(&proto.VPNHostInfoModel{})
+	return res.Error
+}
+
+// ListVPNHostInfo 分页获取VPN主机信息
+func ListVPNHostInfo(page, pageSize int) ([]proto.VPNHostInfoModel, int64, error) {
+	db := GetDB()
+	var infos []proto.VPNHostInfoModel
+	var total int64
+
+	// 获取总数
+	db.Model(&proto.VPNHostInfoModel{}).Count(&total)
+
+	// 分页查询
+	offset := (page - 1) * pageSize
+	res := db.Order("created_at desc").Offset(offset).Limit(pageSize).Find(&infos)
+	return infos, total, res.Error
+}
