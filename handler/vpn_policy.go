@@ -251,7 +251,7 @@ func handleReceiveDPServerInfo(req *proto.VPNDPServerEvent, user *dao.User, serv
 	case proto.DPOpCodeServerDataInfo:
 		service.HandleReceiveDPServerDataInfoService(req, user, serverID)
 	case proto.DPOpCodeDPServerInfo:
-		service.HandleReceiveDPServerInfoService(&req, user, serverID)
+		service.HandleReceiveDPServerInfoService(req, user, serverID)
 	default:
 		log.Println("receive dp server msg op code err:", req.OpCode)
 	}
