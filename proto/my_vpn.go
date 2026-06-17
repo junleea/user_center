@@ -56,6 +56,7 @@ const (
 	DPOpCodePolicyDelAll   = 8
 	DPOpCodeServerDataInfo = 9
 	DPOpCodeServerUpdate = 10  // 更新服务器程序
+	DPOpCodeDPServerInfo = 11  //上传服务器信息
 
 	DPOpCodeConfigUpdate = 10
 	DPOpCodeServerDel    = 11
@@ -101,6 +102,7 @@ type DPServerOnlineConfig struct {
 	Status          int               `json:"status" form:"status"`
 	LastServerCheck int64             `json:"last_server_check" form:"last_server_check"`
 	VPNStatus       VPNDPServerStatus `json:"vpn_status" form:"vpn_status"`
+	DPServerInfo    VPNDPServerInfo   `json:"dp_info" form:"dp_info"`
 }
 
 type ServerConfigBase struct {
@@ -415,6 +417,12 @@ type VPNPolicyRequest struct {
 	VPNPolicyBase
 }
 
+type VPNDPServerInfo struct {
+	BuildTime string `json:"build_time" required:"true"`
+	Version string `json:"version" required:"true"`
+	GitHash string `json:"git_hash" required:"true"`
+}
+
 type VPNDPServerEvent struct {
 	MsgType        int                   `json:"msg_type" required:"true"`
 	OpCode         int                   `json:"op_code" required:"true"`
@@ -422,6 +430,7 @@ type VPNDPServerEvent struct {
 	ServerConfig   *DPServerOnlineConfig `json:"server_config,omitempty"`
 	VPNPolicy      *VPNPolicy            `json:"vpn_policy,omitempty"`
 	DPServerStatus *VPNDPServerStatus    `json:"dp_server_status,omitempty"`
+	DPServerInfo *VPNDPServerInfo      `json:"dp_server_info,omitempty"`
 	VPNTime        uint32                `json:"vpn_time,omitempty"`
 }
 

@@ -1130,6 +1130,23 @@ func HandleReceiveDPServerDataInfoService(req *proto.VPNDPServerEvent, user *dao
 	log.Println("[INFO] receive dp server msg op code:", req.OpCode, " update status success!")
 }
 
+func HandleReceiveDPServerInfoService(req *proto.VPNDPServerEvent, user *dao.User, serverID string) {
+	GlobalVPNServerConfigMap.mutex.Lock()
+	defer GlobalVPNServerConfigMap.mutex.Unlock()
+	server, ok := GlobalVPNServerConfigMap.ServerConfigMap[serverID]
+	if ok == false || server == nil {
+		log.Println("[ERROR] server not found:", serverID)
+		return
+	}
+
+	if req.DPServerStatus == nil {
+		log.Println("[ERROR] server has no DPServerStatus")
+		return
+	}
+	server.DPServerInfo = *req.DPServerInfo
+	log.Println("[INFO] receive dp server msg op code:", req.OpCode, " update status success!")
+}
+
 // VPNLogResponse VPN日志响应结构
 type VPNLogResponse struct {
 	Total    int64                      `json:"total"`
