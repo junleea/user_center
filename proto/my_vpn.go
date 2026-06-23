@@ -1,6 +1,8 @@
 package proto
 
 import (
+	"time"
+
 	"github.com/shirou/gopsutil/v3/host"
 	"gorm.io/gorm"
 )
@@ -29,6 +31,7 @@ const (
 	EncryptionAES256GCMLen = 32
 	EncryptionSM4GCM       = "sm4-gcm"
 	EncryptionSM4GCMLen    = 16
+	EncryptionNone         = "none"
 )
 
 const (
@@ -43,7 +46,7 @@ const (
 	DPMsgPolicyType       = 2
 	DPMsyServerConfigType = 3
 	DPMsgServerInfo       = 4
-	CPVPNTimeType         = 5 //vpn time download
+	CPVPNTimeType         = 5 //vpn time download, client / dp server same
 	DPMsgServerControlType = 6 //server control
 
 	DPOpCodeAuthUserAdd    = 1
@@ -57,23 +60,30 @@ const (
 	DPOpCodeServerDataInfo = 9
 	DPOpCodeServerUpdate = 10  // 更新服务器程序
 	DPOpCodeDPServerInfo = 11  //上传服务器信息
+	DPOpCodeAuthUserRekey = 12 // auth user rekey
 
-	DPOpCodeConfigUpdate = 10
-	DPOpCodeServerDel    = 11
-	DPOpCodeRestart       = 12
+	DPOpCodeConfigUpdate = 13
+	DPOpCodeServerDel    = 14
+	DPOpCodeRestart       = 15
 )
+
 
 const (
 	VPNClientOpCodeLogout         = 1 //用户注销登录
 	VPNClientOpCodeKickOut        = 2 //用户被踢出
 	VPNClientEventOpCodePing      = 3 //ping
 	VPNClientEventOOpCodeHostInfo = 4 //host info upload
+	VPNClientEventOOpCodeRekey    = 6 //rekey
 )
 
 const (
 	VPNRouterTypeGlobal = 0 /*全局路由*/
 	VPNRouterTypeUser   = 1 /*用户路由*/
 	VPNRouterTypeGroup  = 2 /*用户组路由*/
+)
+const (
+
+	RekeyDuration = int64(time.Hour * 1)
 )
 
 type VPNRouter struct {
@@ -325,6 +335,7 @@ type VPNAuthUserDPInfo struct {
 	PrivateIPv4    string             `json:"private_ipv4,omitempty" form:"private_ipv4"`
 	PrivateIPv6    string             `json:"private_ipv6,omitempty" form:"private_ipv6"`
 	VPNDPSecret    string             `json:"vpn_dp_secret,omitempty" form:"vpn_dp_secret"` /*dp secret*/
+	SecretKeyTime  int64             `json:"secret_key_time" form:"secret_key_time"`
 	UUID           string             `json:"uuid,omitempty" form:"uuid"`
 	LastUpdateTime int64              `json:"last_update_time,omitempty" form:"last_update_time"`
 	MaxUpload	   int                `json:"max_upload,omitempty" form:"max_upload"`         /*上传限速，Kbps, 默认：1024Kbps*/

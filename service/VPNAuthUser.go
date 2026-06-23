@@ -110,6 +110,16 @@ func CheckOnlineAuthUser() {
 				dao.CreateMyVPNUserLoginInfo(&eventLog)
 			}
 		}
+
+		//刷新在线用户，key是否过期
+		for session, authUser := range userMap.AuthUserMap {
+			if now - authUser.SecretKeyTime < proto.RekeyDuration {
+				continue
+			}
+			RekeyVPNAuthUser(serverID, &authUser)
+			authUser.SecretKeyTime = now
+			userMap.AuthUserMap[session] = authUser
+		}
 		userMap.mutex.Unlock()
 	}
 
@@ -449,4 +459,20 @@ func SendVPNAuthUserMsgToClient(opCode int, serverID string, authUser *proto.VPN
 	}
 
 	worker.Publish(key, string(msg), time.Second*10)
+}
+
+func RekeyVPNAuthUser(serverID string, authUser *proto.VPNAuthUserDPInfo) {
+	//获取服务器配置
+	serverConfig := GetServerConfigByServerID(serverID)
+	//生成新密钥
+	key, keyStr, keyErr := worker.GenerateDPEncryptionKey(serverConfig.Encryption)
+	if keyErr != nil {
+		log.Println("[ERROR] user:", authUser.UserID, ", uuid:", authUser.UUID, ", generate dp secret key err:", keyErr, ", key:", string(key))
+	}
+	authUser.VPNDPSecret = keyStr
+
+	//发送到dp server
+	go SendVPNAuthUserMsgToDPServer(proto.DPOpCodeAuthUserRekey, serverID, authUser)
+	//发送到客户端
+	go SendVPNAuthUserMsgToClient(proto.VPNClientEventOOpCodeRekey, serverID, authUser)
 }

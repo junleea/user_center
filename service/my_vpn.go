@@ -854,6 +854,7 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	}
 	authUser.VPNDPSecret = keyStr
 	authUser.LastUpdateTime = time.Now().Unix()
+	authUser.SecretKeyTime = time.Now().Unix()
 	res.SessionID = authUser.UUID
 
 	res.VPNDPSecret = authUser.VPNDPSecret
