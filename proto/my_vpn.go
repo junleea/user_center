@@ -83,7 +83,7 @@ const (
 )
 const (
 
-	RekeyDuration = int64(time.Hour * 1)
+	RekeyDuration = int64(60 * 60 * 1)
 )
 
 type VPNRouter struct {
