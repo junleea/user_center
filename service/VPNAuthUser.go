@@ -470,6 +470,7 @@ func RekeyVPNAuthUser(serverID string, authUser *proto.VPNAuthUserDPInfo) {
 		log.Println("[ERROR] user:", authUser.UserID, ", uuid:", authUser.UUID, ", generate dp secret key err:", keyErr, ", key:", string(key))
 	}
 	authUser.VPNDPSecret = keyStr
+	log.Println("[ERROR] user:", authUser.UserID, ", uuid:", authUser.UUID, ", rekey dp secret key success, will send to dp server and client")
 
 	//发送到dp server
 	go SendVPNAuthUserMsgToDPServer(proto.DPOpCodeAuthUserRekey, serverID, authUser)
