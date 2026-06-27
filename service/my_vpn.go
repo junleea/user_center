@@ -763,6 +763,9 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	authUser.MaxUpload = allowUser.MaxUpload
 	authUser.UserGroupInfo = userGroups
 
+	res.UploadLimit = allowUser.MaxUpload
+	res.DownloadLimit = allowUser.MaxDownload
+
 	//查看VPN DP服务器状态，在线正常才可
 	GlobalVPNServerConfigMap.mutex.Lock()
 	defer GlobalVPNServerConfigMap.mutex.Unlock()
@@ -782,11 +785,6 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	//	resp.Message = "VPN服务器状态不可用"
 	//	return nil
 	//}
-
-	//获取地址池
-	poolInfo := dao.GetMyVPNServerConfigByAttr(proto.VPNServerConfigTypeAddressPool, vpnOnlineServer.IPv6AddressPool)
-	var poolConfig proto.AddressPoolConfig
-	err = json.Unmarshal([]byte(poolInfo.Value), &poolConfig)
 
 	//客户端配置：筛选用户的路由（全局+用户+用户组）
 	res.IPv4Router = filterUserRoutes(user.ID, serverConfig.IPv4Router)
@@ -814,8 +812,7 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 	/*加入tunnel配置*/
 	res.IPv4MTU = tunnelConfig.IPv4MTU
 	res.IPv6MTU = tunnelConfig.IPv6MTU
-	res.UploadLimit = tunnelConfig.UploadLimit
-	res.DownloadLimit = tunnelConfig.DownloadLimit
+
 
 	//分配客户端IP， 根据ip类型
 	//根据地址池分配
@@ -844,6 +841,7 @@ func GetClientConfigService(user *dao.User, resp *proto.GenerateResp, serverID s
 		res.PrivateIPv6 = ipv6.String()
 		authUser.PrivateIPv6 = ipv6.String()
 	}
+	log.Println("[INFO] user:", user.ID, ", name:", user.Name, ", vpn id:", authUser.ID, ", address pool:", serverConfig.IPv4AddressPool, ", ipv4:", res.PrivateIPv4, ", ipv6:", res.PrivateIPv6)
 	authUser.UUID = uuid.NewString()
 
 	key, keyStr, keyErr := worker.GenerateDPEncryptionKey(serverConfig.Encryption)
