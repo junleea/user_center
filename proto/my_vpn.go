@@ -1,7 +1,6 @@
 package proto
 
 import (
-	"time"
 
 	"github.com/shirou/gopsutil/v3/host"
 	"gorm.io/gorm"
