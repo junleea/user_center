@@ -87,18 +87,21 @@ func MatchMyVPNPolicy(user *dao.User, req *proto.VPNPolicyRequest, resp *proto.G
 			log.Println("[ERROR] request id:", resp.RequestID, " user:", user.ID, " get vpn policy dao err:", err)
 			return
 		}
+
+		// 提前加载用户组链，避免循环内重复查库
+		srcUserGroup, dstUserGroup := loadUserGroupChains(req)
 		exist := false
 		for _, policy := range policies {
-			if MatchPolicy(req, &policy) == true {
+			if MatchPolicy(req, &policy, srcUserGroup, dstUserGroup) {
 				exist = true
 				resp.Data = policy
 				break
 			}
 		}
 
-		if exist == false {
+		if !exist {
 			//获取服务器配置
-			resp.Data = 0 //默认无数据，匹配默认
+			resp.Data = nil //默认无数据，匹配默认
 		}
 		resp.Code = proto.SuccessCode
 		resp.Message = "success"
@@ -108,7 +111,9 @@ func MatchMyVPNPolicy(user *dao.User, req *proto.VPNPolicyRequest, resp *proto.G
 func MatchPolicySrc(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy, srcUserGroup map[uint]bool) bool {
 	switch policy.SrcType {
 	case proto.VPNPolicyTypeIP:
-		if policy.SrcIP != req.SrcIP {
+		reqIP := net.ParseIP(req.SrcIP)
+		policyIP := net.ParseIP(policy.SrcIP)
+		if reqIP == nil || policyIP == nil || !reqIP.Equal(policyIP) {
 			return false
 		}
 	case proto.VPNPolicyTypeNetwork:
@@ -116,7 +121,8 @@ func MatchPolicySrc(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy, srcUse
 		if err != nil || area == nil {
 			return false
 		}
-		if area.Contains(net.IP(req.SrcIP)) == false {
+		reqIP := net.ParseIP(req.SrcIP)
+		if reqIP == nil || !area.Contains(reqIP) {
 			return false
 		}
 	case proto.VPNPolicyTypeUserID:
@@ -137,7 +143,9 @@ func MatchPolicySrc(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy, srcUse
 func MatchPolicyDst(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy, dstUserGroup map[uint]bool) bool {
 	switch policy.DstType {
 	case proto.VPNPolicyTypeIP:
-		if policy.DstIP != req.DstIP {
+		reqIP := net.ParseIP(req.DstIP)
+		policyIP := net.ParseIP(policy.DstIP)
+		if reqIP == nil || policyIP == nil || !reqIP.Equal(policyIP) {
 			return false
 		}
 	case proto.VPNPolicyTypeNetwork:
@@ -145,10 +153,17 @@ func MatchPolicyDst(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy, dstUse
 		if err != nil || area == nil {
 			return false
 		}
-		if area.Contains(net.IP(req.DstIP)) == false {
+		reqIP := net.ParseIP(req.DstIP)
+		if reqIP == nil || !area.Contains(reqIP) {
 			return false
 		}
 	case proto.VPNPolicyTypeUserID:
+		if policy.DstUserID == proto.PolicyUserToSelf && req.SrcType == proto.VPNPolicyTypeUserID{
+			return true
+		}
+		if policy.DstUserID == proto.PolicyUserAll {
+			return true
+		}
 		if policy.DstUserID != req.DstUserID {
 			return false
 		}
@@ -162,33 +177,38 @@ func MatchPolicyDst(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy, dstUse
 	return true
 }
 
-func MatchPolicy(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy) bool {
-	srcUser := make(map[uint]bool)
-	dstUser := make(map[uint]bool)
-	if req.SrcType == proto.VPNPolicyTypeGroupID || req.SrcType == proto.VPNPolicyTypeUserID {
-		//获取用户组信息
-		srcUserGroup, err := dao.GetUserGroupChain(req.SrcUserID)
+// loadUserGroupChains 提前加载请求中的用户组链信息，避免在策略循环中重复查库。
+// 当 req.SrcUserID/DstUserID 不为 0 时加载对应链；VPN 场景下同一请求的源/目的用户是固定的。
+func loadUserGroupChains(req *proto.VPNPolicyRequest) (srcUserGroup, dstUserGroup map[uint]bool) {
+	srcUserGroup = make(map[uint]bool)
+	dstUserGroup = make(map[uint]bool)
+
+	if req.SrcUserID != 0 {
+		users, err := dao.GetUserGroupChain(req.SrcUserID)
 		if err != nil {
-			return false
+			return
 		}
-		for _, user := range srcUserGroup {
-			srcUser[user.ID] = true
+		for _, u := range users {
+			srcUserGroup[u.ID] = true
 		}
 	}
-	if req.DstType == proto.VPNPolicyTypeGroupID || req.DstType == proto.VPNPolicyTypeUserID {
-		//获取用户组信息
-		dstUserGroup, err := dao.GetUserGroupChain(req.DstUserID)
+	if req.DstUserID != 0 {
+		users, err := dao.GetUserGroupChain(req.DstUserID)
 		if err != nil {
-			return false
+			return
 		}
-		for _, user := range dstUserGroup {
-			dstUser[user.ID] = true
+		for _, u := range users {
+			dstUserGroup[u.ID] = true
 		}
 	}
-	if MatchPolicySrc(req, policy, srcUser) == false {
+	return
+}
+
+func MatchPolicy(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy, srcUserGroup, dstUserGroup map[uint]bool) bool {
+	if !MatchPolicySrc(req, policy, srcUserGroup) {
 		return false
 	}
-	if MatchPolicyDst(req, policy, dstUser) == false {
+	if !MatchPolicyDst(req, policy, dstUserGroup) {
 		return false
 	}
 	return true
