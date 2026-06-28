@@ -84,8 +84,8 @@ const (
 
 	RekeyDuration int64 = (60 * 60 * 1)
 
-	PolicyUserToSelf uint = 4294967212
-	PolicyUserAll uint = 4294967223
+	PolicyUserToSelf int = 2094967212
+	PolicyUserAll int = 2094967223
 )
 
 type VPNRouter struct {
