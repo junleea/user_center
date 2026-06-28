@@ -126,6 +126,9 @@ func MatchPolicySrc(req *proto.VPNPolicyRequest, policy *proto.VPNPolicy, srcUse
 			return false
 		}
 	case proto.VPNPolicyTypeUserID:
+		if policy.SrcUserID == proto.PolicyUserAll {
+			return true
+		}
 		if policy.SrcUserID != req.SrcUserID {
 			return false
 		}

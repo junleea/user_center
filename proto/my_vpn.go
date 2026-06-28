@@ -82,11 +82,10 @@ const (
 )
 const (
 
-	RekeyDuration = int64(60 * 60 * 1)
+	RekeyDuration int64 = (60 * 60 * 1)
 
-
-	PolicyUserToSelf = -1
-	PolicyUserAll = -2
+	PolicyUserToSelf uint = 4294967212
+	PolicyUserAll uint = 4294967223
 )
 
 type VPNRouter struct {
@@ -502,6 +501,8 @@ type VPNDPServerStatus struct {
 	SendBytes      int64                 `json:"send_bytes" required:"true"`
 	LastUpdateTime int64                 `json:"last_update_time" required:"true"`
 	OnlineUserInfo []VPNServerOnlineUser `json:"online_user_info" required:"true"`
+	CurrentSession int64 				 `json:"current_session" required:"true"`
+	PolicyHitCount int 					 `json:"policy_hit_count" required:"true"`
 }
 
 func (s *VPNDPServerStatus) GetInfo() VPNDPServerStatus {
@@ -513,7 +514,9 @@ func (s *VPNDPServerStatus) GetInfo() VPNDPServerStatus {
 		SendBytes:      s.SendBytes,
 		LastUpdateTime: s.LastUpdateTime,
 		OnlineUserInfo: s.OnlineUserInfo,
-		StartTime: s.StartTime,
+		StartTime: 		s.StartTime,
+		CurrentSession: s.CurrentSession,
+		PolicyHitCount: s.PolicyHitCount,
 	}
 }
 
