@@ -6,11 +6,12 @@ import (
 )
 
 type MyEmail struct {
-	SmtpPort     int
-	ImapPort     int
-	SmtpHost     string
-	SmtpUserName string
-	SmtpPassword string
+	Name string `json:"smtp_server_name"`
+	SmtpHost     string  `json:"smtp_host"`
+	SmtpUserName string `json:"smtp_user_name"`
+	SmtpPassword string `json:"smtp_password"`
+	SmtpPort     int `json:"smtp_port"`
+	ImapPort     int  `json:"imap_port"`
 }
 
 func (e *MyEmail) Send(title, content string, toEmail []string) error {

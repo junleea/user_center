@@ -1,46 +1,61 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt"
-	"github.com/robfig/cron/v3"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 	"user_center/dao"
 	"user_center/handler"
 	"user_center/proto"
 	"user_center/service"
 	"user_center/worker"
+
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt"
+	"github.com/google/uuid"
+	"github.com/robfig/cron/v3"
 )
 
 func main() {
+	// 输入参数
+	if len(os.Args) > 1 {
+		initConfig(os.Args[1]) //第一个参数是配置文件路径
+		proto.ReadConfigPath = os.Args[1]
+	} else {
+		initConfig("") //没有输入参数，则使用默认配置文件路径
+		proto.ReadConfigPath = ""
+	}
+
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 	err := dao.Init()
 	if err != nil {
 		panic("failed to connect database:" + err.Error())
 	}
-	err = dao.InitMongoDB()
-	if err != nil {
-		panic("failed to connect mongodb:" + err.Error())
-	}
-	err = worker.InitRedis()
-	if err != nil {
-		panic("failed to connect redis:" + err.Error())
-	}
+	//err = dao.InitMongoDB()
+	//if err != nil {
+	//	panic("failed to connect mongodb:" + err.Error())
+	//}
+	worker.InitKV()
 	r.Use(handler.CrosHandler())
-	r.Use(JWTAuthMiddleware()) // 使用 JWT 认证中间件
-	handler.SetUpUserGroup(r)  // User
-	handler.SetUpToolGroup(r)  // Tool
+	r.Use(JWTAuthMiddleware())       // 使用 JWT 认证中间件
+	handler.SetUpUserGroup(r)        // User
+	handler.SetUpToolGroup(r)        // Tool
+	handler.SetUpPermissionGroup(r)  //permission
+	handler.SetUpModelPolicyGroup(r) //model policy
+	handler.SetUpMyVPNGroup(r)       //my vpn
+	handler.SetUpMyVPNPolicyGroup(r) //vpn policy
 	defer dao.Close()
-	defer worker.CloseRedis()
-	defer dao.CloseMongoDB()
+	defer worker.CloseKV()
+	//defer dao.CloseMongoDB()
 	//定时任务
 	c := cron.New(cron.WithSeconds())
 	// 添加每 10 秒执行一次的任务
@@ -51,22 +66,171 @@ func main() {
 	c.Start()
 	//读取配置文件，设置系统
 	ReadConfigToSetSystem()
+	initVPNConfig()
+	go StartListenCertAuthHttpServe()
 	r.Run(":" + proto.Config.SERVER_PORT) // listen and serve on 0.0.0.0:8083
+}
+
+func StartListenCertAuthHttpServe() {
+	serverCert, err := tls.LoadX509KeyPair(proto.Config.CertCerPath, proto.Config.CertKeyPath)
+	if err != nil {
+		log.Fatalf("Failed to load server certificate: %v", err)
+	}
+	caCertPool := x509.NewCertPool()
+	caCert, err := os.ReadFile(proto.Config.CertCaPath)
+	if err != nil {
+		log.Fatalf("Failed to read CA certificate: %v", err)
+	}
+	if !caCertPool.AppendCertsFromPEM(caCert) {
+		log.Fatalf("Failed to append CA certificate")
+	}
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientCAs:    caCertPool,
+		MinVersion:   tls.VersionTLS12,
+	}
+
+	// 创建HTTP服务器
+	mux := http.NewServeMux()
+	mux.HandleFunc("/cert_auth", HandleCertAuth)
+
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "HTTPS Server with Client Certificate Authentication\n")
+		fmt.Fprintf(w, "Visit /cert_auth for authenticated endpoint\n")
+	})
+
+	httpServer := &http.Server{
+		Addr:      ":" + proto.Config.CertAuthPort,
+		Handler:   mux,
+		TLSConfig: tlsConfig,
+	}
+	log.Fatal(httpServer.ListenAndServeTLS("", ""))
+}
+
+func initVPNConfig() {
+	var err error
+
+	err = service.InitAddressPoolToMap()
+	if err != nil {
+		log.Panic("[ERROR] init ip address pool config err:", err)
+		return
+	}
+
+	err = service.InitVPNDPServerConfig()
+	if err != nil {
+		log.Panic("[ERROR] init vpn dp server config err:", err)
+		return
+	}
+	service.MyVPNSecretID.SetID(worker.SecureRandomInt(time.Now().Unix() / 1000)) /*设置初始值1024*/
+
+	service.InitVPNAuthUserMapFromRedis()
 }
 func init() {
 	// 创建cid的目录
 	os.MkdirAll(proto.CID_BASE_DIR, os.ModePerm)
 	os.MkdirAll(proto.CID_BASE_DIR+"script", os.ModePerm)
 	os.MkdirAll(proto.CID_BASE_DIR+"workspace", os.ModePerm)
-	//系统是linux、macos还是windows
-	var configPath string
-	if os.Getenv("OS") == "Windows_NT" {
-		configPath = "E:/Code/user_center.conf"
-	} else if os.Getenv("OS") == "linux" {
-		//文件地址/home/saw-ai/saw-ai.conf
-		configPath = "/home/saw/user_center.conf"
+	//设置不需认证api
+	proto.InitAppendDontNeedAuthAPI()
+	//readConfig()
+}
+
+func HandleCertAuth(w http.ResponseWriter, r *http.Request) {
+	if len(r.TLS.PeerCertificates) > 0 {
+		clientCert := r.TLS.PeerCertificates[0]
+		log.Println("[INFO] client certificate:", clientCert.Subject.String())
+		state_ := r.URL.Query().Get("state")
+		if state_ == "" {
+			w.WriteHeader(http.StatusBadRequest)
+		}else{
+
+			//获取user
+			stateStr := worker.GetRedis(state_)
+			if stateStr == "" {
+				log.Println("[INFO] state isn't exist")
+				w.WriteHeader(http.StatusBadRequest)
+			}else{
+				var state proto.SecondAuthServerSaveState
+				_ = json.Unmarshal([]byte(stateStr), &state)
+				user := service.GetUserByIDWithCache(state.UserId)
+				//证书认证
+				
+				accessToken, refreshToken, err2 := service.GenerateAuthTokens(user)
+				var resp proto.GenerateResp
+				if err2 != nil {
+					resp.Code = proto.OperationFailed
+					resp.Message = "生成TOKEN错误"
+				} else {
+					authResponse := proto.AuthResponse{
+						AccessToken:  accessToken,
+						RefreshToken: refreshToken,
+						UserID:       user.ID,
+						ExpireIn:     time.Now().Add(proto.AccessTokenDuration).Unix(), // 令牌过期时间
+						Username:     user.Name,
+						Email:        user.Email,
+					}
+					resp.Code = proto.SuccessCode
+					resp.Message = "success"
+					resp.Data = authResponse
+					worker.DelKV(state_) //成功则删除，只能用一次
+				}
+				w.WriteHeader(http.StatusOK)
+				err := json.NewEncoder(w).Encode(resp)
+				if err != nil {
+					log.Println("[ERROR] encode response err:", err)
+					return
+				}
+			}
+		}
+
+
 	} else {
-		configPath = "/home/saw/user_center.conf"
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprintf(w, "No client certificate provided\n")
+	}
+}
+
+// func readConfig() {
+// 	//系统是linux、macos还是windows
+// 	var configPath string
+// 	if os.Getenv("OS") == "Windows_NT" {
+// 		configPath = "E:/Code/user_center.conf"
+// 	} else if os.Getenv("OS") == "linux" {
+// 		//文件地址/home/saw-ai/saw-ai.conf
+// 		configPath = "/home/saw/user_center.conf"
+// 	} else {
+// 		configPath = "/home/saw/user_center.conf"
+// 	}
+// 	//读取配置文件
+// 	err := proto.ReadConfig(configPath)
+// 	if err != nil {
+// 		panic("failed to read config file:" + err.Error())
+// 	} else {
+// 		log.Println("Config file loaded successfully")
+// 	}
+// }
+
+func initConfig(configPath string) {
+	//if proto.Config.TOKEN_SECRET != "" {
+	//	return
+	//}
+	// 创建cid的目录
+	os.MkdirAll(proto.CID_BASE_DIR, os.ModePerm)
+	os.MkdirAll(proto.CID_BASE_DIR+"script", os.ModePerm)
+	os.MkdirAll(proto.CID_BASE_DIR+"workspace", os.ModePerm)
+	//系统是linux、macos还是windows
+	if configPath == "" {
+		if os.Getenv("OS") == "Windows_NT" {
+			configPath = "C:/Users/Administrator/user_center.conf"
+		} else if os.Getenv("OS") == "linux" {
+			//文件地址/home/saw-ai/saw-ai.conf
+			configPath = "/etc/user_center.conf"
+		} else {
+			configPath = "/etc/user_center.conf"
+		}
 	}
 	//读取配置文件
 	err := proto.ReadConfig(configPath)
@@ -75,25 +239,82 @@ func init() {
 	}
 }
 
+func SecretInfoSetting() {
+	//读写锁
+	proto.SigningKeyRWLock.RLock()
+	defer proto.SigningKeyRWLock.RUnlock()
+	var secret_sync_settings proto.SecretSyncSettings
+	redisKey := "secret_sync_settings"
+	if worker.IsContainKey(redisKey) == false {
+		secret_sync_settings.Curr = proto.Config.TOKEN_SECRET
+		//当前时间戳
+		secret_sync_settings.CurrStartTimestamp = worker.GetCurrentTimestamp()
+		settinsStr, err2 := json.Marshal(secret_sync_settings)
+		if err2 != nil {
+			log.Println("Error encoding secret sync settings:", err2)
+			return
+		}
+		worker.SetRedis(redisKey, string(settinsStr)) //将当前的密钥信息存入redis
+	} else {
+		settingsStr := worker.GetRedis(redisKey)
+		err := json.Unmarshal([]byte(settingsStr), &secret_sync_settings)
+		if err != nil {
+			log.Println("Error decoding secret sync settings:", err)
+		} else {
+			if secret_sync_settings.Curr != proto.Config.TOKEN_SECRET && secret_sync_settings.Next != proto.Config.TOKEN_SECRET {
+				//如果当前的secret和配置文件中的不一致，则设置下一个
+				secret_sync_settings.Next = proto.Config.TOKEN_SECRET
+				//当前时间戳
+				secret_sync_settings.CurrStartTimestamp = worker.GetCurrentTimestamp() + 20 //设置当前密钥的开始生效时间
+				settinsStr, err2 := json.Marshal(secret_sync_settings)
+				if err2 != nil {
+					log.Println("Error encoding secret sync settings:", err2)
+					return
+				}
+				worker.SetRedis(redisKey, string(settinsStr)) //将当前的密钥信息存入redis
+				//设置新协程
+				go service.SetNextSecretToCurrent(secret_sync_settings) //设置生效协程处理
+			}
+		}
+	}
+	err3 := service.SetSecretToDB(secret_sync_settings.Curr, secret_sync_settings.Prev, secret_sync_settings.CurrStartTimestamp)
+	if err3 != nil {
+		log.Println("set secret key to db err:", err3)
+		return
+	} //设置当前密钥到数据库
+
+}
+
 func JWTAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		requestId := uuid.New()
+		c.Set("request_id", requestId.String())
 		// 从请求头中获取 JWT 令牌
-		tokenString := c.Request.Header.Get("token")
+		tokenString := c.Request.Header.Get("Authorization")
+		if tokenString != "" {
+			// 如果 tokenString 以 Bearer 开头，则去掉前缀
+			tokenString, _ = strings.CutPrefix(tokenString, "Bearer ")
+		} else {
+			tokenString = c.Request.Header.Get("token")
+			if tokenString == "" {
+				tokenString = c.Query("token") // 从查询参数中获取 token
+			}
+		}
 		//请求方式为get时，从url中获取token
 		if tokenString == "" {
 			tokenString = c.Query("token")
 		}
-		for k, _ := range proto.Url_map {
-			if strings.Contains(c.Request.URL.Path, k) {
-				log.Println("need not check token:", c.Request.URL.Path)
-				c.Next()
-				return
-			}
-		}
-		//if proto.Url_map[c.Request.URL.Path] == true { //查看是否在不需要token的url中
-		//	c.Next()
-		//	return
+		//for k, _ := range proto.Url_map {
+		//	if strings.Contains(c.Request.URL.Path, k) {
+		//		log.Println("need not check token:", c.Request.URL.Path)
+		//		c.Next()
+		//		return
+		//	}
 		//}
+		if proto.Url_map[c.Request.URL.Path] == true { //查看是否在不需要token的url中
+			c.Next()
+			return
+		}
 		if tokenString == "" {
 			c.AbortWithStatusJSON(http.StatusOK, gin.H{"message": "unauthorized", "error": "token is empty", "code": proto.TokenIsNull})
 			return
@@ -128,6 +349,7 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 		//token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		//	return proto.SigningKey, nil
 		//})
+		proto.SigningKeyRWLock.RLock() //加读锁
 		token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
 			// 验证签名算法
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -135,19 +357,20 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 			}
 			return proto.SigningKey, nil
 		})
+		proto.SigningKeyRWLock.RUnlock()
 		// 错误处理
 		if err != nil {
 			var ve *jwt.ValidationError
 			if errors.As(err, &ve) {
 				switch {
 				case ve.Errors&jwt.ValidationErrorMalformed != 0:
-					c.AbortWithStatusJSON(http.StatusOK, gin.H{"error": "Malformed token:" + err.Error(), "code": proto.TokenInvalid})
+					c.AbortWithStatusJSON(http.StatusOK, gin.H{"error": "Malformed token:" + err.Error() + ",token is: " + tokenString, "code": proto.TokenInvalid})
 				case ve.Errors&jwt.ValidationErrorExpired != 0:
-					c.AbortWithStatusJSON(http.StatusOK, gin.H{"error": "Token expired:" + err.Error(), "code": proto.TokenExpired})
+					c.AbortWithStatusJSON(http.StatusOK, gin.H{"error": "Token expired:" + err.Error() + ",token is: " + tokenString, "code": proto.TokenExpired})
 				case ve.Errors&jwt.ValidationErrorNotValidYet != 0:
-					c.AbortWithStatusJSON(http.StatusOK, gin.H{"error": "Token not active yet:" + err.Error(), "code": proto.TokenInvalid})
+					c.AbortWithStatusJSON(http.StatusOK, gin.H{"error": "Token not active yet:" + err.Error() + ",token is: " + tokenString, "code": proto.TokenInvalid})
 				default:
-					c.AbortWithStatusJSON(http.StatusOK, gin.H{"error": "Invalid token:" + err.Error(), "code": proto.TokenInvalid})
+					c.AbortWithStatusJSON(http.StatusOK, gin.H{"error": "Invalid token:" + err.Error() + ",token is: " + tokenString, "code": proto.TokenInvalid})
 				}
 				return
 			}
@@ -155,8 +378,10 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 
 		// 将用户信息添加到上下文中
 		id := token.Claims.(jwt.MapClaims)["id"]
+		tokenType := token.Claims.(jwt.MapClaims)["type"]
 		c.Set("id", id)
 		c.Set("user_id", int(id.(float64)))
+		c.Set("tokenType", tokenType.(string)) // 添加 token 类型到上下文中
 
 		if UserFuncIntercept(int(id.(float64)), c.Request.URL.Path) {
 			c.AbortWithStatusJSON(http.StatusOK, gin.H{"message": "unauthorized", "error": "no function permission", "code": proto.NoPermission})
@@ -177,6 +402,17 @@ func myTask() {
 	}
 	//其它定时任务-通用
 	RunGeneralCron()
+	//读取配置文件
+	//readConfig()
+	initConfig(proto.ReadConfigPath)
+	//设置密钥信息
+	SecretInfoSetting()
+
+	//检查dp server
+	service.CheckOnlineServerStatus()
+
+	//检查vpn在线用户
+	service.CheckOnlineAuthUser()
 }
 
 func ReadConfigToSetSystem() {
@@ -300,13 +536,13 @@ func UserFuncIntercept(id int, url string) bool {
 	//如果用户有权限，则不拦截
 	for k, v := range proto.Per_menu_map {
 		if strings.Contains(url, k) {
-			if v == 1 && user.VideoFunc == false {
+			if v == 1 && user.VideoFunc <= 0 {
 				return true
 			}
-			if v == 2 && user.DeviceFunc == false {
+			if v == 2 && user.DeviceFunc <= 0 {
 				return true
 			}
-			if v == 3 && user.CIDFunc == false {
+			if v == 3 && user.CIDFunc <= 0 {
 				return true
 			}
 		}

@@ -301,3 +301,35 @@ func DoGetRequest(url string, headers map[string]string) (error, []byte) {
 	}
 	return err, responseBod
 }
+
+func DoGetRequestV2(url string) (error, []byte) {
+	httpClient := &http.Client{}
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("SyncDataFromMasterReq2 error:", r)
+		}
+	}()
+
+	//从接口获取数据
+	req, err := http.NewRequest("GET", url, nil)
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0")
+	if err != nil {
+		return err, nil
+	}
+	//传输数据
+	if httpClient == nil {
+		httpClient = &http.Client{}
+	}
+	//获取数据
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return err, nil
+	}
+	defer resp.Body.Close()
+	//解析数据
+	responseBod, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err, nil
+	}
+	return err, responseBod
+}

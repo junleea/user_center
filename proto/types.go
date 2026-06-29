@@ -2,13 +2,26 @@ package proto
 
 import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"gorm.io/gorm"
 	"time"
 )
 
+// Token expiration durations
+const (
+	AccessTokenDuration  = time.Hour
+	RefreshTokenDuration = 7 * 24 * time.Hour
+)
+
 type GenerateResp struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Data    any    `json:"data"`
+	Code      int    `json:"code"`
+	Message   string `json:"message"`
+	Data      any    `json:"data"`
+	RequestID string `json:"request_id,omitempty"`
+}
+
+type ClientDownloadUrl struct {
+	Platform    string `json:"platform"`
+	DownloadUrl string `json:"download_url"`
 }
 
 type ResponseOAuth struct {
@@ -18,20 +31,43 @@ type ResponseOAuth struct {
 	Token string `json:"token" form:"token"`
 }
 
+type AuthResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	UserID       uint   `json:"user_id"`
+	ExpireIn     int64  `json:"expire_in"` // 过期时间戳
+	Username     string `json:"username"`
+	Email        string `json:"email"`
+}
+
 type UpdateUserInfoReq struct {
-	ID         int    `json:"id" form:"id"`                   //用户id
-	Username   string `json:"name" form:"name"`               //用户名
-	Age        int    `json:"age" form:"age"`                 //年龄
-	Role       string `json:"role" form:"role"`               //角色
-	Gender     string `json:"gender" form:"gender"`           //性别
-	Redis      bool   `json:"redis" form:"redis"`             //是否刷新redis
-	Upload     bool   `json:"upload" form:"upload"`           //是否上传头像
-	VideoFunc  bool   `json:"video_func" form:"video_func"`   //视频功能
-	DeviceFunc bool   `json:"device_func" form:"device_func"` //设备功能
-	CIDFunc    bool   `json:"cid_func" form:"cid_func"`       //持续集成功能
-	Run        bool   `json:"run" form:"run"`                 //是否运行
-	QQ         int64  `json:"qq" form:"qq"`                   //QQ
-	Avatar     string `json:"avatar" form:"avatar"`           //头像
+	ID                       int    `json:"id" form:"id"`                   //用户id
+	Username                 string `json:"name" form:"name"`               //用户名
+	Age                      int    `json:"age" form:"age"`                 //年龄
+	Role                     string `json:"role" form:"role"`               //角色
+	Gender                   string `json:"gender" form:"gender"`           //性别
+	Redis                    int    `json:"redis" form:"redis"`             //是否刷新redis
+	Upload                   int    `json:"upload" form:"upload"`           //是否上传头像
+	VideoFunc                int    `json:"video_func" form:"video_func"`   //视频功能
+	DeviceFunc               int    `json:"device_func" form:"device_func"` //设备功能
+	CIDFunc                  int    `json:"cid_func" form:"cid_func"`       //持续集成功能
+	Run                      int    `json:"run" form:"run"`                 //是否运行
+	QQ                       int64  `json:"qq" form:"qq"`                   //QQ
+	Avatar                   string `json:"avatar" form:"avatar"`           //头像
+	PasswordNeedSecondAuth   int    `json:"password_need_second_auth" form:"password_need_second_auth"`
+	ThirdPartyNeedSecondAuth int    `json:"third_party_need_second_auth" form:"third_party_need_second_auth"`
+	CodeNeedSecondAuth       int    `json:"code_need_second_auth" form:"code_need_second_auth"`
+	AISecondAuth             int    `json:"ai_second_auth" form:"ai_second_auth"`
+}
+
+// 用户基础信息
+type BaseUserInfo struct {
+	ID     uint   `gorm:"column:id" json:"ID" form:"ID"`       //用户id
+	Name   string `gorm:"column:name" json:"name" form:"name"` //用户名
+	Age    int    `gorm:"column:age" json:"age" form:"age"`    //年龄
+	Email  string `gorm:"column:email" json:"email" form:"email"`
+	Role   string `gorm:"column:role" json:"role" form:"role"`       //角色
+	Avatar string `gorm:"column:avatar" json:"avatar" form:"avatar"` //头像
 }
 
 type UserAddOrUpdate struct {
@@ -62,9 +98,9 @@ type UserDelID struct {
 
 // 第三方登录,登录状态
 type ThirdPartyLoginStatus struct {
-	Status   int           `json:"status"`    // 登录状态,0:登录成功,1:登录失败
-	Type     string        `json:"type"`      // 登录类型,qq,github
-	UserInfo UserLoginInfo `json:"user_info"` // 用户信息
+	Status   int          `json:"status"`    // 登录状态,0:登录成功,1:登录失败
+	Type     string       `json:"type"`      // 登录类型,qq,github
+	UserInfo AuthResponse `json:"user_info"` // 用户信息
 }
 
 type UserLoginInfo struct {
@@ -79,6 +115,7 @@ type ThirdPartyLoginState struct {
 	UUID    string `json:"uuid"`    // uuid
 	Type    string `json:"type"`    // 操作类型add,login
 	Project string `json:"project"` // 项目名称,saw
+	HostID  string `json:"host_id"`
 	//第三方平台
 	Platform string `json:"platform"` // 平台名称,qq,github
 	UserID   int    `json:"user_id"`  // 用户ID,当为add时需要
@@ -409,4 +446,205 @@ type MicrosoftUserInfo struct {
 	Surname           string      `json:"surname"`
 	UserPrincipalName string      `json:"userPrincipalName"`
 	ID                string      `json:"id"`
+}
+
+type SyncSystemConfigReq struct {
+	//时间戳
+	Timestamp int64 `json:"timestamp" form:"timestamp"` // 时间戳
+	//设备标识
+	DeviceApp string `json:"device_app" form:"device_app"` // 设备标识
+	//加密信息
+	Sign         string `json:"sign" form:"sign"`                     // 加密信息,app的secret加密后的值
+	SecretKeyMd5 string `json:"secret_key_md5" form:"secret_key_md5"` // 密钥的MD5值,用于验证
+}
+
+type SyncSystemConfigResponse struct {
+	NewSecret          string `json:"new_secret"`            // 新的secret,使用前一个secret加密后的值
+	NewTimestamp       int64  `json:"new_timestamp"`         // 新的时间戳，主服务器会返回新的时间戳
+	NewSecretStartTime int64  `json:"new_secret_start_time"` // 新的密钥开始时间戳
+}
+
+type SecretSyncSettings struct {
+	Prev                   string `json:"prev"`                     // 前一个secret
+	Curr                   string `json:"curr"`                     // 当前的secret
+	Next                   string `json:"next"`                     // 下一个secret
+	CurrExpectedExpiration int64  `json:"curr_expected_expiration"` // 当前密钥的预期过期时间戳
+	PrevEndTimestamp       int64  `json:"prev_end_timestamp"`       // 前一个secret的结束时间戳
+	CurrStartTimestamp     int64  `json:"curr_start_timestamp"`     // 当前secret的开始时间戳
+	NextStartTimestamp     int64  `json:"next_start_timestamp"`     // 下一个secret的开始时间戳
+}
+
+type Secret struct {
+	gorm.Model
+	SecretKey       string    `gorm:"column:secret_key;type:varchar(255);uniqueIndex:idx_secret_key,255;not null"`     // 密钥
+	SecretMd5       string    `gorm:"column:secret_md5;type:varchar(255);uniqueIndex:idx_secret_key_md5,255;not null"` // 密钥的MD5值
+	Description     string    `gorm:"column:description"`                                                              // 描述
+	PrevSecretKeyID uint      `gorm:"column:prev_secret_key_id"`                                                       // 上一个密钥的ID，用于回滚
+	SecretStart     time.Time `gorm:"column:secret_start;not null"`                                                    // 密钥开始时间
+}
+
+type EmailPhoneCodeLoginReq struct {
+	Email       string `json:"email"`
+	Phone       string `json:"phone"`
+	Code        string `json:"code" form:"code"`
+	LoginType   int    `json:"login_type" form:"login_type"` //1,2
+	FingerPrint string `json:"fingerprint" form:"fingerPrint"`
+	State       string `json:"state" form:"state"` //二次认证时的状态
+}
+
+type UserLoginAddressInfo struct {
+	IPAddress  string `json:"ip_address"`
+	Address    string `json:"address"`
+	FirstLogin int64  `json:"first_login"`
+	LastLogin  int64  `json:"last_login"`
+	LoginCount int64  `json:"login_count"`
+}
+
+type UserLoginDeviceInfo struct {
+	HostID     string `json:"host_id"`
+	FirstLogin int64  `json:"first_login"`
+	LastLogin  int64  `json:"last_login"`
+	LoginCount int64  `json:"login_count"`
+}
+
+// tx api location response type begin
+type IPLocation struct {
+	Lat float64 `json:"lat"`
+	Lng float64 `json:"lng"`
+}
+
+type IPAdInfo struct {
+	Nation     string `json:"nation"`
+	Province   string `json:"province"`
+	City       string `json:"city"`
+	District   string `json:"district"`
+	Adcode     int    `json:"adcode"`
+	NationCode int    `json:"nation_code"`
+}
+
+type IPResult struct {
+	Ip       string     `json:"ip"`
+	Location IPLocation `json:"location"`
+	AdInfo   IPAdInfo   `json:"ad_info"`
+}
+
+type IPInfoResponse struct {
+	Status    int      `json:"status"`
+	Message   string   `json:"message"`
+	RequestId string   `json:"request_id"`
+	Result    IPResult `json:"result"`
+}
+
+type LocalIPDataBase struct {
+	IP   string `gorm:"column:ip;primarykey" json:"ip"`
+	Info string `gorm:"column:info" json:"info"`
+}
+
+//tx api location response type end
+
+// SQLResult 包含查询结果的列名顺序和对应数据
+type SQLResult struct {
+	Columns []SQLResultColumnsValue  // 列名顺序（与 SQL 查询的列顺序一致）
+	Rows    []map[string]interface{} // 每行数据（map 便于按列名访问）
+}
+
+type SQLResultColumnsValue struct {
+	Prop  string `json:"prop"`
+	Label string `json:"label"`
+	Attr  string `json:"attr"`
+}
+
+type GenAndGetTOTPSecretResponse struct {
+	CreatedAt time.Time `json:"created_at"`
+	Secret    string    `json:"secret"`
+	URL       string    `json:"url"`
+}
+
+type TOTPSecondAuthRequest struct {
+	State string `json:"state" form:"state" binding:"required"`
+	Code  string `json:"code" form:"code" binding:"required"`
+}
+type SecondAuthRequest struct {
+	State  string `json:"state" form:"state" binding:"required"`
+	Code   string `json:"code" form:"code" binding:"required"`
+	Type   string `json:"type" form:"type" binding:"required"`
+	HostID string `json:"host_id" form:"host_id" binding:"required"`
+}
+
+// 密码登录需二次认证支持类型及状态
+type NeedSecondAuthResp struct {
+	State  string `json:"state" form:"state"`
+	Expire int    `json:"expire" form:"expire"` //二次认证状态最长时间分钟
+	Type   string `json:"type" form:"type"`     //二次认证支持类型
+}
+
+type SecondAuthServerSaveState struct {
+	UserId int    `json:"user_id"`
+	Type   string `json:"type" form:"type"` //二次认证支持类型
+	Code   string `json:"code" form:"code"` //如邮件等保持的验证码
+}
+
+type AddUserGroupReq struct {
+	Name string `json:"name" form:"name" binding:"required"`
+	Prev int    `json:"prev" form:"prev"`
+}
+
+type AdminAddUserRequest struct {
+	Prev     uint   `json:"prev" form:"prev"`
+	Name     string `json:"name" form:"name" binding:"required"`
+	Email    string `json:"email" form:"email" binding:"required"`
+	Password string `json:"password" form:"password" binding:"required"`
+}
+
+type UserCatalogueReq struct {
+	UserId  uint `json:"user_id" form:"user_id" binding:"required"`
+	GroupID uint `json:"group_id" form:"group_id"`
+}
+
+type NetworkAreaDetail struct {
+	Type    int    `gorm:"column:type" json:"type" form:"type"` //1 in, 2 not in
+	CidrStr string `gorm:"column:cidr_str" json:"cidr_str" form:"cidr_str"`
+}
+
+type UserNetworkArea struct {
+	gorm.Model
+	UserID     uint   `gorm:"column:user_id" json:"user_id" form:"user_id"`
+	AreaName   string `gorm:"column:area_name" json:"area_name" form:"area_name"`
+	AreaInfo   string `gorm:"column:area_info" json:"area_info" form:"area_info"`
+	AreaDetail string `gorm:"column:area_detail" json:"area_detail" form:"area_detail"` //json array NetworkAreaDetail
+}
+
+// update or create user network area
+type UserNetworkAreaReq struct {
+	ID         uint                `json:"id" form:"id"`
+	UserID     uint                `json:"user_id" form:"user_id" binding:"required"`
+	AreaName   string              `json:"area_name" form:"area_name" binding:"required"`
+	AreaInfo   string              `json:"area_info" form:"area_info"`
+	AreaDetail []NetworkAreaDetail `json:"area_detail" form:"area_detail" binding:"required"` //json array NetworkAreaDetail
+}
+
+// response user network area
+type UserNetworkAreaResp struct {
+	ID         uint                `json:"id" form:"id"`
+	UserID     uint                `json:"user_id" form:"user_id"`
+	AreaName   string              `json:"area_name" form:"area_name"`
+	AreaInfo   string              `json:"area_info" form:"area_info"`
+	AreaDetail []NetworkAreaDetail `json:"area_detail" form:"area_detail"` //json array NetworkAreaDetail
+}
+
+type GenerateUserTokenReq struct {
+	UserID          uint  `json:"user_id" form:"user_id" binding:"required"`
+	ExpireIn        int64 `json:"expire_in" form:"expire_in" binding:"required"`                 // 过期时间，单位秒
+	RefreshExpireIn int64 `json:"refresh_expire_in" form:"refresh_expire_in" binding:"required"` // 刷新令牌过期时间，单位秒
+}
+
+type SessionID struct {
+	Session string `json:"session" form:"session" binding:"required"`
+	UserID  uint   `json:"user_id" form:"user_id" binding:"required"`
+}
+
+type KickOutUserRequest struct {
+	Type     uint        `json:"type" form:"type"` //all--1, some-0 default,
+	ServerID string      `json:"server_id" form:"server_id" binding:"required"`
+	Sessions []SessionID `json:"sessions" form:"sessions"`
 }
