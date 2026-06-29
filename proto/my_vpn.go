@@ -504,6 +504,7 @@ type VPNDPServerStatus struct {
 	OnlineUserInfo []VPNServerOnlineUser `json:"online_user_info" required:"true"`
 	CurrentSession int64 				 `json:"current_session" required:"true"`
 	PolicyHitCount int 					 `json:"policy_hit_count" required:"true"`
+	ServerAllSession uint64              `json:"server_all_session" required:"true"`
 }
 
 func (s *VPNDPServerStatus) GetInfo() VPNDPServerStatus {
@@ -518,6 +519,7 @@ func (s *VPNDPServerStatus) GetInfo() VPNDPServerStatus {
 		StartTime: 		s.StartTime,
 		CurrentSession: s.CurrentSession,
 		PolicyHitCount: s.PolicyHitCount,
+		ServerAllSession: s.ServerAllSession,
 	}
 }
 
