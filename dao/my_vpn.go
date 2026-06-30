@@ -129,6 +129,13 @@ func GetVPNPolicyByServerID(serverID string) ([]proto.VPNPolicy, error) {
 	return policies, res.Error
 }
 
+func GetVPNPolicyByID(id uint) (proto.VPNPolicy, error) {
+	db := GetDB()
+	var policy proto.VPNPolicy
+	res := db.Where("id = ?", id).First(&policy)
+	return policy, res.Error
+}
+
 // CreateMyVPNUserLoginInfo 创建用户登录记录
 func CreateMyVPNUserLoginInfo(info *proto.MyVPNUserLoginInfo) error {
 	db := GetDB()

@@ -266,7 +266,8 @@ func UpdateMyVPNPolicy(user *dao.User, resp *proto.GenerateResp, req *proto.VPNP
 			resp.Code = proto.InternalServerError
 			resp.Message = "failed to update policy"
 		} else {
-			SendVPNPolicyMsgToDPServer(proto.DPOpCodePolicyUpdate, req.ServerID, policy)
+			policy_, _ := dao.GetVPNPolicyByID(req.ID)
+			SendVPNPolicyMsgToDPServer(proto.DPOpCodePolicyUpdate, req.ServerID, &policy_)
 			resp.Code = proto.SuccessCode
 			resp.Message = "success"
 		}
