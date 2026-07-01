@@ -163,6 +163,7 @@ type ServerConfig struct {
 	IPv6AddressPool string      `json:"ipv6_address_pool" form:"ipv6_address_pool"`
 	DNSServer       string      `json:"dns_server" form:"dns_server"`
 	VPNSecretRekeyTime      int64              `json:"vpn_secret_rekey_time" form:"vpn_secret_rekey_time"`       // vpn secret rekey time
+	DPMaxSession    int         `json:"dp_max_session" form:"dp_max_session"`   // 最大会话数
 	Tunnel          string      `json:"tunnel" form:"tunnel"`
 	AllowUser      []VPNAllowUser `json:"allow_user" form:"allow_user"`
 	Encryption      string      `json:"encryption" form:"encryption"` /*加密算法：aes-128-gcm, aes-192-gcm, aes-256-gcm, SM4-GCM*/
