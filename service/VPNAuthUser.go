@@ -112,13 +112,15 @@ func CheckOnlineAuthUser() {
 		}
 
 		//刷新在线用户，key是否过期
-		for session, authUser := range userMap.AuthUserMap {
-			if now - authUser.SecretKeyTime < proto.RekeyDuration {
-				continue
+		if serverConfig.VPNSecretRekeyTime > 0 { //为0是不会rekey
+			for session, authUser := range userMap.AuthUserMap {
+				if now - authUser.SecretKeyTime < serverConfig.VPNSecretRekeyTime {
+					continue
+				}
+				RekeyVPNAuthUser(serverID, &authUser)
+				authUser.SecretKeyTime = now
+				userMap.AuthUserMap[session] = authUser
 			}
-			RekeyVPNAuthUser(serverID, &authUser)
-			authUser.SecretKeyTime = now
-			userMap.AuthUserMap[session] = authUser
 		}
 		userMap.mutex.Unlock()
 	}
